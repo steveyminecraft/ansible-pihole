@@ -7,14 +7,14 @@
   become: true
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 
-- name: Install requirements CentOS
+- name: Install requirements Rocky
   yum:
     name:
       - sqlite
       - rsync
       - git
     state: latest
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 # Create folders for tasks
 - name: Create gravity sync configuration folder
@@ -103,7 +103,7 @@
     mode: 0755
 
 - set_fact:
-    peerip_addr: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | difference(ansible_host) | list }}"
+    peerip_addr: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | difference([ansible_default_ipv4.address]) | list }}"
   run_once: true
 
 - name: Copy sync script
@@ -128,4 +128,4 @@
   args:
     executable: /bin/bash
     warn: no
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'

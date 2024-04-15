@@ -22,7 +22,7 @@
   apt_repository:
     repo: deb https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
     filename: docker
-  when: ansible_distribution == 'Ubuntu'
+  when: ansible_distribution == 'Ubuntu'centos
 
 - name: "Install dependencies Redhat"
   ansible.builtin.yum:
@@ -30,13 +30,13 @@
       - yum-utils
       - python3-pip
     state: present
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: Add signing key
   ansible.builtin.rpm_key:
     key: "https://download.docker.com/linux/centos/gpg"
     state: present
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: Add Docker Redhat
   ansible.builtin.yum_repository:
@@ -46,7 +46,7 @@
     enabled: true
     gpgcheck: true
     gpgkey: "https://download.docker.com/linux/centos/gpg"
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: Install Docker Debain
   apt:
@@ -58,7 +58,7 @@
     install_recommends: false
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 
-- name: Install Docker Centos
+- name: Install Docker Rocky
   yum:
     name:
       - docker-ce
@@ -67,7 +67,7 @@
       - docker-compose-plugin
     state: present
     update_cache: true
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 # Since yum doesn't like using notify because yum we have to this instead
 - name: Start docker service started, if not started
@@ -75,7 +75,7 @@
     name: docker
     state: started
     enabled: true
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: Install Docker SDK for python
   pip:

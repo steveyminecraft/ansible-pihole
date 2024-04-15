@@ -15,20 +15,20 @@
     name: keepalived
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 
-- name: Install keepalived CentOS
+- name: Install keepalived Rocky
   yum:
     name:
       - kernel-headers
       - kernel-devel
       - keepalived
     state: present
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: Change the keepalived_t domain to permissive
   community.general.selinux_permissive:
     name: keepalived_t
     permissive: true
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 # Since yum doesn't like using notify because yum we have to this instead
 - name: Start service keepalived started, if not started
@@ -36,7 +36,7 @@
     name: keepalived
     state: stopped
     enabled: true
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: Copy check_pihole.sh
   copy:
@@ -46,7 +46,7 @@
 
 # Finds the IP_ADDRS of the group and removes the ansible_host from it's peer list
 - set_fact:
-    peerip_addr: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | difference(ansible_host) | list }}"
+    peerip_addr: "{{ groups['all'] | map('extract', hostvars, 'ansible_host') | difference([ansible_default_ipv4.address]) | list }}"
   run_once: true
 
 - name: Configure keepalived

@@ -82,7 +82,7 @@
       - http
       - https
       - dns
-  when: ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: Bootps firewalld rule
   ansible.posix.firewalld:
@@ -97,7 +97,7 @@
 
 - name: Check pihole container
   uri:
-    url: http://localhost
+    url: http://localhost/admin
   register: result
   until: result.status == 200
   retries: 5
