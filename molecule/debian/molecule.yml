@@ -3,28 +3,28 @@
 dependency:
   name: galaxy
   options:
-    role-file: requirements.yml
+    role-file: requirements.yaml
 driver:
   name: vagrant
   provider:
     name: virtualbox
 platforms:
   - name: vagrant-pihole-01
-    box: luminositylabsllc/rockylinux9
+    box: bento/debian-12
     hostname: vagrant-pihole-01
     interfaces:
       - network_name: private_network
         type: static
-        ip: 192.168.56.4
+        ip: 192.168.56.6
     memory: 2048
     cpus: 2
   - name: vagrant-pihole-02
-    box: luminositylabsllc/rockylinux9
+    box: bento/debian-12
     hostname: vagrant-pihole-02
     interfaces:
       - network_name: private_network
         type: static
-        ip: 192.168.56.5
+        ip: 192.168.56.7
         memory: 2048
     cpus: 2
 
@@ -38,17 +38,17 @@ provisioner:
     ansible_become: true
   inventory:
     links:
-      hosts: inventory.yml
+      hosts: ../default/inventory.yml
       #group_vars: ../../group_vars/
       #host_vars: ../../host_vars/
   playbooks:
     converge: ../../playbooks/bootstrap-pihole.yaml
   env:
-    ANSIBLE_ROLES_PATH: ../../roles/
+    ANSIBLE_ROLES_PATH: molecule/default/roles:../../roles/
 verifier:
   name: ansible
 scenario:
-  name: default
+  name: debian
   test_sequence:
     - dependency
     - create

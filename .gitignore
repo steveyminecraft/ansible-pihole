@@ -173,3 +173,6 @@ cython_debug/
 .env
 .env.leave
 .vagrant
+roles/docker
+.tool-versions
+roles/pihole
