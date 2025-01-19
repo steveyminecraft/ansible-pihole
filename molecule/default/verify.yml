@@ -43,6 +43,7 @@
         state: stopped
       when: inventory_hostname == 'vagrant-pihole-02' 
 
+    # Step 6: 
     - name: Check for the Keepalived virtual IP on the second host
       ansible.builtin.command:
         cmd: ip a
