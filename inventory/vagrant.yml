@@ -21,7 +21,7 @@ all:
     timezone: "Europe/London"
     webport_http: '80' # Port for HTTP-Requests to Webinterface.
     webport_https: '443' # Port for HTTPS-DoH Requests.
-    firewall_deploy: false # will ensure firewalld is install and configured
+    firewall_deploy: true # will ensure firewalld is install and configured
     pihole_environment_variables:
       TZ: "{{ timezone }}"
       FTLCONF_MAXDBDAYS: "180"
