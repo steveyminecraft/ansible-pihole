@@ -1,16 +1,85 @@
----
 # molecule/default/verify.yml
 - name: Verify Configuration
   hosts: all
   tasks:
-    #- name: Verify Pi-hole Service
-    #  command: systemctl status pihole-FTL
-    #  register: pihole_status
+    # Keepalive failover tests
+    # Step 1: Ensure both hosts are accessible
+    - name: Confirm both nodes are accessible
+      ansible.builtin.ping:
+
+    # Step 2: Stop Docker container on the first host
+    - name: Stop Docker container on the first host
+      ansible.builtin.block:
+        - name: Identify the Docker container running on the first host
+          ansible.builtin.command:
+            cmd: docker ps --filter "name=keepalived" --format "{{.Names}}"
+          register: docker_container
+          when: inventory_hostname == 'vagrant-pihole-01'
+
+        - name: Stop the identified Docker container
+          ansible.builtin.command:
+            cmd: docker stop {{ docker_container.stdout }}
+          when: inventory_hostname == 'vagrant-pihole-01'
+      delegate_to: localhost
+
+    # Step 3: Verify the VIP moves to the second host
+    - name: Check for the Keepalived virtual IP on the second host
+      ansible.builtin.command:
+        cmd: ip a
+      register: ip_output
+      when: inventory_hostname == 'vagrant-pihole-02'
+
+    - name: Assert the virtual IP is present on the second host
+      ansible.builtin.assert:
+        that:
+          - "'192.168.56.10' in ip_output.stdout" 
+        fail_msg: "Failover failed: Virtual IP not found on the second host."
+
+    # Step 4: Restart the container on the first host for cleanup
+    - name: Restart Docker container on the first host
+      ansible.builtin.command:
+        cmd: docker start {{ docker_container.stdout }}
+      when: inventory_hostname == 'vagrant-pihole-01'
+      delegate_to: localhost
+
+    # Test firewall settings
+    - name: Ensure firewall is enabled
+      ansible.builtin.command:
+        cmd: "firewall-cmd --state"
+      register: firewall_state
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
+
+    - name: Assert firewall is active
+      ansible.builtin.assert:
+        that:
+          - firewall_state.stdout == "running"
+        fail_msg: "Firewall is not running."
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
+
+    - name: Check if ports 80, 443, and 53 are open
+      ansible.builtin.command:
+        cmd: "firewall-cmd --list-ports"
+      register: open_ports
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
+
+    - name: Assert required ports are open
+      ansible.builtin.assert:
+        that:
+          - "'80/tcp' in open_ports.stdout"
+          - "'443/tcp' in open_ports.stdout"
+          - "'53/tcp' in open_ports.stdout"
+        fail_msg: "Required ports (80, 443, 53) are not open."
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
+
+    # Test DNS resoultion
+    - name: Verify Pi-hole Service
+      command: systemctl status pihole-FTL
+      register: pihole_status
     
-    #- name: Assert Pi-hole Service is Running
-    #  assert:
-    #    that:
-    #      - "pihole_status.rc == 0"
+    - name: Assert Pi-hole Service is Running
+      assert:
+        that:
+          - "pihole_status.rc == 0"
 
     - name: Test DNS Resolution
       command: dig +short @127.0.0.1 google.com
