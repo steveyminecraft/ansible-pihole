@@ -13,7 +13,7 @@
       ansible.builtin.service:
         name: keepalived
         state: stopped
-      when: inventory_hostname == 'vagrant-pihole-01'  # Replace with the actual hostname
+      when: inventory_hostname == 'vagrant-pihole-01' 
 
     # Step 3: Verify the VIP moves to the second host
     - name: Check for the Keepalived virtual IP on the second host
@@ -34,6 +34,26 @@
       ansible.builtin.service:
         name: keepalived
         state: started
+      when: inventory_hostname == 'vagrant-pihole-01'
+
+    # Step 5: Verify the VIP moves back to 1st host
+    - name: Stop the Keepalived service on the first host
+      ansible.builtin.service:
+        name: keepalived
+        state: stopped
+      when: inventory_hostname == 'vagrant-pihole-02' 
+
+    - name: Check for the Keepalived virtual IP on the second host
+      ansible.builtin.command:
+        cmd: ip a
+      register: ip_return
+      when: inventory_hostname == 'vagrant-pihole-01'
+
+    - name: Assert the virtual IP is present on the second host
+      ansible.builtin.assert:
+        that:
+          - "'192.168.56.10' in ip_return.stdout" 
+        fail_msg: "Failover failed: Virtual IP not found on the second host."
       when: inventory_hostname == 'vagrant-pihole-01'
 
     # Step 1: Test if firewalld is running
