@@ -1,0 +1,30 @@
+- name: Verify firewall rules (only if firewall_deploy is true)
+  hosts: all
+  tasks:
+    - name: Ensure firewall is enabled
+      ansible.builtin.command:
+        cmd: "firewall-cmd --state"
+      register: firewall_state
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
+
+    - name: Assert firewall is active
+      ansible.builtin.assert:
+        that:
+          - firewall_state.stdout == "running"
+        fail_msg: "Firewall is not running."
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
+
+    - name: Check if ports 80, 443, and 53 are open
+      ansible.builtin.command:
+        cmd: "firewall-cmd --list-ports"
+      register: open_ports
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
+
+    - name: Assert required ports are open
+      ansible.builtin.assert:
+        that:
+          - "'80/tcp' in open_ports.stdout"
+          - "'443/tcp' in open_ports.stdout"
+          - "'53/tcp' in open_ports.stdout"
+        fail_msg: "Required ports (80, 443, 53) are not open."
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
