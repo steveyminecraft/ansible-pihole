@@ -55,5 +55,6 @@ scenario:
     - prepare
     - converge
     - verify
+    - verify-failover.yml
     - destroy
 

@@ -1,0 +1,41 @@
+- name: Test Keepalived failover
+  hosts: all
+  tasks:
+    # Step 1: Ensure both hosts are accessible
+    - name: Confirm both nodes are accessible
+      ansible.builtin.ping:
+
+    # Step 2: Stop Docker container on the first host
+    - name: Stop Docker container on the first host
+      ansible.builtin.block:
+        - name: Identify the Docker container running on the first host
+          ansible.builtin.command:
+            cmd: docker ps --filter "name=keepalived" --format "{{.Names}}"
+          register: docker_container
+          when: inventory_hostname == 'vagrant-pihole-01'  # Replace 'host1' with the actual inventory name
+
+        - name: Stop the identified Docker container
+          ansible.builtin.command:
+            cmd: docker stop {{ docker_container.stdout }}
+          when: inventory_hostname == 'vagrant-pihole-01'
+      delegate_to: localhost
+
+    # Step 3: Verify the VIP moves to the second host
+    - name: Check for the Keepalived virtual IP on the second host
+      ansible.builtin.command:
+        cmd: ip a
+      register: ip_output
+      when: inventory_hostname == 'vagrant-pihole-02'  # Replace 'host2' with the actual inventory name
+
+    - name: Assert the virtual IP is present on the second host
+      ansible.builtin.assert:
+        that:
+          - "'192.168.56.10' in ip_output.stdout"  # Replace with your VIP
+        fail_msg: "Failover failed: Virtual IP not found on the second host."
+
+    # Step 4: Restart the container on the first host for cleanup
+    - name: Restart Docker container on the first host
+      ansible.builtin.command:
+        cmd: docker start {{ docker_container.stdout }}
+      when: inventory_hostname == 'vagrant-pihole-01'
+      delegate_to: localhost
