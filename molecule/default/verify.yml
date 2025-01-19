@@ -3,16 +3,6 @@
 - name: Verify Configuration
   hosts: all
   tasks:
-    - name: Test DNS Resolution
-      command: dig +short @127.0.0.1 google.com
-      register: dns_test
-      failed_when: dns_test.stdout == ""
-
-    - name: Assert DNS Resolution is Working for Multiple IPs
-      assert:
-        that:
-          - dns_test.stdout | regex_search('216\\.58\\.|172\\.217\\.|142\\.250\\.')
-
     # Keepalive failover tests
     # Step 1: Ensure both nodes are accessible
     - name: Confirm both nodes are accessible
@@ -74,3 +64,25 @@
           - "'53/tcp' in open_ports.stdout"
           - "'53/udp' in open_ports.stdout"
         fail_msg: "One or more required ports are not open in the firewall."
+
+    #Test local DNS
+    - name: Test Local DNS Resolution
+      command: dig +short @127.0.0.1 google.com
+      register: local_dns_test
+      failed_when: local_dns_test.stdout == ""
+
+    - name: Assert DNS Resolution is Working for Multiple IPs
+      assert:
+        that:
+          - local_dns_test.stdout | regex_search('216\\.58\\.|172\\.217\\.|142\\.250\\.')
+
+    #Test DNS
+    - name: Test DNS Resolution
+      command: dig +short @192.168.56.10 google.com
+      register: dns_test
+      failed_when: dns_test.stdout == ""
+
+    - name: Assert DNS Resolution is Working for Multiple IPs
+      assert:
+        that:
+          - dns_test.stdout | regex_search('216\\.58\\.|172\\.217\\.|142\\.250\\.')
