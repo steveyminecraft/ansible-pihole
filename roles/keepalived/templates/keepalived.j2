@@ -33,10 +33,14 @@ vrrp_instance PIHOLE-IPv4 {
     virtual_router_id 1
     priority {{ priority }}
     advert_int 1
-    preempt_delay 900
+    preempt_delay 30
     unicast_scr {{ ansible_default_ipv4.interface }}
     unicast_peer {
         {{ peer_list }}
+    }
+
+    track_script {
+        check_docker
     }
 
     virtual_ipaddress {
@@ -49,7 +53,11 @@ vrrp_instance PIHOLE-IPv6 {
     virtual_router_id 1
     priority {{ priority }}
     advert_int 1
-    preempt_delay 900
+    preempt_delay 30
+
+    track_script {
+        check_docker
+    }
 
     virtual_ipaddress {
         {{ pihole_vip_ipv6 }}

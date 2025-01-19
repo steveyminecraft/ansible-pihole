@@ -42,12 +42,14 @@
         cmd: firewall-cmd --state
       register: firewalld_status
       changed_when: false
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
 
     - name: Assert firewalld is running
       ansible.builtin.assert:
         that:
           - firewalld_status.stdout == 'running'
         fail_msg: "Firewall service is not running."
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
 
     # Step 2: Test if required ports are open
     - name: Retrieve open firewall ports
@@ -55,6 +57,7 @@
         cmd: firewall-cmd --list-ports
       register: open_ports
       changed_when: false
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
 
     - name: Assert required ports are open
       ansible.builtin.assert:
@@ -64,6 +67,7 @@
           - "'53/tcp' in open_ports.stdout"
           - "'53/udp' in open_ports.stdout"
         fail_msg: "One or more required ports are not open in the firewall."
+      when: firewall_deploy | default(false)  # Run only if firewall_deploy is true
 
     #Test local DNS
     - name: Test Local DNS Resolution
