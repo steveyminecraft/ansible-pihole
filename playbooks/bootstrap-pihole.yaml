@@ -3,11 +3,11 @@
   become: true
   serial: 1
   roles:
-    - stop_keepalived
-    - bootstrap
-    - updates
-    - sshd
-    - keepalived
-    - docker
-    - pihole
-    - start_keepalived
+    - ../roles/stop_keepalived
+    - ../roles/bootstrap
+    - ../roles/updates
+    - ../roles/sshd
+    - ../roles/keepalived
+    - ../roles/docker
+    - ../roles/pihole
+    - ../roles/start_keepalived
