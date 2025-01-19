@@ -3,17 +3,82 @@
 - name: Verify Configuration
   hosts: all
   tasks:
-    #- name: Verify Pi-hole Service
-    #  command: systemctl status pihole-FTL
-    #  register: pihole_status
-    
-    #- name: Assert Pi-hole Service is Running
-    #  assert:
-    #    that:
-    #      - "pihole_status.rc == 0"
+    # Keepalive failover tests
+    # Step 1: Ensure both nodes are accessible
+    - name: Confirm both nodes are accessible
+      ansible.builtin.ping:
 
-    - name: Test DNS Resolution
+    # Step 2: Stop the keepalived service on the first host
+    - name: Stop the Keepalived service on the first host
+      ansible.builtin.service:
+        name: keepalived
+        state: stopped
+      when: inventory_hostname == 'vagrant-pihole-01'  # Replace with the actual hostname
+
+    # Step 3: Verify the VIP moves to the second host
+    - name: Check for the Keepalived virtual IP on the second host
+      ansible.builtin.command:
+        cmd: ip a
+      register: ip_output
+      when: inventory_hostname == 'vagrant-pihole-02'  # Replace with the actual hostname
+
+    - name: Assert the virtual IP is present on the second host
+      ansible.builtin.assert:
+        that:
+          - "'192.168.56.10' in ip_output.stdout"  # Replace with your VIP
+        fail_msg: "Failover failed: Virtual IP not found on the second host."
+      when: inventory_hostname == 'vagrant-pihole-02'
+
+    # Step 4: Restart the Keepalived service on the first host for cleanup
+    - name: Restart the Keepalived service on the first host
+      ansible.builtin.service:
+        name: keepalived
+        state: started
+      when: inventory_hostname == 'vagrant-pihole-01'
+
+    # Step 1: Test if firewalld is running
+    - name: Ensure firewalld service is active
+      ansible.builtin.command:
+        cmd: firewall-cmd --state
+      register: firewalld_status
+      changed_when: false
+
+    - name: Assert firewalld is running
+      ansible.builtin.assert:
+        that:
+          - firewalld_status.stdout == 'running'
+        fail_msg: "Firewall service is not running."
+
+    # Step 2: Test if required ports are open
+    - name: Retrieve open firewall ports
+      ansible.builtin.command:
+        cmd: firewall-cmd --list-ports
+      register: open_ports
+      changed_when: false
+
+    - name: Assert required ports are open
+      ansible.builtin.assert:
+        that:
+          - webport_http + '/tcp' in open_ports.stdout
+          - webport_https + '/tcp' in open_ports.stdout
+          - "'53/tcp' in open_ports.stdout"
+          - "'53/udp' in open_ports.stdout"
+        fail_msg: "One or more required ports are not open in the firewall."
+
+    #Test local DNS
+    - name: Test Local DNS Resolution
       command: dig +short @127.0.0.1 google.com
+      register: local_dns_test
+      failed_when: local_dns_test.stdout == ""
+
+    - name: Assert DNS Resolution is Working for Multiple IPs
+      assert:
+        that:
+          - local_dns_test.stdout | regex_search('216\\.58\\.|172\\.217\\.|142\\.250\\.')
+
+    #Test DNS
+    - name: Test DNS Resolution
+      command: dig +short @192.168.56.10 google.com
       register: dns_test
       failed_when: dns_test.stdout == ""
 
@@ -21,4 +86,3 @@
       assert:
         that:
           - dns_test.stdout | regex_search('216\\.58\\.|172\\.217\\.|142\\.250\\.')
-
