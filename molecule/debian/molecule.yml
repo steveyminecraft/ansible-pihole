@@ -56,5 +56,6 @@ scenario:
     - converge
     - verify
     - verify-failover.yml
+    - verify-firewall.yml
     - destroy
 
