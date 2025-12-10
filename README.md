@@ -81,30 +81,3 @@ The desired VIPs (Virtual IPs) for IPv4 and IPv6 can be configured in [`inventor
 ```
 
 When maintaining and updating your Pi-hole instances with the `bootstrap-pihole.yaml` and `update-pihole.yaml` playbooks, the first step stops keepalived and therefore shifts the VIP to another instance so that the performance of DNS queries is not impeded.
-
-## `sync.yaml`
-This playbook enables the synchronisation of settings between multiple Pi-hole instances.
-You can run it with: `ansible-playbook -i inventory.yaml sync.yaml`
-One Pi-hole functions as the primary instance and the others as secondaries which pull from the primary.
-Syncing is scheduled as a cronjob and set to run two times per day (frequency can be changed [here](roles/sync/tasks/main.yaml#L28)).
-What gets synced:
-- `gravity.db` (Adlists, Domains, Clients, Groups, Group Assignments of all aforementioned items)
-- `custom.list` (Local DNS Records)
-- `05-pihole-custom-cname.conf` (Local CNAME Records)
-
-#### Default: Pull from VIP
-If you enabled HA (high availability) with the `keepalived.yaml` playbook, the primary instance will be the one currently occupying the Virtual IP address (evaluated at each cronjob run).
-
-```yaml
-sync_target: "{{ pihole_vip_ipv4.split('/')[0] }}"
-```
-
-#### Alternative: Pull from primary instance
-You can set the [`sync_target`](inventory.yaml#L27) variable to the IP address of your primary Pi-hole instance (in my example `pihole-1`, otherwise adapt).
-```yaml
-sync_target: "{{ hostvars['pihole-1'].ansible_host }}"
-```
-
-For syncing, `rsync` is used which will only transfer files if they contain changes.
-Changes to `gravity.db` will trigger a docker container restart to pick up the changes.
-Changes to DNS & CNAME records get picked up on the fly.

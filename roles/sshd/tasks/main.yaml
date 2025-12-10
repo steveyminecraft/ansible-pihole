@@ -8,6 +8,16 @@
     target_handeler: Restart ssh
   when: ansible_distribution == 'Ubuntu' or ansible_distribution == 'Debian' 
 
+# Required for Ubuntu to stop freaking out
+- name: Ensure sshd runtime directory exists
+  become: true
+  file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Configure sshd
   lineinfile:
     path: "/etc/ssh/sshd_config"
@@ -22,6 +32,7 @@
     - { key: "MaxAuthTries", value: "3" }
   notify:
     - "{{ target_handeler }}"
+  become: true
 
 - name: Flush handlers
   meta: flush_handlers

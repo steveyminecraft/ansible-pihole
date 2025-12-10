@@ -1,52 +1,80 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Vagrant Configuration
 Vagrant.configure("2") do |config|
-
   # Global Settings
   vm_settings = {
-    box: "bento/rockylinux-9",
+    box: "local/rocky10-kvm",
     memory: 2048,
     cpus: 4,
     machines: [
-      { name: "vagrant-pihole-01", ip: "192.168.56.4" },
-      { name: "vagrant-pihole-02", ip: "192.168.56.5" }
+      { name: "vagrant-pihole-01", mac: "52:54:00:56:00:04" },
+      { name: "vagrant-pihole-02", mac: "52:54:00:56:00:05" }
     ]
   }
 
-  ### DEFINE SCRIPT ### 
+  ### DEFINE SCRIPT ###
   $script = <<-SCRIPT
   echo I am provisioning...
   date > /etc/vagrant_provisioned_at
   # PUT EXTRA OPTIONS IN HERE
   SCRIPT
 
-  # Provider Settings
+  # --- PROVIDERS --------------------------------------------------------
+
+  # VirtualBox provider (only actually used if VirtualBox is the selected provider)
   config.vm.provider "virtualbox" do |v|
     v.memory = vm_settings[:memory]
-    v.cpus = vm_settings[:cpus]
+    v.cpus   = vm_settings[:cpus]
   end
 
-  # Vbguest auto-update but only if plugin is present #Defaulted to off
+  # Libvirt/KVM provider (only define if plugin is installed)
+  if Vagrant.has_plugin?("vagrant-libvirt")
+    config.vm.provider "libvirt" do |l|
+      l.memory = vm_settings[:memory]
+      l.cpus   = vm_settings[:cpus]
+      l.driver = "kvm"
+
+      #l.management_network_name = "vagrant-56"
+      # You can keep this on or off; with fixed IPs it’s not required:
+      # l.qemu_use_agent = true
+    end
+  end
+
+  # --- PLUGINS ----------------------------------------------------------
+
+  # Vbguest auto-update but only if plugin is present (defaulted to off)
   if Vagrant.has_plugin?("vagrant-vbguest")
     config.vbguest.auto_update = false
   end
 
-  # Define VMs
+  # --- MACHINES ---------------------------------------------------------
+
   vm_settings[:machines].each do |machine|
     config.vm.define machine[:name] do |vm|
-      vm.vm.hostname = machine[:name]
-      vm.vm.box = vm_settings[:box]
+      vm.vm.hostname         = machine[:name]
+      vm.vm.box              = vm_settings[:box]
       vm.vm.box_check_update = false
-      vm.vm.network "private_network", ip: machine[:ip]
+
+      # NOTE: no "ip:" here – let DHCP assign based on MAC
+      vm.vm.network "private_network",
+                    type: "dhcp",
+                    libvirt__network_name: "vagrant-56",
+                    libvirt__mac: machine[:mac],
+                    libvirt__mgmt_network: "none"
+
       vm.vm.provision "shell", inline: $script
 
       # Cleanup known_hosts entry after destruction
       vm.trigger.after :destroy do |trigger|
         trigger.info = "Removing known_hosts entry for #{machine[:name]}"
-        trigger.run = { inline: "ssh-keygen -R #{machine[:ip]}" }
+        trigger.on_error = :continue
+        trigger.run = {
+          inline: "ssh-keygen -R #{machine[:name]}"
+        }
       end
+
+
     end
   end
 end

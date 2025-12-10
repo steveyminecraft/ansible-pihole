@@ -3,6 +3,6 @@
   become: true
   serial: 1
   roles:
-    - stop_keepalived
-    - keepalived
-    - start_keepalived
+    - ../roles/stop_keepalived
+    - ../roles/keepalived
+    - ../roles/start_keepalived

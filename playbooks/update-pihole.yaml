@@ -3,7 +3,7 @@
   become: true
   serial: 1
   roles:
-    - stop_keepalived
-    - updates
-    - pihole
-    - start_keepalived
+    - ../roles/stop_keepalived
+    - ../roles/updates
+    - ../roles/pihole
+    - ../roles/start_keepalived

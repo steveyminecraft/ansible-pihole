@@ -6,11 +6,10 @@ dependency:
     role-file: requirements.yml
 driver:
   name: vagrant
-  provider:
-    name: virtualbox
 platforms:
   - name: vagrant-pihole-01
-    box: luminositylabsllc/rockylinux9
+    box: "local/rocky10-kvm"
+    provider: libvirt
     hostname: vagrant-pihole-01
     interfaces:
       - network_name: private_network
@@ -19,7 +18,8 @@ platforms:
     memory: 2048
     cpus: 2
   - name: vagrant-pihole-02
-    box: luminositylabsllc/rockylinux9
+    box: "local/rocky10-kvm"
+    provider: libvirt
     hostname: vagrant-pihole-02
     interfaces:
       - network_name: private_network

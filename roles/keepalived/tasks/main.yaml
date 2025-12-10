@@ -77,12 +77,26 @@
   ansible.builtin.shell: cat /tmp/keepalived.conf | sed 's/[][]//g' | sed "s/['\]//g" > /etc/keepalived/keepalived.conf
 
 #Fixes issues with eth0 being used for the vagrant vm access interfering with the code pick up of the primary interface
-- name: vagrant test env support
+- name: vagrant test env support 9.x Rocky
   ansible.builtin.replace:
     path: /etc/keepalived/keepalived.conf
     regexp: 'eth0'
     replace: 'eth1'
-  when: vagrant_env == true and ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when:
+    - vagrant_env | default(false) | bool
+    - ansible_distribution in ['Rocky', 'Red Hat Enterprise Linux']
+    - ansible_distribution_major_version is version('9', '=')
+
+#Fixes issues with ens5 being used for the vagrant vm access interfering with the code pick up of the primary interface
+- name: vagrant test env support 10.x Rocky
+  ansible.builtin.replace:
+    path: /etc/keepalived/keepalived.conf
+    regexp: 'ens5'
+    replace: 'ens6'
+  when:
+    - vagrant_env | default(false) | bool
+    - ansible_distribution in ['Rocky', 'Red Hat Enterprise Linux']
+    - ansible_distribution_major_version is version('10', '=')
 
 ### Add in firewall rules for vrrp protocol
 - name: Add VRRP protocol to firewall

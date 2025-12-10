@@ -1,6 +1,6 @@
 - name: Enable syncing
-  hosts: all
+  hosts: pihole-01
   become: true
   serial: 1
   roles:
-    - sync
+    - ../roles/sync
