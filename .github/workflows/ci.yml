@@ -44,7 +44,7 @@ jobs:
         run: yamllint .
         # You can add a .yamllint config later if you want to tune rules
 
-  ansible-tests:
+  ansible-tests-ubuntu:
     name: Ansible syntax & dry-run
     runs-on: ubuntu-24.04
     needs: lint
@@ -78,3 +78,46 @@ jobs:
       - name: Check-mode converge (bootstrap)
         run: |
           ansible-playbook -i inventory/ci/hosts.ini tests/ci-bootstrap.yml --check
+
+  ansible-tests-rocky:
+    name: Rocky Linux 10 – Ansible sanity
+    runs-on: ubuntu-24.04
+
+    # The *job* runs inside this container image
+    container:
+      image: docker pull rockylinux/rockylinux:10.1.20251123
+    # or your own image if 10 isn't published yet
+
+    steps:
+      - name: Install Git (container is very minimal)
+        run: |
+          yum -y install git
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python + pip
+        run: |
+          yum -y install python3 python3-pip
+          python3 -m pip install --upgrade pip
+
+      - name: Install Ansible
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install ansible
+
+      - name: Install role & collection dependencies
+        run: |
+          ansible-galaxy install -r roles/requirements.yml
+          ansible-galaxy collection install -r roles/requirements.yml
+
+      - name: Show Ansible version
+        run: ansible --version
+
+      - name: Run CI playbook against localhost
+        run: |
+          ansible-playbook \
+            -i 'localhost,' \
+            -c local \
+            tests/ci-bootstrap.yml \
+            --check
