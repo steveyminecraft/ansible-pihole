@@ -176,3 +176,4 @@ cython_debug/
 roles/docker
 .tool-versions
 roles/pihole
+.ansible

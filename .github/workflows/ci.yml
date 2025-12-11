@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - dev
+      - master
+      - "feature/**"
+  pull_request:
+    branches:
+      - dev
+      - master
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Ansible & YAML lint
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ansible-lint via official action
+      - name: Run ansible-lint
+        uses: ansible/ansible-lint@v25.5.0
+        with:
+          # requirements_file: requirements.yml
+          working_directory: .
+
+      # yamllint via pip (quick + simple)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Run yamllint
+        run: yamllint .
+        # You can add a .yamllint config later if you want to tune rules
+
+  molecule:
+    name: Molecule tests
+    runs-on: ubuntu-24.04
+    needs: lint   # Only run if lint passed
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible + Molecule (Docker driver) + Testinfra
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            "ansible>=9.0.0" \
+            "molecule>=24.0.0" \
+            "molecule-plugins[docker]" \
+            "testinfra"
+
+      - name: Show versions
+        run: |
+          ansible --version
+          molecule --version
+
+      - name: Run Molecule tests
+        run: |
+          molecule test
