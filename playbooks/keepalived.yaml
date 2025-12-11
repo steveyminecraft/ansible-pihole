@@ -1,0 +1,8 @@
+- name: Enable failover with keepalived
+  hosts: all
+  become: true
+  serial: 1
+  roles:
+    - ../roles/stop_keepalived
+    - ../roles/keepalived
+    - ../roles/start_keepalived

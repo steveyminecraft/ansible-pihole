@@ -1,0 +1,117 @@
+- name: Get master host based on keepalive_role
+  set_fact:
+    master_host: "{{ item.key }}"
+  loop: "{{ hostvars | dict2items }}"
+  when: "'keepalive_role' in item.value and item.value.keepalive_role == 'MASTER'"
+
+- name: Get backup host based on keepalive_role
+  set_fact:
+    backup_host: "{{ item.key }}"
+  loop: "{{ hostvars | dict2items }}"
+  when: "'keepalive_role' in item.value and item.value.keepalive_role == 'BACKUP'"
+
+- name: Ensure SSH agent is running on master host
+  shell: "eval $(ssh-agent)|| (ssh-agent > ~/.ssh/agent.env && echo 'SSH agent started')"
+  args:
+    executable: /bin/bash
+  delegate_to: "{{ master_host }}"
+  become: false
+
+- name: Ensure SSH agent is running on backup host
+  shell: "eval $(ssh-agent)|| (ssh-agent > ~/.ssh/agent.env && echo 'SSH agent started')"
+  args:
+    executable: /bin/bash
+  delegate_to: "{{ backup_host }}"
+  become: false
+
+- name: Generate SSH key pair on master host
+  openssh_keypair:
+    path: "/home/{{ ansible_user }}/.ssh/id_rsa"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+  become: false
+  delegate_to: "{{ master_host }}"
+
+- name: Generate SSH key pair on backup host
+  openssh_keypair:
+    path: "/home/{{ ansible_user }}/.ssh/id_rsa"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0600'
+  become: false
+  delegate_to: "{{ backup_host }}"
+
+- name: Share master host's public key to backup host
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+  delegate_to: "{{ backup_host }}"
+  become: false
+
+- name: Share backup host's public key to master host
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+  delegate_to: "{{ master_host }}"
+  become: false
+
+- name: Stop Pi-hole on master host
+  docker_container:
+    name: pihole
+    state: stopped
+  delegate_to: "{{ master_host }}"
+
+- name: Copy Pi-hole folder to temp location
+  ansible.builtin.command: "cp -r /opt/pihole /tmp/pihole_backup"
+  become: true
+  delegate_to: "{{ master_host }}"
+
+- name: Start Pi-hole on master host
+  docker_container:
+    name: pihole
+    state: started
+  delegate_to: "{{ master_host }}"
+
+- name: Wait until Pi-hole is fully running
+  wait_for:
+    port: 53
+    timeout: 60
+  delegate_to: "{{ master_host }}"
+
+- name: Recursively change ownership of a backup dir
+  ansible.builtin.file:
+    path: /tmp/pihole_backup
+    state: directory
+    recurse: yes
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  delegate_to: "{{ master_host }}"
+
+- name: Stop Pi-hole on backup host
+  docker_container:
+    name: pihole
+    state: stopped
+  delegate_to: "{{ backup_host }}"
+
+- name: Sync files to backup host
+  synchronize:
+    src: /tmp/pihole_backup/
+    dest: /tmp/pihole_backup/
+  delegate_to: "{{ master_host }}"
+  become: false
+
+- name: Copy Pi-hole from temp location to active loc
+  command: "cp -r /tmp/pihole_backup /opt/pihole"
+  become: true
+  delegate_to: "{{ backup_host }}"
+
+- name: Start Pi-hole on backup host
+  docker_container:
+    name: pihole
+    state: started
+  delegate_to: "{{ backup_host }}"
+
+  

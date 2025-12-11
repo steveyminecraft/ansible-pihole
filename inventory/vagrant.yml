@@ -1,0 +1,37 @@
+all:
+  hosts:
+    vagrant-pihole-01:
+      ansible_host: 192.168.56.4
+      ansible_port: 22
+      priority: 110
+      keepalive_role: MASTER
+    vagrant-pihole-02:
+      ansible_host: 192.168.56.5
+      ansible_port: 22
+      priority: 100
+      keepalive_role: BACKUP
+  vars:
+    ansible_user: vagrant
+    ansible_password: vagrant # only used on first run
+    password_lock: false # Change to false if you still wish to login via passwd auth
+    ansible_user_home_dir: /home/{{ ansible_user }}
+    ansible_python_interpreter: /usr/bin/python3
+    github_user_for_ssh_key: steveyminecraft # Change me to required value
+    pihole_image: "pihole/pihole:latest"
+    timezone: "Europe/London"
+    webport_http: '80' # Port for HTTP-Requests to Webinterface.
+    webport_https: '443' # Port for HTTPS-DoH Requests.
+    firewall_deploy: true # will ensure firewalld is install and configured
+    DHCP_ACTIVE: false
+    pihole_environment_variables:
+      TZ: "{{ timezone }}"
+      FTLCONF_webserver_api_password: 'Intranet' # example value, change it and better use ansible-vault
+      FTLCONF_dns_upstreams: "1.1.1.1;2606:4700:4700::1111"
+      FTLCONF_dns_listeningMode: 'ALL'
+    pihole_ha_mode: true
+    pihole_vip_ipv4: "192.168.56.10/24"
+    pihole_vip_ipv6: "fd00::10/64"
+    dnsmasq_listening: single
+    pihole_container_name: pihole
+    vagrant_env: true
+    docker_users: vagrant

@@ -1,0 +1,38 @@
+- name: Set correct handeler for Redhat Family
+  set_fact:
+    target_handeler: Restart sshd
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: Set correct handeler for OS Ubuntu
+  set_fact:
+    target_handeler: Restart ssh
+  when: ansible_distribution == 'Ubuntu' or ansible_distribution == 'Debian' 
+
+# Required for Ubuntu to stop freaking out
+- name: Ensure sshd runtime directory exists
+  become: true
+  file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure sshd
+  lineinfile:
+    path: "/etc/ssh/sshd_config"
+    regex: "^(#)?{{item.key}}"
+    line: "{{item.key}} {{item.value}}"
+    state: present
+    validate: /usr/sbin/sshd -T -f %s
+  loop:
+    - { key: "PermitRootLogin", value: "no" }
+    - { key: "PasswordAuthentication", value: "no" }
+    - { key: "MaxSessions", value: "5" }
+    - { key: "MaxAuthTries", value: "3" }
+  notify:
+    - "{{ target_handeler }}"
+  become: true
+
+- name: Flush handlers
+  meta: flush_handlers

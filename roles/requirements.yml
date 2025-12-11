@@ -1,0 +1,8 @@
+---
+roles:
+#  - name: docker
+#    src: geerlingguy.docker
+#    version: master
+  - name: pihole
+    src:  https://github.com/steveyminecraft/docker-pihole
+    version: master
