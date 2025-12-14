@@ -45,8 +45,15 @@ provisioner:
     converge: ../../playbooks/bootstrap-pihole.yaml
   env:
     ANSIBLE_ROLES_PATH: ../../roles/
+<<<<<<< HEAD
+
 verifier:
   name: ansible
+
+=======
+verifier:
+  name: ansible
+>>>>>>> origin/dev
 scenario:
   name: ubuntu
   test_sequence:
