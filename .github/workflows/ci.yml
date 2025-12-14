@@ -24,6 +24,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy collection install -r collections/requirements.yml        
+
+      - name: Install Ansible roles
+        run: |
+          ansible-galaxy role install -r roles/requirements.yml
+
       # ansible-lint via official action
       - name: Run ansible-lint
         uses: ansible/ansible-lint@v25.12.0
