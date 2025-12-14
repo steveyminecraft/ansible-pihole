@@ -26,7 +26,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install ansible-lint
 
-      - name: Install Ansible collections
+      - name: Install Ansible collections (optional)
+        if: hashFiles('collections/requirements.yml') != ''
         run: |
           ansible-galaxy collection install -r collections/requirements.yml -p ./collections
 
