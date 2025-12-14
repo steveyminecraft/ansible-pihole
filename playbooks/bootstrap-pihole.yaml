@@ -8,6 +8,6 @@
     - ../roles/updates
     - ../roles/sshd
     - ../roles/keepalived
-    - ../roles/docker-local
+    - ../roles/docker
     - ../roles/pihole
     - ../roles/start_keepalived

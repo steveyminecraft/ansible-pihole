@@ -81,7 +81,7 @@
 
 - name: Install Docker SDK for python
   pip:
-    name: 
+    name:
       - docker
     extra_args: "--user"
     break_system_packages: true
@@ -95,7 +95,7 @@
 - name: Enable Docker IPv6
   copy:
     dest: /etc/docker/daemon.json
-    mode: 0600
+    mode: "0600"
     content: |
       {
         "ipv6": true,

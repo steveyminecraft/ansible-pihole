@@ -36,7 +36,7 @@ vrrp_instance PIHOLE-IPv4 {
     preempt_delay 30
     unicast_scr {{ ansible_default_ipv4.interface }}
     unicast_peer {
-        {{ peer_list }}
+        {{ keepalived_peer_list }}
     }
 
     track_script {

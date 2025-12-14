@@ -8,7 +8,7 @@
   user:
     name: "{{ ansible_user }}"
     password_lock: true
-  when: password_lock == true
+  when: password_lock
 
 - name: "Bashrc for {{ ansible_user }}"
   blockinfile:
@@ -81,8 +81,8 @@
 - name: Install requirements Debian
   ansible.builtin.apt:
     pkg:
-    - firewalld
-    - python3-pip
+      - firewalld
+      - python3-pip
     update_cache: true
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 

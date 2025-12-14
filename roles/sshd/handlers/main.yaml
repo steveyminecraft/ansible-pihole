@@ -1,9 +1,9 @@
-- name: Restart sshd
+- name: Restart_SSHD
   service:
     name: sshd
     state: restarted
 
-- name: Restart ssh
+- name: Restart_SSH
   service:
     name: ssh
     state: restarted
