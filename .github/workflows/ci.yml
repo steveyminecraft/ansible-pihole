@@ -103,4 +103,4 @@ jobs:
       # 2) Optional: safe dry-run of a “happy path” bootstrap
       - name: Check-mode converge (bootstrap)
         run: |
-          ansible-playbook -i inventory/ci/hosts.ini playbooks/bootstrap.yml --check
+          ansible-playbook -i inventory/ci/hosts.ini playbooks/bootstrap-pihole.yaml --check
