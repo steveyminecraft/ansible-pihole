@@ -29,17 +29,6 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Debug git ref + files
-        run: |
-          echo "github.ref=$GITHUB_REF"
-          echo "github.sha=$GITHUB_SHA"
-          git status --porcelain || true
-          git rev-parse --abbrev-ref HEAD || true
-          git log -1 --oneline || true
-          ls -la
-          ls -la collections || true
-          find . -maxdepth 3 -type f -name 'requirements.yml' -print
-
       - name: Install ansible-lint
         run: |
           python -m pip install --upgrade pip
@@ -56,9 +45,6 @@ jobs:
           ansible-galaxy role install -r roles/requirements.yml -p ./roles
 
       - name: Run ansible-lint
-        env:
-          ANSIBLE_COLLECTIONS_PATHS: ${{ github.workspace }}/collections
-          ANSIBLE_ROLES_PATH: ${{ github.workspace }}/roles
         run: |
           ansible-lint --version
           ansible-lint
