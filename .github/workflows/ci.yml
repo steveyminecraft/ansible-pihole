@@ -26,7 +26,7 @@ jobs:
 
       # ansible-lint via official action
       - name: Run ansible-lint
-        uses: ansible/ansible-lint@v25.5.0
+        uses: ansible/ansible-lint@v25.12.0
         with:
           # requirements_file: requirements.yml
           working_directory: .
