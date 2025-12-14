@@ -25,8 +25,16 @@ all:
     DHCP_ACTIVE: false
     pihole_environment_variables:
       TZ: "{{ timezone }}"
-      FTLCONF_webserver_api_password: 'Intranet' # example value, change it and better use ansible-vault
-      FTLCONF_dns_upstreams: "1.1.1.1;2606:4700:4700::1111"
+      FTLCONF_MAXDBDAYS: "180"
+      WEBPASSWORD: 'Intranet' # example value, change it and better use ansible-vault
+      PIHOLE_DNS_: "1.1.1.1;2606:4700:4700::1111"
+      REV_SERVER: "true"
+      REV_SERVER_CIDR: "192.168.56.0/24"
+      REV_SERVER_TARGET: "192.168.56.1"
+      REV_SERVER_DOMAIN: "test"
+      DHCP_ACTIVE: false
+      PIHOLE_DOMAIN: 'test'
+      WEBTHEME: "default-darker"
       FTLCONF_dns_listeningMode: 'ALL'
     pihole_ha_mode: true
     pihole_vip_ipv4: "192.168.56.10/24"

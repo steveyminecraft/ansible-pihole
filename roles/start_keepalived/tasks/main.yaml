@@ -1,8 +1,21 @@
-- name: Ensure keepalived service is started
-  service:
-    name: keepalived
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Select keepalived/keepalive service unit if present
+  ansible.builtin.set_fact:
+    start_keepalived_service_unit: >-
+      {{
+        'keepalived.service'
+        if 'keepalived.service' in ansible_facts.services
+        else (
+          'keepalive.service'
+          if 'keepalive.service' in ansible_facts.services
+          else ''
+        )
+      }}
+
+- name: Ensure keepalived/keepalive service is started (if present)
+  ansible.builtin.service:
+    name: "{{ start_keepalived_service_unit | regex_replace('\\.service$', '') }}"
     state: started
-  register: result
-  failed_when:
-    - result.failed == true
-    - '"Could not find the requested service" not in result.msg'
+  when: start_keepalived_service_unit != ''

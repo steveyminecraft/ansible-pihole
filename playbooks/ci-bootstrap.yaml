@@ -1,0 +1,24 @@
+---
+- name: CI sanity check for ansible-pihole
+  hosts: ci
+  gather_facts: true
+  become: true
+
+  # Keep this minimal and safe for generic Ubuntu runners
+  vars:
+    # Set simple/default-ish vars so roles don’t blow up
+    github_user_for_ssh_key: "root"
+    timezone: "Etc/UTC"
+    static_dns: "1.1.1.1"
+
+    # Make sure HA bits don’t run in CI
+    pihole_ha_mode: false
+
+    password_lock: false
+    # Point Pi-hole image at something valid, but we're in --check anyway
+    pihole_image: "pihole/pihole:latest"
+
+  roles:
+    - bootstrap
+    - docker
+    - pihole

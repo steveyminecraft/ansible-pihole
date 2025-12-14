@@ -1,6 +1,8 @@
 molecule 
-anisble 
+ansible 
 molecule-vagrant 
 testinfra
 molecule-docker
 python-docker
+ansible-lint
+yamllint

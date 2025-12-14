@@ -15,13 +15,14 @@ Vagrant.configure("2") do |config|
     ]
   }
 
-  ### DEFINE SCRIPT ###
+  ### DEFINE SCRIPT ### 
   $script = <<-SCRIPT
   echo I am provisioning...
   date > /etc/vagrant_provisioned_at
   # PUT EXTRA OPTIONS IN HERE
   SCRIPT
 
+<<<<<<< HEAD
   # --- PROVIDERS --------------------------------------------------------
 
   # VirtualBox provider (only actually used if VirtualBox is the selected provider)
@@ -45,10 +46,20 @@ Vagrant.configure("2") do |config|
   # --- PLUGINS ----------------------------------------------------------
 
   # Vbguest auto-update but only if plugin is present (defaulted to off)
+=======
+  # Provider Settings
+  config.vm.provider "virtualbox" do |v|
+    v.memory = vm_settings[:memory]
+    v.cpus = vm_settings[:cpus]
+  end
+
+  # Vbguest auto-update but only if plugin is present #Defaulted to off
+>>>>>>> origin/dev
   if Vagrant.has_plugin?("vagrant-vbguest")
     config.vbguest.auto_update = false
   end
 
+<<<<<<< HEAD
   # --- MACHINES ---------------------------------------------------------
 
   vm_settings[:machines].each do |machine|
@@ -60,12 +71,25 @@ Vagrant.configure("2") do |config|
       # Works for both VirtualBox and libvirt; provider handles how it’s wired
       vm.vm.network "private_network", ip: machine[:ip]
 
+=======
+  # Define VMs
+  vm_settings[:machines].each do |machine|
+    config.vm.define machine[:name] do |vm|
+      vm.vm.hostname = machine[:name]
+      vm.vm.box = vm_settings[:box]
+      vm.vm.box_check_update = false
+      vm.vm.network "private_network", ip: machine[:ip]
+>>>>>>> origin/dev
       vm.vm.provision "shell", inline: $script
 
       # Cleanup known_hosts entry after destruction
       vm.trigger.after :destroy do |trigger|
         trigger.info = "Removing known_hosts entry for #{machine[:name]}"
+<<<<<<< HEAD
         trigger.run  = { inline: "ssh-keygen -R #{machine[:ip]}" }
+=======
+        trigger.run = { inline: "ssh-keygen -R #{machine[:ip]}" }
+>>>>>>> origin/dev
       end
     end
   end

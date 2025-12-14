@@ -4,12 +4,10 @@ dependency:
   name: galaxy
   options:
     role-file: requirements.yaml
-
 driver:
   name: vagrant
-  #provider:
-  #  name: virtualbox
-
+  provider:
+    name: virtualbox
 platforms:
   - name: vagrant-pihole-01
     box: bento/ubuntu-24.04
@@ -47,10 +45,15 @@ provisioner:
     converge: ../../playbooks/bootstrap-pihole.yaml
   env:
     ANSIBLE_ROLES_PATH: ../../roles/
+<<<<<<< HEAD
 
 verifier:
   name: ansible
 
+=======
+verifier:
+  name: ansible
+>>>>>>> origin/dev
 scenario:
   name: ubuntu
   test_sequence:
