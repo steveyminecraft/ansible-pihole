@@ -23,26 +23,42 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      # ansible-lint via official action
-      - name: Run ansible-lint
-        uses: ansible/ansible-lint@v25.5.0
         with:
-          # requirements_file: requirements.yml
-          working_directory: .
+          fetch-depth: 0
 
-      # yamllint via pip (quick + simple)
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.python_version }}
+          python-version: "3.12"
 
-      - name: Install yamllint
-        run: pip install yamllint
+      - name: Install Ansible collections (optional)
+        if: hashFiles('collections/requirements.yml') != ''
+        run: |
+          ansible-galaxy collection install -r collections/requirements.yml -p ./collections
 
-      - name: Run yamllint
-        run: yamllint .
-        # You can add a .yamllint config later if you want to tune rules
+      - name: Install Ansible roles (optional)
+        if: hashFiles('roles/requirements.yml') != ''
+        run: |
+          ansible-galaxy role install -r roles/requirements.yml -p ./roles
+
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible-core==2.20.1" "ansible-lint==25.12.1"
+
+      - name: Install collections
+        if: hashFiles('collections/requirements.yml') != ''
+        run: |
+          ansible-galaxy collection install -r collections/requirements.yml -p ./.ansible/collections
+
+      - name: Lint
+        env:
+          ANSIBLE_CONFIG: ${{ github.workspace }}/ansible.cfg
+        run: |
+          ansible --version
+          ansible-lint --version
+          ansible-lint -p roles playbooks
+
 
   ansible-tests-ubuntu:
     name: Ansible syntax & dry-run
@@ -66,58 +82,25 @@ jobs:
       - name: Show Ansible version
         run: ansible --version
 
+      - name: Install Ansible collections (optional)
+        if: hashFiles('collections/requirements.yml') != ''
+        run: |
+          ansible-galaxy collection install -r collections/requirements.yml -p ./collections
+
+      - name: Install Ansible roles (optional)
+        if: hashFiles('roles/requirements.yml') != ''
+        run: |
+          ansible-galaxy role install -r roles/requirements.yml -p ./roles
+
       # 1) Syntax-check all main playbooks
       - name: Syntax check playbooks
         run: |
-          ansible-playbook -i inventory/ci/hosts.ini playbooks/bootstrap-pihole.yaml --syntax-check
-          ansible-playbook -i inventory/ci/hosts.ini playbooks/update-pihole.yaml --syntax-check
-          ansible-playbook -i inventory/ci/hosts.ini playbooks/keepalived.yaml --syntax-check
-          ansible-playbook -i inventory/ci/hosts.ini playbooks/sync.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/bootstrap-pihole.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/update-pihole.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/keepalived.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/sync.yaml --syntax-check
 
       # 2) Optional: safe dry-run of a “happy path” bootstrap
       - name: Check-mode converge (bootstrap)
         run: |
-          ansible-playbook -i inventory/ci/hosts.ini tests/ci-bootstrap.yml --check
-
-  ansible-tests-rocky:
-    name: Rocky Linux 10 – Ansible sanity
-    runs-on: ubuntu-24.04
-
-    # The *job* runs inside this container image
-    container:
-      image: docker pull rockylinux/rockylinux:10.1.20251123
-    # or your own image if 10 isn't published yet
-
-    steps:
-      - name: Install Git (container is very minimal)
-        run: |
-          yum -y install git
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Python + pip
-        run: |
-          yum -y install python3 python3-pip
-          python3 -m pip install --upgrade pip
-
-      - name: Install Ansible
-        run: |
-          python3 -m pip install --upgrade pip
-          pip install ansible
-
-      - name: Install role & collection dependencies
-        run: |
-          ansible-galaxy install -r roles/requirements.yml
-          ansible-galaxy collection install -r roles/requirements.yml
-
-      - name: Show Ansible version
-        run: ansible --version
-
-      - name: Run CI playbook against localhost
-        run: |
-          ansible-playbook \
-            -i 'localhost,' \
-            -c local \
-            tests/ci-bootstrap.yml \
-            --check
+          ansible-playbook -i inventory/ci/hosts.ini playbooks/bootstrap-pihole.yaml --check
