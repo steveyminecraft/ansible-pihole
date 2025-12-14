@@ -21,6 +21,17 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
+      - name: Debug git ref + files
+        run: |
+          echo "github.ref=$GITHUB_REF"
+          echo "github.sha=$GITHUB_SHA"
+          git status --porcelain || true
+          git rev-parse --abbrev-ref HEAD || true
+          git log -1 --oneline || true
+          ls -la
+          ls -la collections || true
+          find . -maxdepth 3 -type f -name 'requirements.yml' -print
+
       - name: Install ansible-lint
         run: |
           python -m pip install --upgrade pip
