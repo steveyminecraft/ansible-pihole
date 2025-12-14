@@ -1,5 +1,3 @@
-# WORK IN PROGRESS TO TURN THIS INTO ANSIBLE COLLECTION
-
 # ansible-pihole
 Bootstrap a Raspberry Pi with Ansible and install Docker + Pi-hole
 
