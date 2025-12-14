@@ -8,6 +8,8 @@ exclude_paths:
   - .ansible/
   - .molecule/
   - .env/
+  - .roles/sync
+  - .roles/pihole
 
 skip_list:
   # Too noisy for mature roles

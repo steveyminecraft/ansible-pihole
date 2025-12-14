@@ -9,7 +9,6 @@ driver:
 platforms:
   - name: vagrant-pihole-01
     box: "local/rocky10-kvm"
-    provider: libvirt
     hostname: vagrant-pihole-01
     interfaces:
       - network_name: private_network
@@ -19,7 +18,6 @@ platforms:
     cpus: 2
   - name: vagrant-pihole-02
     box: "local/rocky10-kvm"
-    provider: libvirt
     hostname: vagrant-pihole-02
     interfaces:
       - network_name: private_network
