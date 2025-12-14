@@ -23,31 +23,31 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Install ansible-lint
+      - name: Install tooling
         run: |
           python -m pip install --upgrade pip
-          pip install ansible-lint
+          pip install "ansible-core==2.20.1" "ansible-lint==25.12.1"
 
-      - name: Install Ansible collections (optional)
+      - name: Install collections
         if: hashFiles('collections/requirements.yml') != ''
         run: |
-          ansible-galaxy collection install -r collections/requirements.yml -p ./collections
+          ansible-galaxy collection install -r collections/requirements.yml -p ./.ansible/collections
 
-      - name: Install Ansible roles (optional)
-        if: hashFiles('roles/requirements.yml') != ''
+      - name: Lint
+        env:
+          ANSIBLE_CONFIG: ${{ github.workspace }}/ansible.cfg
         run: |
-          ansible-galaxy role install -r roles/requirements.yml -p ./roles
-
-      - name: Run ansible-lint
-        run: |
+          ansible --version
           ansible-lint --version
-          ansible-lint
+          ansible-lint -p roles playbooks
 
 
   ansible-tests-ubuntu:
