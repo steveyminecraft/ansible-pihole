@@ -1,10 +1,16 @@
 - name: Enable nonlocal IP binding
-  blockinfile:
-    path: /etc/sysctl.conf
-    block: |
-      net.ipv4.ip_nonlocal_bind=1
-      net.ipv4.ip_forward = 1
-  notify: Reload sysctl config
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: '1'
+    state: present
+    reload: true
+
+- name: Enable IP forwarding
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: '1'
+    state: present
+    reload: true
 
 - name: Flush handlers
   meta: flush_handlers
@@ -14,7 +20,7 @@
     pkg:
       - keepalived
     force_apt_get: true
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_distribution in ['Ubuntu', 'Debian']
 
 - name: Install keepalived Rocky
   yum:
@@ -45,39 +51,55 @@
   copy:
     dest: /etc/keepalived/check_pihole.sh
     src: check_pihole.sh
-    mode: 0755
+    mode: "0755"
 
 # Finds the IP_ADDRS of the group and removes the ansible_host ip's from it's peer list
 - name: Find Local IP Addresses
   set_fact:
-    local_ips: "{{ ansible_all_ipv4_addresses + ansible_all_ipv6_addresses }}"
+    keepalived_local_ips: "{{ ansible_all_ipv4_addresses + ansible_all_ipv6_addresses }}"
 
 - name: Create a list of peer IPs excluding local IPs and ensure /24 suffix
   set_fact:
-    peer_list: >-
-      {{ groups['all'] 
-         | map('extract', hostvars, 'ansible_host') 
-         | difference(local_ips) 
-         | map('regex_replace', '^(.*?)(/\\d+)?$', '\g<1>/24') 
+    keepalived_peer_list: >-
+      {{ groups['all']
+         | map('extract', hostvars, 'ansible_host')
+         | difference(keepalived_local_ips)
+         | map('regex_replace', '^(.*?)(/\\d+)?$', '\g<1>/24')
          | list }}
 
-# Step 3: Debug the peer_list
-- name: Debug peer_list
+# Step 3: Debug the keepalived_peer_list
+- name: Debug keepalived_peer_list
   debug:
-    msg: "Peer IPs with /24 for host {{ inventory_hostname }}: {{ peer_list }}"
+    msg: "Peer IPs with /24 for host {{ inventory_hostname }}: {{ keepalived_peer_list }}"
 
 - name: Configure keepalived
   template:
     dest: /tmp/keepalived.conf
     src: keepalived.j2
-    mode: 0644
+    mode: "0644"
   notify: Restart keepalived service
 
-- name: Remove ansible junk from config file for keepalive
-  ansible.builtin.shell: cat /tmp/keepalived.conf | sed 's/[][]//g' | sed "s/['\]//g" > /etc/keepalived/keepalived.conf
+- name: Read generated keepalived config from /tmp
+  ansible.builtin.slurp:
+    src: /tmp/keepalived.conf
+  register: keepalived_tmp_conf
 
-#Fixes issues with eth0 being used for the vagrant vm access interfering with the code pick up of the primary interface
-- name: vagrant test env support 9.x Rocky
+- name: Write sanitized keepalived config
+  ansible.builtin.copy:
+    dest: /etc/keepalived/keepalived.conf
+    content: >-
+      {{
+        keepalived_tmp_conf.content
+        | b64decode
+        | regex_replace('\\[|\\]', '')
+        | regex_replace("['\\\\]", '')
+      }}
+    owner: root
+    group: root
+    mode: '0644'
+
+# Fixes issues with eth0 being used for the vagrant vm access interfering with the code pick up of the primary interface
+- name: Vagrant test env support 9.x Rocky
   ansible.builtin.replace:
     path: /etc/keepalived/keepalived.conf
     regexp: 'eth0'
@@ -87,8 +109,8 @@
     - ansible_distribution in ['Rocky', 'Red Hat Enterprise Linux']
     - ansible_distribution_major_version is version('9', '=')
 
-#Fixes issues with ens5 being used for the vagrant vm access interfering with the code pick up of the primary interface
-- name: vagrant test env support 10.x Rocky
+# Fixes issues with ens5 being used for the vagrant vm access interfering with the code pick up of the primary interface
+- name: Vagrant test env support 10.x Rocky
   ansible.builtin.replace:
     path: /etc/keepalived/keepalived.conf
     regexp: 'ens5'

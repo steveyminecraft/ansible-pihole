@@ -1,6 +1,3 @@
-- name: Reload sysctl config
-  command: sysctl -p
-
 - name: Restart keepalived service
   service:
     name: keepalived
