@@ -82,6 +82,16 @@ jobs:
       - name: Show Ansible version
         run: ansible --version
 
+      - name: Install Ansible collections (optional)
+        if: hashFiles('collections/requirements.yml') != ''
+        run: |
+          ansible-galaxy collection install -r collections/requirements.yml -p ./collections
+
+      - name: Install Ansible roles (optional)
+        if: hashFiles('roles/requirements.yml') != ''
+        run: |
+          ansible-galaxy role install -r roles/requirements.yml -p ./roles
+
       # 1) Syntax-check all main playbooks
       - name: Syntax check playbooks
         run: |
