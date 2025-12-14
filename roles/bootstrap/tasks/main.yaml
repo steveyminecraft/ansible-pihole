@@ -81,13 +81,8 @@
 - name: Install requirements Debian
   ansible.builtin.apt:
     pkg:
-<<<<<<< HEAD
-    - firewalld
-    - python3-pip
-=======
       - firewalld
       - python3-pip
->>>>>>> origin/dev
     update_cache: true
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 
