@@ -1,6 +1,7 @@
-name: CI
+---
+name: CI - Ansible-Pihole Checks
 
-on:
+"on":
   push:
     branches:
       - dev
@@ -59,6 +60,8 @@ jobs:
           ansible-lint --version
           ansible-lint -p roles playbooks
 
+      - name: YAML lint
+        run: yamllint .
 
   ansible-tests-ubuntu:
     name: Ansible syntax & dry-run
