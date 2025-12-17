@@ -45,7 +45,7 @@ jobs:
       - name: Install tooling
         run: |
           python -m pip install --upgrade pip
-          pip install "ansible-core==2.20.1" "ansible-lint==25.12.1"
+          pip install "ansible-core==2.20.1" "ansible-lint==25.12.1" "yamllint==1.37.1"
 
       - name: Install collections
         if: hashFiles('collections/requirements.yml') != ''
