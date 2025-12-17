@@ -1,3 +1,4 @@
+---
 - name: Enable failover with keepalived
   hosts: all
   become: true

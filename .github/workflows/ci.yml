@@ -1,6 +1,7 @@
-name: CI
+---
+name: CI - Ansible-Pihole Checks
 
-on:
+"on":
   push:
     branches:
       - dev
@@ -44,14 +45,14 @@ jobs:
       - name: Install tooling
         run: |
           python -m pip install --upgrade pip
-          pip install "ansible-core==2.20.1" "ansible-lint==25.12.1"
+          pip install "ansible-core==2.20.1" "ansible-lint==25.12.1" "yamllint==1.37.1"
 
       - name: Install collections
         if: hashFiles('collections/requirements.yml') != ''
         run: |
           ansible-galaxy collection install -r collections/requirements.yml -p ./.ansible/collections
 
-      - name: Lint
+      - name: Ansible Lint
         env:
           ANSIBLE_CONFIG: ${{ github.workspace }}/ansible.cfg
         run: |
@@ -59,6 +60,8 @@ jobs:
           ansible-lint --version
           ansible-lint -p roles playbooks
 
+      - name: YAML lint
+        run: yamllint .
 
   ansible-tests-ubuntu:
     name: Ansible syntax & dry-run
@@ -98,7 +101,6 @@ jobs:
           ansible-playbook -i inventory/ci/ci.ini playbooks/bootstrap-pihole.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.ini playbooks/update-pihole.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.ini playbooks/keepalived.yaml --syntax-check
-          ansible-playbook -i inventory/ci/ci.ini playbooks/sync.yaml --syntax-check
 
       # 2) Optional: safe dry-run of a “happy path” bootstrap
       - name: Check-mode converge (bootstrap)

@@ -1,3 +1,4 @@
+---
 - name: Retrieve host vars
   hosts: all
   tasks:

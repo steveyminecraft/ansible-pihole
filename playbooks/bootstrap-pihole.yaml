@@ -1,3 +1,4 @@
+---
 - name: Initialize pi
   hosts: all
   become: true
