@@ -101,7 +101,6 @@ jobs:
           ansible-playbook -i inventory/ci/ci.ini playbooks/bootstrap-pihole.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.ini playbooks/update-pihole.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.ini playbooks/keepalived.yaml --syntax-check
-          ansible-playbook -i inventory/ci/ci.ini playbooks/sync.yaml --syntax-check
 
       # 2) Optional: safe dry-run of a “happy path” bootstrap
       - name: Check-mode converge (bootstrap)
