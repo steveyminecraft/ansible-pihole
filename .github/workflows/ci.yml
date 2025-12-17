@@ -98,6 +98,11 @@ jobs:
       # 1) Syntax-check all main playbooks
       - name: Syntax check playbooks
         run: |
-          ansible-playbook -i inventory/ci/ci.yml playbooks/bootstrap-pihole.yaml --syntax-check
-          ansible-playbook -i inventory/ci/ci.yml playbooks/update-pihole.yaml --syntax-check
-          ansible-playbook -i inventory/ci/ci.yml playbooks/keepalived.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/bootstrap-pihole.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/update-pihole.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/keepalived.yaml --syntax-check
+
+      # 2) Optional: safe dry-run of a “happy path” bootstrap
+      - name: Check-mode converge (bootstrap)
+        run: |
+          ansible-playbook -i inventory/ci/hosts.ini playbooks/bootstrap-pihole.yaml --check
