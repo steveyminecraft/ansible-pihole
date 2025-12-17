@@ -52,7 +52,7 @@ jobs:
         run: |
           ansible-galaxy collection install -r collections/requirements.yml -p ./.ansible/collections
 
-      - name: Lint
+      - name: Ansible Lint
         env:
           ANSIBLE_CONFIG: ${{ github.workspace }}/ansible.cfg
         run: |
