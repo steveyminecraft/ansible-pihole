@@ -1,95 +1,105 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# Vagrant Configuration
 Vagrant.configure("2") do |config|
-
   # Global Settings
   vm_settings = {
     box: "bento/ubuntu-24.04",
     memory: 2048,
     cpus: 4,
     machines: [
-      { name: "vagrant-pihole-01", ip: "192.168.56.4" },
-      { name: "vagrant-pihole-02", ip: "192.168.56.5" }
+      { name: "vagrant-pihole-01", mac: "52:54:00:56:00:04" },
+      { name: "vagrant-pihole-02", mac: "52:54:00:56:00:05" }
     ]
   }
 
-  ### DEFINE SCRIPT ### 
-  $script = <<-SCRIPT
-  echo I am provisioning...
-  date > /etc/vagrant_provisioned_at
-  # PUT EXTRA OPTIONS IN HERE
-  SCRIPT
-
-<<<<<<< HEAD
   # --- PROVIDERS --------------------------------------------------------
 
-  # VirtualBox provider (only actually used if VirtualBox is the selected provider)
   config.vm.provider "virtualbox" do |v|
     v.memory = vm_settings[:memory]
     v.cpus   = vm_settings[:cpus]
   end
 
-  # Libvirt/KVM provider (only define if plugin is installed)
   if Vagrant.has_plugin?("vagrant-libvirt")
     config.vm.provider "libvirt" do |l|
-      l.memory         = vm_settings[:memory]
-      l.cpus           = vm_settings[:cpus]
-      l.driver         = "kvm"
-      # Optional nic tweaks, uncomment if desired:
-      # l.nic_model_type = "virtio"
-      # l.machine_type   = "q35"
+      l.memory = vm_settings[:memory]
+      l.cpus   = vm_settings[:cpus]
+      l.driver = "kvm"
+
+      #l.management_network_name = "vagrant-56"
+      #l.qemu_use_agent = true
     end
   end
 
   # --- PLUGINS ----------------------------------------------------------
 
-  # Vbguest auto-update but only if plugin is present (defaulted to off)
-=======
-  # Provider Settings
-  config.vm.provider "virtualbox" do |v|
-    v.memory = vm_settings[:memory]
-    v.cpus = vm_settings[:cpus]
-  end
-
-  # Vbguest auto-update but only if plugin is present #Defaulted to off
->>>>>>> origin/dev
   if Vagrant.has_plugin?("vagrant-vbguest")
     config.vbguest.auto_update = false
   end
 
-<<<<<<< HEAD
   # --- MACHINES ---------------------------------------------------------
 
   vm_settings[:machines].each do |machine|
     config.vm.define machine[:name] do |vm|
-      vm.vm.hostname          = machine[:name]
-      vm.vm.box               = vm_settings[:box]
-      vm.vm.box_check_update  = false
-
-      # Works for both VirtualBox and libvirt; provider handles how it’s wired
-      vm.vm.network "private_network", ip: machine[:ip]
-
-=======
-  # Define VMs
-  vm_settings[:machines].each do |machine|
-    config.vm.define machine[:name] do |vm|
-      vm.vm.hostname = machine[:name]
-      vm.vm.box = vm_settings[:box]
+      vm.vm.hostname         = machine[:name]
+      vm.vm.box              = vm_settings[:box]
       vm.vm.box_check_update = false
-      vm.vm.network "private_network", ip: machine[:ip]
->>>>>>> origin/dev
-      vm.vm.provision "shell", inline: $script
+
+      # NIC2: private network via DHCP, but do NOT let Vagrant auto-config it
+      vm.vm.network "private_network",
+                    type: "dhcp",
+                    auto_config: false,
+                    libvirt__network_name: "vagrant-56",
+                    libvirt__mac: machine[:mac],
+                    libvirt__mgmt_network: "none"
+
+      # If you use VirtualBox too, pin NIC2 MAC there as well (optional but recommended)
+      vm.vm.provider "virtualbox" do |v|
+        v.customize ["modifyvm", :id, "--macaddress2", machine[:mac].delete(":")]
+      end
+
+      # Per-machine provision script (must be inside the loop so `machine` is defined)
+      script = <<-SCRIPT
+      set -euxo pipefail
+
+      echo "I am provisioning..."
+      date | tee /etc/vagrant_provisioned_at
+
+      install -d -m 0755 /etc/cloud/cloud.cfg.d
+      printf '%s\n' 'network: {config: disabled}' | tee /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+
+      install -d -m 0755 /etc/netplan
+
+      printf '%s\n' \
+      'network:' \
+      '  version: 2' \
+      '  renderer: networkd' \
+      '  ethernets:' \
+      '    vagrant_private:' \
+      '      match:' \
+      '        macaddress: #{machine[:mac]}' \
+      '      set-name: eth1' \
+      '      dhcp4: true' \
+      | tee /etc/netplan/99-vagrant-private.yaml
+
+      ls -l /etc/netplan
+      cat /etc/netplan/99-vagrant-private.yaml
+
+      chmod 600 /etc/netplan/99-vagrant-private.yaml
+
+      netplan generate
+      netplan apply
+
+      ip a || true
+      SCRIPT
+
+      vm.vm.provision "shell", inline: script, privileged: true
 
       # Cleanup known_hosts entry after destruction
       vm.trigger.after :destroy do |trigger|
         trigger.info = "Removing known_hosts entry for #{machine[:name]}"
-<<<<<<< HEAD
-        trigger.run  = { inline: "ssh-keygen -R #{machine[:ip]}" }
-=======
-        trigger.run = { inline: "ssh-keygen -R #{machine[:ip]}" }
->>>>>>> origin/dev
+        trigger.on_error = :continue
+        trigger.run = { inline: "ssh-keygen -R #{machine[:name]}" }
       end
     end
   end

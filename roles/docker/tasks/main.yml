@@ -57,6 +57,7 @@
       - docker-ce
       - python3-setuptools
       - python3-pip
+      - docker-compose-plugin
     install_recommends: false
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 
