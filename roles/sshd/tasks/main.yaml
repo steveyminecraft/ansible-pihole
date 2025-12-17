@@ -1,3 +1,4 @@
+---
 - name: Set correct handler for RedHat family
   ansible.builtin.set_fact:
     sshd_target_handler: Restart_SSHD
@@ -27,10 +28,10 @@
     state: present
     validate: /usr/sbin/sshd -T -f %s
   loop:
-    - { key: "PermitRootLogin", value: "no" }
-    - { key: "PasswordAuthentication", value: "no" }
-    - { key: "MaxSessions", value: "5" }
-    - { key: "MaxAuthTries", value: "3" }
+    - {key: "PermitRootLogin", value: "no"}
+    - {key: "PasswordAuthentication", value: "no"}
+    - {key: "MaxSessions", value: "5"}
+    - {key: "MaxAuthTries", value: "3"}
   notify:
     - "{{ sshd_target_handler }}"
   become: true

@@ -1,3 +1,4 @@
+---
 - name: Enable syncing
   hosts: pihole-01
   become: true

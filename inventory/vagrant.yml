@@ -13,21 +13,21 @@ all:
       keepalive_role: BACKUP
   vars:
     ansible_user: vagrant
-    ansible_password: vagrant # only used on first run
-    password_lock: false # Change to false if you still wish to login via passwd auth
+    ansible_password: vagrant  # only used on first run
+    password_lock: false  # Change to false if you still wish to login via passwd auth
     ansible_user_home_dir: /home/{{ ansible_user }}
     ansible_python_interpreter: /usr/bin/python3
-    github_user_for_ssh_key: steveyminecraft # Change me to required value
+    github_user_for_ssh_key: steveyminecraft  # Change me to required value
     pihole_image: "pihole/pihole:latest"
     timezone: "Europe/London"
-    webport_http: '80' # Port for HTTP-Requests to Webinterface.
-    webport_https: '443' # Port for HTTPS-DoH Requests.
-    firewall_deploy: true # will ensure firewalld is install and configured
+    webport_http: '80'  # Port for HTTP-Requests to Webinterface.
+    webport_https: '443'  # Port for HTTPS-DoH Requests.
+    firewall_deploy: true  # will ensure firewalld is install and configured
     DHCP_ACTIVE: false
     pihole_environment_variables:
       TZ: "{{ timezone }}"
       FTLCONF_MAXDBDAYS: "180"
-      FTLCONF_webserver_api_password: 'Intranet' # example value, change it and better use ansible-vault
+      FTLCONF_webserver_api_password: 'Intranet'  # example value, change it and better use ansible-vault
       FTLCONF_dns_listeningMode: "all"
       DHCP_ACTIVE: false
       REV_SERVER: false

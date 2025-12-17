@@ -1,3 +1,4 @@
+---
 - name: Update apt packages
   ansible.builtin.apt:
     force_apt_get: true
@@ -10,7 +11,7 @@
 - name: Upgrade dnf packages
   ansible.builtin.yum:
     name: '*'
-    state: latest # noqa package-latest
+    state: latest  # noqa package-latest
   when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
 
 - name: Updates Reboot

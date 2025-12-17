@@ -1,3 +1,4 @@
+---
 - name: Restart keepalived service
   service:
     name: keepalived
