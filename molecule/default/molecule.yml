@@ -23,7 +23,7 @@ platforms:
       - network_name: private_network
         type: static
         ip: 192.168.56.5
-        memory: 2048
+    memory: 2048
     cpus: 2
 
 provisioner:
@@ -40,7 +40,7 @@ provisioner:
       #group_vars: ../../group_vars/
       #host_vars: ../../host_vars/
   playbooks:
-    converge: ../../playbooks/bootstrap-pihole.yaml
+    converge: converge.yml
   env:
     ANSIBLE_ROLES_PATH: ../../roles/
 verifier:

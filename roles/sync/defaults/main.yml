@@ -1,0 +1,49 @@
+---
+# Where to deploy the compose project
+nebula_sync_dir: /opt/nebula-sync
+nebula_sync_compose_name: nebula-sync
+
+# Image (GHCR)
+nebula_sync_image: "ghcr.io/lovelaze/nebula-sync"
+nebula_sync_image_tag: "latest"   # or e.g. v0.11.1
+
+# Core settings
+nebula_sync_tz: "Europe/London"
+nebula_sync_primary_url: "https://pihole01.example.lan"
+nebula_sync_primary_password: "CHANGE_ME"
+nebula_sync_replicas:           # list of replicas
+  - url: "https://pihole02.example.lan"
+    password: "CHANGE_ME"
+
+nebula_sync_full_sync: false
+nebula_sync_run_gravity: false
+nebula_sync_cron: "*/15 * * * *"
+
+# Optional client tuning
+nebula_sync_client_skip_tls_verification: false
+nebula_sync_client_retry_delay_seconds: 1
+nebula_sync_client_timeout_seconds: 20
+
+# Selective sync toggles (only used when FULL_SYNC=false)
+nebula_sync_sync_config:
+  dns: true
+  dhcp: false
+  ntp: false
+  resolver: false
+  database: false
+  misc: false
+  debug: false
+
+nebula_sync_sync_gravity:
+  dhcp_leases: false
+  group: false
+  ad_list: true
+  ad_list_by_group: true
+  domain_list: true
+  domain_list_by_group: true
+  client: false
+  client_by_group: false
+
+# Whether to render a .env file instead of embedding env in compose
+nebula_sync_use_env_file: true
+nebula_sync_env_filename: ".env"

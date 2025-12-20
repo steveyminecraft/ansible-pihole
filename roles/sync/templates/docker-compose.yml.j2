@@ -1,0 +1,12 @@
+services:
+  nebula-sync:
+    image: "{{ nebula_sync_image }}:{{ nebula_sync_image_tag }}"
+    container_name: nebula-sync
+    restart: unless-stopped
+    environment:
+      TZ: "{{ nebula_sync_tz }}"
+      PRIMARY: "{{ nebula_sync_primary_url }}|{{ nebula_sync_primary_password }}"
+      REPLICAS: "{% for r in nebula_sync_replicas %}{{ r.url }}|{{ r.password }}{% if not loop.last %},{% endif %}{% endfor %}"
+      FULL_SYNC: "{{ nebula_sync_full_sync | string | lower }}"
+      RUN_GRAVITY: "{{ nebula_sync_run_gravity | string | lower }}"
+      CRON: "{{ nebula_sync_cron }}"
