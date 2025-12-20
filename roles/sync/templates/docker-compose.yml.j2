@@ -1,7 +1,7 @@
 services:
   nebula-sync:
     image: "{{ nebula_sync_image }}:{{ nebula_sync_image_tag }}"
-    container_name: nebula-sync
+    container_name: "{{ nebula_sync_container_name }}"
     restart: unless-stopped
     environment:
       TZ: "{{ nebula_sync_tz }}"

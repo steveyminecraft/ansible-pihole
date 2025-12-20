@@ -40,6 +40,7 @@ all:
     pihole_container_name: pihole
     vagrant_env: true
     docker_users: vagrant
+    nebula_sync_container_name: nebula
     nebula_sync_primary_url: "http://192.168.56.4"
     nebula_sync_primary_password: "{{ pihole_environment_variables.FTLCONF_webserver_api_password }}"
     nebula_sync_replicas:
