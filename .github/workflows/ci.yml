@@ -1,0 +1,108 @@
+---
+name: CI - Ansible-Pihole Checks
+
+"on":
+  push:
+    branches:
+      - dev
+      - master
+      - "feature/**"
+  pull_request:
+    branches:
+      - dev
+      - master
+  workflow_dispatch:
+
+env:
+  python_version: 3.12
+
+jobs:
+  lint:
+    name: Ansible & YAML lint
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible collections (optional)
+        if: hashFiles('collections/requirements.yml') != ''
+        run: |
+          ansible-galaxy collection install -r collections/requirements.yml -p ./collections
+
+      - name: Install Ansible roles (optional)
+        if: hashFiles('roles/requirements.yml') != ''
+        run: |
+          ansible-galaxy role install -r roles/requirements.yml -p ./roles
+
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible-core==2.20.1" "ansible-lint==25.12.1" "yamllint==1.37.1"
+
+      - name: Install collections
+        if: hashFiles('collections/requirements.yml') != ''
+        run: |
+          ansible-galaxy collection install -r collections/requirements.yml -p ./.ansible/collections
+
+      - name: Ansible Lint
+        env:
+          ANSIBLE_CONFIG: ${{ github.workspace }}/ansible.cfg
+        run: |
+          ansible --version
+          ansible-lint --version
+          ansible-lint -p roles playbooks
+
+      - name: YAML lint
+        run: yamllint .
+
+  ansible-tests-ubuntu:
+    name: Ansible syntax & dry-run
+    runs-on: ubuntu-24.04
+    needs: lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+
+      - name: Show Ansible version
+        run: ansible --version
+
+      - name: Install Ansible collections (optional)
+        if: hashFiles('collections/requirements.yml') != ''
+        run: |
+          ansible-galaxy collection install -r collections/requirements.yml -p ./collections
+
+      - name: Install Ansible roles (optional)
+        if: hashFiles('roles/requirements.yml') != ''
+        run: |
+          ansible-galaxy role install -r roles/requirements.yml -p ./roles
+
+      # 1) Syntax-check all main playbooks
+      - name: Syntax check playbooks
+        run: |
+          ansible-playbook -i inventory/ci/ci.ini playbooks/bootstrap-pihole.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/update-pihole.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.ini playbooks/keepalived.yaml --syntax-check
+
+      # 2) Optional: safe dry-run of a “happy path” bootstrap
+      - name: Check-mode converge (bootstrap)
+        run: |
+          ansible-playbook -i inventory/ci/hosts.ini playbooks/bootstrap-pihole.yaml --check

@@ -1,0 +1,5 @@
+---
+roles:
+  - name: pihole
+    src: https://github.com/steveyminecraft/docker-pihole
+    version: dev

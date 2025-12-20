@@ -1,0 +1,22 @@
+---
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Select keepalived/keepalive service unit if present
+  ansible.builtin.set_fact:
+    start_keepalived_service_unit: >-
+      {{
+        'keepalived.service'
+        if 'keepalived.service' in ansible_facts.services
+        else (
+          'keepalive.service'
+          if 'keepalive.service' in ansible_facts.services
+          else ''
+        )
+      }}
+
+- name: Ensure keepalived/keepalive service is started (if present)
+  ansible.builtin.service:
+    name: "{{ start_keepalived_service_unit | regex_replace('\\.service$', '') }}"
+    state: started
+  when: start_keepalived_service_unit != ''

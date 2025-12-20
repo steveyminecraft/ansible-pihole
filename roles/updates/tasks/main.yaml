@@ -1,0 +1,24 @@
+---
+- name: Update apt packages
+  ansible.builtin.apt:
+    force_apt_get: true
+    autoclean: true
+    autoremove: true
+    update_cache: true
+    upgrade: dist
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+- name: Upgrade dnf packages
+  ansible.builtin.yum:
+    name: '*'
+    state: latest  # noqa package-latest
+  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- name: Updates Reboot
+  stat:
+    path: /var/run/reboot-required
+  register: updates_reboot_required
+
+- name: Reboot
+  reboot:
+  when: updates_reboot_required.stat.exists

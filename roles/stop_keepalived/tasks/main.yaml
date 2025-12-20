@@ -1,0 +1,22 @@
+---
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Set keepalived service unit name (Ubuntu typo support)
+  ansible.builtin.set_fact:
+    stop_keepalived_service_unit: >-
+      {{
+        'keepalived.service'
+        if 'keepalived.service' in ansible_facts.services
+        else (
+          'keepalive.service'
+          if 'keepalive.service' in ansible_facts.services
+          else ''
+        )
+      }}
+
+- name: Ensure keepalived/keepalive service is stopped (if present)
+  ansible.builtin.service:
+    name: "{{ stop_keepalived_service_unit | regex_replace('\\.service$', '') }}"
+    state: stopped
+  when: stop_keepalived_service_unit != ''

@@ -1,0 +1,57 @@
+---
+# molecule/ubuntu/molecule.yml
+dependency:
+  name: galaxy
+  options:
+    role-file: requirements.yml
+driver:
+  name: vagrant
+platforms:
+  - name: vagrant-pihole-01
+    box: "bento/ubuntu-24.04"
+    hostname: vagrant-pihole-01
+    interfaces:
+      - network_name: private_network
+        type: static
+        ip: 192.168.56.4
+    memory: 2048
+    cpus: 4
+  - name: vagrant-pihole-02
+    box: "bento/ubuntu-24.04"
+    hostname: vagrant-pihole-02
+    interfaces:
+      - network_name: private_network
+        type: static
+        ip: 192.168.56.5
+    memory: 2048
+    cpus: 4
+
+provisioner:
+  name: ansible
+  options:
+    vvv: true
+  connection_options:
+    ansible_ssh_user: vagrant
+    ansible_password: vagrant
+    ansible_become: true
+  inventory:
+    links:
+      hosts: ../../inventory/vagrant.yml
+      #group_vars: ../../group_vars/
+      #host_vars: ../../host_vars/
+  playbooks:
+    converge: converge.yml
+  env:
+    ANSIBLE_ROLES_PATH: ../../roles/
+verifier:
+  name: ansible
+scenario:
+  name: ubuntu
+  test_sequence:
+    - dependency
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy
+

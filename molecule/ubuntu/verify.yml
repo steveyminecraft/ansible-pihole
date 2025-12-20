@@ -1,0 +1,226 @@
+---
+# molecule/default/verify.yml
+- name: Verify Configuration
+  hosts: all
+  vars:
+    vip_address: "192.168.56.10"
+    node1: "vagrant-pihole-01"
+    node2: "vagrant-pihole-02"
+    ha_container_name: "pihole"   # <- set this to your container name
+
+  tasks:
+
+    #######################################################################
+    # 1. Basic connectivity
+    ######################################################################
+    - name: Ensure node is reachable
+      ansible.builtin.ping:
+
+    - name: Make sure service keepalived is running
+      ansible.builtin.service:
+        name: keepalived
+        state: started
+
+    - name: Wait for Services To Load
+      ansible.builtin.pause:
+        seconds: 10
+      run_once: true
+
+    #######################################################################
+    # 2. FAILOVER TEST (Node1 → Node2)
+    #######################################################################
+    - name: Stop keepalived on node1 (initiate failover)
+      ansible.builtin.service:
+        name: keepalived
+        state: stopped
+      when: inventory_hostname == node1
+
+    - name: Wait for VRRP transition to complete
+      ansible.builtin.pause:
+        seconds: 30
+      run_once: true
+
+    - name: Collect IP info from node2
+      ansible.builtin.command: ip a
+      register: ip_node2_failover
+      when: inventory_hostname == node2
+
+    - name: Assert VIP moved to node2
+      ansible.builtin.assert:
+        that:
+          - vip_address in ip_node2_failover.stdout
+        fail_msg: "FAILOVER FAILED: VIP {{ vip_address }} not found on node2."
+      when: inventory_hostname == node2
+
+
+    #######################################################################
+    # 3. FAILBACK TEST (Node2 → Node1)
+    #######################################################################
+    - name: Restart keepalived on node1
+      ansible.builtin.service:
+        name: keepalived
+        state: started
+      when: inventory_hostname == node1
+
+    - name: Stop keepalived on node2
+      ansible.builtin.service:
+        name: keepalived
+        state: stopped
+      when: inventory_hostname == node2
+
+    - name: Wait for failback to propagate
+      ansible.builtin.pause:
+        seconds: 30
+      run_once: true
+
+    - name: Collect IP info from node1
+      ansible.builtin.command: ip a
+      register: ip_node1_failback
+      when: inventory_hostname == node1
+
+    - name: Assert VIP moved back to node1
+      ansible.builtin.assert:
+        that:
+          - vip_address in ip_node1_failback.stdout
+        fail_msg: "FAILBACK FAILED: VIP {{ vip_address }} not found on node1."
+      when: inventory_hostname == node1
+
+    # Make sure the service is running else the other tests will fail later
+    - name: Restart keepalived on node2
+      ansible.builtin.service:
+        name: keepalived
+        state: started
+      when: inventory_hostname == node2
+
+    #######################################################################
+    # 4. FIREWALL TESTS (Optional)
+    #######################################################################
+    - name: Check firewalld status
+      ansible.builtin.command: firewall-cmd --state
+      register: firewalld_status
+      changed_when: false
+      when: firewall_deploy | default(false)
+
+    - name: Assert firewalld is running
+      ansible.builtin.assert:
+        that:
+          - firewalld_status.stdout == "running"
+        fail_msg: "Firewall service is not running."
+      when: firewall_deploy | default(false)
+
+    - name: Retrieve open firewall ports
+      ansible.builtin.command: firewall-cmd --list-ports
+      register: open_ports
+      changed_when: false
+      when: firewall_deploy | default(false)
+
+    - name: Assert required ports are open
+      ansible.builtin.assert:
+        that:
+          - "'53/tcp' in open_ports.stdout"
+          - "'53/udp' in open_ports.stdout"
+          - webport_http ~ '/tcp' in open_ports.stdout
+          - webport_https ~ '/tcp' in open_ports.stdout
+        fail_msg: "Firewall missing required ports."
+      when: firewall_deploy | default(false)
+
+    #######################################################################
+    # 5. DNS TESTS — Local resolver + VIP resolver
+    #######################################################################
+    - name: Test local DNS on each node
+      ansible.builtin.command: dig +short @127.0.0.1 google.com
+      register: dns_local
+      changed_when: false
+      failed_when: dns_local.stdout == ""
+
+    - name: Assert local DNS returned IPv4
+      ansible.builtin.assert:
+        that:
+          - dns_local.stdout_lines
+              | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+              | list
+              | length > 0
+        fail_msg: "Local DNS did not return an IPv4."
+    
+    # VIP test only needs to run once
+    - name: Test DNS via VIP
+      ansible.builtin.command: dig +short @{{ vip_address }} google.com
+      register: dns_vip
+      changed_when: false
+      failed_when: dns_vip.stdout == ""
+      run_once: true
+
+    - name: Assert VIP DNS returned IPv4
+      ansible.builtin.assert:
+        that:
+          - dns_vip.stdout_lines
+              | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+              | list
+              | length > 0
+        fail_msg: "VIP DNS did not return a valid IPv4."
+      run_once: true
+
+    #######################################################################
+    # 6. FAILOVER WHEN DOCKER CONTAINER STOPS ON NODE1
+    #######################################################################
+
+    - name: Ensure HA container is running on node1 before test
+      community.docker.docker_container_info:
+        name: "{{ ha_container_name }}"
+      register: ha_container_info_node1
+      when: inventory_hostname == node1
+
+    - name: Assert HA container exists on node1 before failover test
+      ansible.builtin.assert:
+        that:
+          - ha_container_info_node1.exists | default(false)
+        fail_msg: >
+          Precondition failed: container {{ ha_container_name }} not found on {{ node1 }}.
+      when: inventory_hostname == node1
+
+    - name: Stop HA container on node1 to trigger failover
+      community.docker.docker_container:
+        name: "{{ ha_container_name }}"
+        state: stopped
+      when: inventory_hostname == node1
+
+    # Give keepalived / VRRP some time to react; we’ll poll up to ~30s
+    - name: Wait for VIP to move to node2 after container stop
+      ansible.builtin.command: ip a
+      register: ip_node2_docker_failover
+      changed_when: false
+      when: inventory_hostname == node2
+      retries: 10          # 10 * 3s = 30s max
+      delay: 3
+      until: vip_address in ip_node2_docker_failover.stdout
+
+    - name: Assert VIP is on node2 after container stop on node1
+      ansible.builtin.assert:
+        that:
+          - vip_address in ip_node2_docker_failover.stdout
+        fail_msg: >
+          CONTAINER FAILOVER FAILED: VIP {{ vip_address }} not found on {{ node2 }}
+          after stopping container {{ ha_container_name }} on {{ node1 }}.
+      when: inventory_hostname == node2
+
+    # Optional: verify VIP is no longer present on node1
+    - name: Confirm VIP is not on node1 after container stop
+      ansible.builtin.command: ip a
+      register: ip_node1_post_container_stop
+      changed_when: false
+      when: inventory_hostname == node1
+
+    - name: Assert VIP is absent from node1 after container stop
+      ansible.builtin.assert:
+        that:
+          - vip_address not in ip_node1_post_container_stop.stdout
+        fail_msg: >
+          CONTAINER FAILOVER INCOMPLETE: VIP {{ vip_address }} still present on {{ node1 }}
+          after stopping container {{ ha_container_name }}.
+      when: inventory_hostname == node1
+
+    # Cleanup: bring the container back up on nodes
+    - name: Start HA container on node1 after test
+      community.docker.docker_container:
+        name: "{{ ha_container_name }}"
+        state: started

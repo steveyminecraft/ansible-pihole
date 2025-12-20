@@ -1,0 +1,14 @@
+---
+- name: Initialize pi
+  hosts: all
+  become: true
+  serial: 1
+  roles:
+    - ../roles/stop_keepalived
+    - ../roles/bootstrap
+    - ../roles/updates
+    - ../roles/sshd
+    - ../roles/keepalived
+    - ../roles/docker
+    - ../roles/pihole
+    - ../roles/start_keepalived
