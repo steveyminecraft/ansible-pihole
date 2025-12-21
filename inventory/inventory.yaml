@@ -1,0 +1,48 @@
+---
+all:
+  hosts:
+    pihole-1:
+      ansible_host: 172.16.7.25
+      priority: 101
+    pihole-2:
+      ansible_host: 172.16.7.30
+      priority: 100
+  vars:
+    ansible_user: service
+    # Only used on first run
+    ansible_password: testing101
+    dir_loc: "/opt/pihole"
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_user_home_dir: /home/{{ ansible_user }}
+    github_user_for_ssh_key: steveyminecraft  # Change me to required value
+    pihole_image: "pihole/pihole:latest"
+    timezone: "Europe/London"
+    webport_http: '80'  # Port for HTTP-Requests to Webinterface.
+    webport_https: '443'  # Port for HTTPS-DoH Requests.
+    firewall_deploy: true  # will ensure firewalld is install and configured
+    DHCP_ACTIVE: false
+    pihole_environment_variables:
+      TZ: "{{ timezone }}"
+      FTLCONF_MAXDBDAYS: "180"
+      FTLCONF_webserver_api_password: 't4f!VUry0@elCjUgKbti7JL^NvGPEh3d'  # example value, change it and better use ansible-vault
+      FTLCONF_dns_listeningMode: "all"
+      DHCP_ACTIVE: false
+      REV_SERVER: false
+      REV_SERVER_CIDR: "172.16.7.0/24"
+      REV_SERVER_TARGET: "172.16.7.1"
+    pihole_ha_mode: true
+    pihole_vip_ipv4: "172.16.7.0/24"
+    pihole_vip_ipv6: "fd00::10/64"
+    dnsmasq_listening: single
+    pihole_container_name: pihole
+    vagrant_env: false
+    docker_users: "{{ ansible_user }}"
+    nebula_sync_container_name: nebula
+    nebula_sync_primary_url: "http://172.16.7.25"
+    nebula_sync_primary_password: "{{ pihole_webpassword }}"
+    nebula_sync_replicas:
+      - url: "http://172.16.7.30"
+        password: "{{ pihole_webpassword }}"
+    nebula_sync_full_sync: true
+    nebula_sync_cron: "*/15 * * * *"
+    nebula_sync_dir: /opt/nebula
