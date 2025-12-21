@@ -51,8 +51,8 @@
   ansible.builtin.command:
     cmd: docker network create "{{ unbound_network_name | default('dns_net') }}"
   register: unbound_dns_net_create
-  changed_when: dns_net_create.rc == 0
-  failed_when: dns_net_create.rc != 0
+  changed_when: unbound_dns_net_create.rc == 0
+  failed_when: unbound_dns_net_create.rc != 0
   when: unbound_dns_net_inspect.rc != 0
 
 - name: Assert external docker network exists now
