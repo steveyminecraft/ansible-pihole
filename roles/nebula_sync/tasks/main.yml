@@ -40,8 +40,8 @@
       - -d
   args:
     chdir: "{{ nebula_sync_dir }}"
-  register: nebula_compose_up
+  register: nebula_sync_compose_up
   changed_when: >
-    nebula_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\b')
-    or nebula_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\b')
-  failed_when: nebula_compose_up.rc != 0
+    nebula_sync_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\b')
+    or nebula_sync_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\b')
+  failed_when: nebula_sync_compose_up.rc != 0
