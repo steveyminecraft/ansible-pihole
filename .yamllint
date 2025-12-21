@@ -12,3 +12,4 @@ ignore:
   - .ansible
   - .git
   - .github
+  - inventory/inventory.yaml
