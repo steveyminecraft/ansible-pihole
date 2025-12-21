@@ -10,5 +10,6 @@
     - ../roles/sshd
     - ../roles/keepalived
     - ../roles/docker
+    - ../roles/unbound
     - ../roles/pihole
     - ../roles/start_keepalived

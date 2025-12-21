@@ -49,3 +49,6 @@ all:
     nebula_sync_full_sync: true
     nebula_sync_cron: "*/15 * * * *"
     nebula_sync_dir: "/opt/nebula"
+    pihole_upstream_dns: "{{ unbound_container_name }}#{{ unbound_port }}"
+    pihole_network_name: "{{ unbound_network_name }}"
+    pihole_network_external: true

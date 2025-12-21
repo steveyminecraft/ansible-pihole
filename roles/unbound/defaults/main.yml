@@ -1,0 +1,165 @@
+---
+# Paths
+unbound_compose_dir: /opt/unbound
+unbound_compose_file: "{{ unbound_compose_dir }}/docker-compose.yml"
+
+# Image/container
+unbound_image: "mvance/unbound"
+unbound_container_name: "unbound"
+unbound_hostname: "{{ unbound_container_name }}"
+unbound_restart_policy: "unless-stopped"
+
+# Networking (shared external network recommended for integration)
+unbound_network_name: "dns_net"
+unbound_network_external: true
+unbound_manage_network: true
+
+# Container-safe: listen on all interfaces INSIDE the container
+unbound_interface: "0.0.0.0"
+unbound_port: 5335
+
+# Expose to host? (not required for Pi-hole integration, but you had it enabled)
+unbound_publish_to_host: true
+unbound_publish_host_ip: "127.0.0.1"
+unbound_publish_host_port: 5335
+
+###############################################################################
+# Logging (your preferences)
+###############################################################################
+unbound_logfile: "/dev/null"
+unbound_log_time_ascii: true
+unbound_verbosity: 2
+
+# mvance logging toggles
+unbound_log_local_actions: false
+unbound_log_queries: false
+unbound_log_replies: false
+unbound_log_servfail: false
+
+###############################################################################
+# BASIC SETTINGS (mvance-style)
+###############################################################################
+unbound_cache_max_ttl: 86400
+# Your original config used 0; mvance uses 300. Keep your "as domain intended".
+unbound_cache_min_ttl: 0
+
+unbound_directory: "/opt/unbound/etc/unbound"
+unbound_username: "_unbound"
+
+# Extended DNS Errors
+unbound_ede: true
+unbound_ede_serve_expired: true
+
+unbound_rrset_roundrobin: true
+
+###############################################################################
+# PRIVACY SETTINGS
+###############################################################################
+unbound_aggressive_nsec: true
+unbound_delay_close: 10000
+unbound_do_daemonize: false
+unbound_do_not_query_localhost: false
+unbound_neg_cache_size: "4M"
+unbound_qname_minimisation: true
+
+###############################################################################
+# PROTOCOL SUPPORT (your config)
+###############################################################################
+unbound_do_ip4: true
+unbound_do_udp: true
+unbound_do_tcp: true
+unbound_do_ip6: true
+unbound_prefer_ip6: false
+
+###############################################################################
+# SECURITY SETTINGS
+###############################################################################
+# Keep your exact access-control intent (but allow overriding)
+unbound_access_control:
+  - "172.18.0.0/16 allow"
+
+# Trust anchors / chroot
+unbound_auto_trust_anchor_file: "var/root.key"
+unbound_chroot: "/opt/unbound/etc/unbound"
+
+# Security toggles (mvance defaults, with your overrides retained)
+unbound_deny_any: true
+unbound_harden_algo_downgrade: true
+unbound_harden_unknown_additional: true
+unbound_harden_below_nxdomain: true
+
+unbound_harden_dnssec_stripped: true
+unbound_harden_glue: true
+
+unbound_harden_large_queries: true
+unbound_harden_referral_path: false
+unbound_harden_short_bufsize: true
+
+unbound_hide_http_user_agent: false
+unbound_hide_identity: true
+unbound_hide_version: true
+
+unbound_http_user_agent: "DNS"
+unbound_identity: "DNS"
+
+# Your preference (Pi-hole guidance): disable 0x20 caps
+unbound_use_caps_for_id: false
+
+unbound_val_clean_additional: true
+
+unbound_ratelimit: 1000
+unbound_tls_cert_bundle: "/etc/ssl/certs/ca-certificates.crt"
+unbound_unwanted_reply_threshold: 10000
+
+# Your expanded private-address list (kept)
+unbound_private_address:
+  - "192.168.0.0/16"
+  - "169.254.0.0/16"
+  - "172.16.0.0/12"
+  - "10.0.0.0/8"
+  - "fd00::/8"
+  - "fe80::/10"
+  - "192.0.2.0/24"
+  - "198.51.100.0/24"
+  - "203.0.113.0/24"
+  - "255.255.255.255/32"
+  - "2001:db8::/32"
+
+###############################################################################
+# PERFORMANCE SETTINGS
+###############################################################################
+unbound_edns_buffer_size: 1232
+
+# Cache sizing (these replace @MSG_CACHE_SIZE@ and @RR_CACHE_SIZE@)
+# Unbound recommendation: rrset cache roughly 2x msg cache
+unbound_msg_cache_size: "4m"
+unbound_rrset_cache_size: "8m"
+
+# Threads/slabs (replace @THREADS@ and @SLABS@)
+# Keep your "1 thread" default.
+unbound_threads: 1
+# Slabs should be a power of 2; 1 is safe default.
+unbound_slabs: 1
+
+unbound_incoming_num_tcp: 10
+unbound_num_queries_per_thread: 4096
+unbound_outgoing_range: 8192
+
+unbound_minimal_responses: true
+unbound_prefetch: true
+unbound_prefetch_key: true
+unbound_serve_expired: true
+unbound_sock_queue_timeout: 3
+unbound_so_reuseport: true
+
+# Your tuning (may warn unless sysctl raised)
+unbound_so_rcvbuf: "1m"
+
+###############################################################################
+# Root hints (you asked for download support)
+###############################################################################
+# If you mount this file into the container, keep unbound_root_hints_path set.
+unbound_root_hints_path: "{{ unbound_directory }}/root.hints"
+
+unbound_root_hints_host_path: "{{ unbound_compose_dir }}/unbound/root.hints"
+unbound_root_hints_url: "https://www.internic.net/domain/named.root"

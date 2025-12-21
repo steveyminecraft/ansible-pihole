@@ -1,0 +1,159 @@
+server:
+    ###########################################################################
+    # BASIC SETTINGS
+    ###########################################################################
+    cache-max-ttl: {{ unbound_cache_max_ttl | default(86400) }}
+    cache-min-ttl: {{ unbound_cache_min_ttl | default(0) }}
+
+    directory: "{{ unbound_directory | default('/opt/unbound/etc/unbound') }}"
+
+    ede: {{ (unbound_ede | default(true)) | ternary('yes','no') }}
+    ede-serve-expired: {{ (unbound_ede_serve_expired | default(true)) | ternary('yes','no') }}
+
+    edns-buffer-size: {{ unbound_edns_buffer_size | default(1232) }}
+
+    # Listen on all interfaces inside the container on the chosen port
+    interface: {{ unbound_interface | default('0.0.0.0') }}@{{ unbound_port | default(5335) }}
+
+    rrset-roundrobin: {{ (unbound_rrset_roundrobin | default(true)) | ternary('yes','no') }}
+
+    username: "{{ unbound_username | default('_unbound') }}"
+
+    ###########################################################################
+    # LOGGING
+    ###########################################################################
+    log-local-actions: {{ (unbound_log_local_actions | default(false)) | ternary('yes','no') }}
+    log-queries: {{ (unbound_log_queries | default(false)) | ternary('yes','no') }}
+    log-replies: {{ (unbound_log_replies | default(false)) | ternary('yes','no') }}
+    log-servfail: {{ (unbound_log_servfail | default(false)) | ternary('yes','no') }}
+
+    # Your preference: log to file + timestamps + verbosity 1
+    logfile: "{{ unbound_logfile | default('/var/log/unbound/unbound.log') }}"
+    log-time-ascii: {{ (unbound_log_time_ascii | default(true)) | ternary('yes','no') }}
+    verbosity: {{ unbound_verbosity | default(1) }}
+
+    ###########################################################################
+    # PRIVACY SETTINGS
+    ###########################################################################
+    aggressive-nsec: {{ (unbound_aggressive_nsec | default(true)) | ternary('yes','no') }}
+    delay-close: {{ unbound_delay_close | default(10000) }}
+    do-daemonize: {{ (unbound_do_daemonize | default(false)) | ternary('yes','no') }}
+    do-not-query-localhost: {{ (unbound_do_not_query_localhost | default(false)) | ternary('yes','no') }}
+    neg-cache-size: {{ unbound_neg_cache_size | default('4M') }}
+    qname-minimisation: {{ (unbound_qname_minimisation | default(true)) | ternary('yes','no') }}
+
+    ###########################################################################
+    # SECURITY SETTINGS
+    ###########################################################################
+    {% for acl in (unbound_access_control | default([
+      '127.0.0.1/32 allow',
+      '192.168.0.0/16 allow',
+      '172.16.0.0/12 allow',
+      '10.0.0.0/8 allow'
+    ])) %}
+    access-control: {{ acl }}
+    {% endfor %}
+
+    auto-trust-anchor-file: "{{ unbound_auto_trust_anchor_file | default('var/root.key') }}"
+    chroot: "{{ unbound_chroot | default('/opt/unbound/etc/unbound') }}"
+
+    deny-any: {{ (unbound_deny_any | default(true)) | ternary('yes','no') }}
+    harden-algo-downgrade: {{ (unbound_harden_algo_downgrade | default(true)) | ternary('yes','no') }}
+    harden-unknown-additional: {{ (unbound_harden_unknown_additional | default(true)) | ternary('yes','no') }}
+    harden-below-nxdomain: {{ (unbound_harden_below_nxdomain | default(true)) | ternary('yes','no') }}
+
+    # Your settings
+    harden-dnssec-stripped: {{ (unbound_harden_dnssec_stripped | default(true)) | ternary('yes','no') }}
+    harden-glue: {{ (unbound_harden_glue | default(true)) | ternary('yes','no') }}
+
+    harden-large-queries: {{ (unbound_harden_large_queries | default(true)) | ternary('yes','no') }}
+    harden-referral-path: {{ (unbound_harden_referral_path | default(false)) | ternary('yes','no') }}
+    harden-short-bufsize: {{ (unbound_harden_short_bufsize | default(true)) | ternary('yes','no') }}
+
+    hide-http-user-agent: {{ (unbound_hide_http_user_agent | default(false)) | ternary('yes','no') }}
+    hide-identity: {{ (unbound_hide_identity | default(true)) | ternary('yes','no') }}
+    hide-version: {{ (unbound_hide_version | default(true)) | ternary('yes','no') }}
+
+    http-user-agent: "{{ unbound_http_user_agent | default('DNS') }}"
+    identity: "{{ unbound_identity | default('DNS') }}"
+
+    # Your expanded private-address list
+    {% for cidr in (unbound_private_address | default([
+      '192.168.0.0/16',
+      '169.254.0.0/16',
+      '172.16.0.0/12',
+      '10.0.0.0/8',
+      'fd00::/8',
+      'fe80::/10',
+      '192.0.2.0/24',
+      '198.51.100.0/24',
+      '203.0.113.0/24',
+      '255.255.255.255/32',
+      '2001:db8::/32'
+    ])) %}
+    private-address: {{ cidr }}
+    {% endfor %}
+
+    ratelimit: {{ unbound_ratelimit | default(1000) }}
+    tls-cert-bundle: "{{ unbound_tls_cert_bundle | default('/etc/ssl/certs/ca-certificates.crt') }}"
+    unwanted-reply-threshold: {{ unbound_unwanted_reply_threshold | default(10000) }}
+
+    # Your setting (pi-hole guidance): no 0x20 caps randomisation
+    use-caps-for-id: {{ (unbound_use_caps_for_id | default(false)) | ternary('yes','no') }}
+
+    val-clean-additional: {{ (unbound_val_clean_additional | default(true)) | ternary('yes','no') }}
+
+    ###########################################################################
+    # PROTOCOL SUPPORT (from your earlier config)
+    ###########################################################################
+    do-ip4: {{ (unbound_do_ip4 | default(true)) | ternary('yes','no') }}
+    do-udp: {{ (unbound_do_udp | default(true)) | ternary('yes','no') }}
+    do-tcp: {{ (unbound_do_tcp | default(true)) | ternary('yes','no') }}
+    do-ip6: {{ (unbound_do_ip6 | default(true)) | ternary('yes','no') }}
+    prefer-ip6: {{ (unbound_prefer_ip6 | default(false)) | ternary('yes','no') }}
+{% if unbound_root_hints_path | default('/var/lib/unbound/root.hints') | length > 0 %}
+    root-hints: "{{ unbound_root_hints_path | default('/opt/unbound/etc/unbound/root.hints') }}"
+{% endif %}
+
+    ###########################################################################
+    # PERFORMANCE SETTINGS
+    ###########################################################################
+    infra-cache-slabs: {{ unbound_slabs | default(1) }}
+    incoming-num-tcp: {{ unbound_incoming_num_tcp | default(10) }}
+    key-cache-slabs: {{ unbound_slabs | default(1) }}
+
+    msg-cache-size: {{ unbound_msg_cache_size | default('4m') }}
+    msg-cache-slabs: {{ unbound_slabs | default(1) }}
+
+    num-queries-per-thread: {{ unbound_num_queries_per_thread | default(4096) }}
+    num-threads: {{ unbound_threads | default(1) }}
+    outgoing-range: {{ unbound_outgoing_range | default(8192) }}
+
+    rrset-cache-size: {{ unbound_rrset_cache_size | default('8m') }}
+    rrset-cache-slabs: {{ unbound_slabs | default(1) }}
+
+    minimal-responses: {{ (unbound_minimal_responses | default(true)) | ternary('yes','no') }}
+
+    prefetch: {{ (unbound_prefetch | default(true)) | ternary('yes','no') }}
+    prefetch-key: {{ (unbound_prefetch_key | default(true)) | ternary('yes','no') }}
+
+    serve-expired: {{ (unbound_serve_expired | default(true)) | ternary('yes','no') }}
+    sock-queue-timeout: {{ unbound_sock_queue_timeout | default(3) }}
+    so-reuseport: {{ (unbound_so_reuseport | default(true)) | ternary('yes','no') }}
+
+    # Your earlier tuning
+    so-rcvbuf: {{ unbound_so_rcvbuf | default('1m') }}
+
+    ###########################################################################
+    # LOCAL ZONE
+    ###########################################################################
+    include: /opt/unbound/etc/unbound/a-records.conf
+    include: /opt/unbound/etc/unbound/srv-records.conf
+
+    ###########################################################################
+    # FORWARD ZONE
+    ###########################################################################
+    include: /opt/unbound/etc/unbound/forward-records.conf
+
+remote-control:
+    control-enable: no

@@ -1,0 +1,8 @@
+---
+# Basic sanity check: query a root name via the container itself
+- name: Sanity check Unbound is answering inside the container
+  ansible.builtin.command:
+    cmd: docker exec "{{ unbound_container_name }}" dig @127.0.0.1 -p "{{ unbound_port }}" cloudflare.com +short
+  register: unbound_dig_test
+  changed_when: false
+  failed_when: unbound_dig_test.stdout | trim == ""
