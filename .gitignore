@@ -176,3 +176,4 @@ cython_debug/
 .tool-versions
 roles/pihole
 .ansible
+inventory/inventory.yaml
