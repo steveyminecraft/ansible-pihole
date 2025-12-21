@@ -1,0 +1,23 @@
+---
+networks:
+  {{ unbound_network_name | default('dns_net') }}:
+    external: true
+services:
+  unbound:
+    image: {{ unbound_image | default('mvance/unbound:latest') }}
+    container_name: "{{ unbound_container_name | default('unbound') }}"
+    hostname: {{ unbound_hostname | default('unbound') }}
+    restart: {{ unbound_restart_policy | default('unless-stopped') }}
+    networks:
+      - {{ unbound_network_name | default('dns_net') }}
+    expose:
+      - "{{ unbound_port | default(5335) }}/tcp"
+      - "{{ unbound_port | default(5335) }}/udp"
+{% if (unbound_publish_to_host | default(false) | bool) %}
+    ports:
+      - "{{ unbound_publish_host_port | default(unbound_port | default(5335)) }}:{{ unbound_port | default(5335) }}/tcp"
+      - "{{ unbound_publish_host_port | default(unbound_port | default(5335)) }}:{{ unbound_port | default(5335) }}/udp"
+{% endif %}
+    volumes:
+      - {{ unbound_compose_dir }}/unbound/unbound.conf:{{ unbound_directory }}/unbound.conf:ro
+      - {{ unbound_root_hints_host_path }}/:{{ unbound_root_hints_path }}:ro

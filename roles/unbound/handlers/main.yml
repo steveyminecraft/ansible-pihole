@@ -1,0 +1,9 @@
+---
+- name: Restart unbound stack
+  ansible.builtin.command:
+    cmd: docker compose -f "{{ unbound_compose_file }}" up -d
+  args:
+    chdir: "{{ unbound_compose_dir }}"
+  register: unbound_compose_restart
+  changed_when: true
+  failed_when: unbound_compose_restart.rc != 0

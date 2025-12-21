@@ -1,0 +1,12 @@
+---
+- name: Create Supporting Folders
+  include_tasks: prep.yml
+
+- name: Deploy Unbound Container
+  include_tasks: deploy.yml
+
+- name: Add Refres Script for Root Hints
+  include_tasks: refresh.yml
+
+- name: Check Container is working
+  include_tasks: verify.yml

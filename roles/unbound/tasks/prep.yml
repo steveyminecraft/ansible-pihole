@@ -1,0 +1,61 @@
+---
+- name: Ensure docker network exists
+  community.docker.docker_network:
+    name: "{{ unbound_network_name }}"
+    state: present
+  when:
+    - unbound_manage_network | default(true) | bool
+    - not (unbound_network_external | default(false) | bool)
+
+- name: Ensure compose directory exists
+  ansible.builtin.file:
+    path: "{{ unbound_compose_dir }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure unbound config directory exists
+  ansible.builtin.file:
+    path: "{{ unbound_compose_dir }}/unbound"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    state: directory
+    mode: '0755'
+
+- name: Ensure directory for root.hints exists
+  ansible.builtin.file:
+    path: "{{ unbound_root_hints_host_path | dirname }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    state: directory
+    mode: '0755'
+
+- name: Download root.hints for Unbound
+  ansible.builtin.get_url:
+    url: "{{ unbound_root_hints_url }}"
+    dest: "{{ unbound_root_hints_host_path }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+    force: false
+
+- name: Check if external docker network exists
+  ansible.builtin.command:
+    cmd: docker network inspect "{{ unbound_network_name | default('dns_net') }}"
+  register: unbound_dns_net_inspect
+  changed_when: false
+  failed_when: false
+
+- name: Create external docker network if missing
+  ansible.builtin.command:
+    cmd: docker network create "{{ unbound_network_name | default('dns_net') }}"
+  register: unbound_dns_net_create
+  changed_when: dns_net_create.rc == 0
+  failed_when: dns_net_create.rc != 0
+  when: unbound_dns_net_inspect.rc != 0
+
+- name: Assert external docker network exists now
+  ansible.builtin.command:
+    cmd: docker network inspect "{{ unbound_network_name | default('dns_net') }}"
+  changed_when: false

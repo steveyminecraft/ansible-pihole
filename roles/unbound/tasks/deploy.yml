@@ -1,0 +1,39 @@
+---
+- name: Raise socket receive buffer limits for Unbound
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop:
+    - {name: "net.core.rmem_max", value: "1048576"}
+    - {name: "net.core.rmem_default", value: "1048576"}
+
+- name: Render unbound config
+  ansible.builtin.template:
+    src: unbound.conf.j2
+    dest: "{{ unbound_compose_dir }}/unbound/unbound.conf"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  notify: Restart unbound stack
+
+- name: Render docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ unbound_compose_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  notify: Restart unbound stack
+
+- name: Bring up unbound with Docker Compose v2
+  ansible.builtin.command:
+    cmd: docker compose -f "{{ unbound_compose_file }}" up -d
+  args:
+    chdir: "{{ unbound_compose_dir }}"
+  register: unbound_compose_up
+  changed_when: >
+    unbound_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
+    or unbound_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
+  failed_when: unbound_compose_up.rc != 0

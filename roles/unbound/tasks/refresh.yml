@@ -1,0 +1,42 @@
+---
+- name: Install root.hints update script
+  ansible.builtin.copy:
+    dest: /usr/local/sbin/update-root-hints.sh
+    mode: "0755"
+    owner: root
+    group: root
+    content: |
+      #!/bin/sh
+      set -eu
+
+      URL="{{ unbound_root_hints_url }}"
+      DEST="{{ unbound_root_hints_host_path }}"
+      TMP="$(mktemp)"
+
+      # Fetch latest root hints
+      if ! curl -fsSL "$URL" -o "$TMP"; then
+        rm -f "$TMP"
+        exit 0
+      fi
+
+      # Only replace if changed
+      if ! cmp -s "$TMP" "$DEST" 2>/dev/null; then
+        install -m 0644 "$TMP" "$DEST"
+        # Restart Unbound if running
+        if command -v docker >/dev/null 2>&1; then
+          docker restart unbound >/dev/null 2>&1 || true
+        fi
+      fi
+
+      rm -f "$TMP"
+
+- name: Install monthly cron job to refresh root.hints
+  ansible.builtin.cron:
+    name: "Update Unbound root.hints"
+    user: root
+    minute: "30"
+    hour: "3"
+    day: "1"
+    month: "*"
+    weekday: "*"
+    job: "/usr/local/sbin/update-root-hints.sh >/dev/null 2>&1"
