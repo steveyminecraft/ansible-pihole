@@ -27,8 +27,14 @@ platforms:
 
 provisioner:
   name: ansible
+  # Richer task/module output (1=default, 2–3=more; override with `ANSIBLE_VERBOSITY` or `-v`).
+  config_options:
+    defaults:
+      verbosity: 2
   connection_options:
     ansible_ssh_user: vagrant
+    # Same key Vagrant authorizes; required when guests disable password auth (EL images).
+    ansible_ssh_private_key_file: ~/.vagrant.d/insecure_private_key
     ansible_password: vagrant
     ansible_become: true
   inventory:

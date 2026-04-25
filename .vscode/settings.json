@@ -1,0 +1,91 @@
+{
+  "files.associations": {
+    "**/playbooks/**/*.yml": "ansible",
+    "**/playbooks/**/*.yaml": "ansible",
+    "**/roles/**/*.yml": "ansible",
+    "**/roles/**/*.yaml": "ansible",
+    "**/inventory/**/*.yml": "ansible",
+    "**/inventory/**/*.yaml": "ansible",
+    "**/molecule/**/*.yml": "ansible",
+    "**/molecule/**/*.yaml": "ansible",
+    "**/collections/**/*.yml": "ansible",
+    "**/collections/**/*.yaml": "ansible"
+  },
+  "[ansible]": {
+    "editor.semanticHighlighting.enabled": false
+  },
+  "[yaml]": {
+    "editor.semanticHighlighting.enabled": false
+  },
+  "editor.tokenColorCustomizations": {
+    "textMateRules": [
+      {
+        "name": "YAML mapping keys",
+        "scope": ["entity.name.tag.yaml", "support.type.property-name.yaml"],
+        "settings": { "foreground": "#56CFE1", "fontStyle": "" }
+      },
+      {
+        "name": "YAML key-value separator",
+        "scope": ["punctuation.separator.key-value.mapping.yaml"],
+        "settings": { "foreground": "#89B4FA" }
+      },
+      {
+        "name": "YAML double-quoted strings",
+        "scope": ["string.quoted.double.yaml", "punctuation.definition.string.begin.yaml", "punctuation.definition.string.end.yaml"],
+        "settings": { "foreground": "#F9E2AF" }
+      },
+      {
+        "name": "YAML single-quoted strings",
+        "scope": ["string.quoted.single.yaml"],
+        "settings": { "foreground": "#FAB387" }
+      },
+      {
+        "name": "YAML unquoted / plain values",
+        "scope": ["string.unquoted.yaml", "string.unquoted.plain.out.yaml"],
+        "settings": { "foreground": "#A6E3A1" }
+      },
+      {
+        "name": "YAML numbers",
+        "scope": ["constant.numeric.integer.yaml", "constant.numeric.float.yaml", "constant.numeric.yaml"],
+        "settings": { "foreground": "#CBA6F7" }
+      },
+      {
+        "name": "YAML boolean & null",
+        "scope": [
+          "constant.language.boolean.yaml",
+          "constant.language.null.yaml",
+          "constant.language.yaml"
+        ],
+        "settings": { "foreground": "#F5C2E7" }
+      },
+      {
+        "name": "YAML comments",
+        "scope": ["comment.line.number-sign.yaml", "punctuation.definition.comment.yaml"],
+        "settings": { "foreground": "#6C7086", "fontStyle": "italic" }
+      },
+      {
+        "name": "Ansible / Jinja expressions",
+        "scope": [
+          "keyword.other.jinja",
+          "meta.embedded.block.jinja",
+          "meta.embedded.line.jinja",
+          "variable.other.jinja",
+          "storage.type.ansible-module",
+          "entity.name.function.ansible",
+          "keyword.control.ansible",
+          "support.function.ansible"
+        ],
+        "settings": { "foreground": "#89DCEB" }
+      },
+      {
+        "name": "YAML list punctuation / flow",
+        "scope": [
+          "punctuation.definition.block.sequence.item.yaml",
+          "keyword.operator.flow-mapping.yaml",
+          "keyword.operator.flow-sequence.yaml"
+        ],
+        "settings": { "foreground": "#74C7EC" }
+      }
+    ]
+  }
+}

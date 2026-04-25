@@ -9,7 +9,7 @@
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Upgrade dnf packages
-  ansible.builtin.yum:
+  ansible.builtin.dnf:
     name: '*'
     state: latest  # noqa package-latest
   when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'

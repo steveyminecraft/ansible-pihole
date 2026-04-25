@@ -10,6 +10,11 @@
 #   VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s ubuntu
 set -euo pipefail
 
+# Default: Vagrant’s shared private key (public half is in the guest; matches inventory/ vagrant*).
+# Unset to fall back; override with a path if you use a custom box: ANSIBLE_PRIVATE_KEY_FILE=… ./scripts/…
+: "${ANSIBLE_PRIVATE_KEY_FILE:=${HOME}/.vagrant.d/insecure_private_key}"
+export ANSIBLE_PRIVATE_KEY_FILE
+
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 
 sync_inventory_from_provider() {
