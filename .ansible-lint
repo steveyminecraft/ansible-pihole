@@ -8,6 +8,8 @@ exclude_paths:
   - .github/
   - .ansible/
   - roles/**/.molecule/
+  # Installed from roles/requirements.yml (gitignored); lint upstream in docker-pihole.
+  - roles/pihole/
   - collections/
   - inventory/inventory.yaml
   - playbooks/display.yaml
