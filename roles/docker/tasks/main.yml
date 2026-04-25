@@ -7,37 +7,50 @@
       - software-properties-common
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-- name: Add Docker apt key Debian family
-  ansible.builtin.apt_key:
-    url: >-
-      https://download.docker.com/linux/{{ (
+# Ubuntu 22.04+ expects signed-by keyrings; plain "deb https://..." + apt_key often leaves the
+# Docker repo untrusted, so docker-ce / docker-compose-plugin never appear in apt cache.
+- name: Set Docker apt key/repo path for Debian family
+  ansible.builtin.set_fact:
+    docker_apt_linux_path: >-
+      {{
         'ubuntu' if ansible_facts['distribution'] == 'Ubuntu'
         else (
           'raspbian'
           if ansible_facts['distribution'] == 'Debian' and ansible_facts['architecture'] == 'aarch64'
           else 'debian'
         )
-      ) }}/gpg
-    id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      }}
+    docker_apt_deb_arch: >-
+      {{
+        'amd64' if ansible_facts['architecture'] in ['x86_64', 'amd64']
+        else ('arm64' if ansible_facts['architecture'] in ['aarch64', 'arm64']
+        else ansible_facts['architecture'])
+      }}
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-- name: Add Docker apt repository Raspbian
-  ansible.builtin.apt_repository:
-    repo: deb https://download.docker.com/linux/raspbian {{ ansible_facts['distribution_release'] }} stable
-    filename: docker
-  when: ansible_facts['distribution'] == 'Debian' and ansible_facts['architecture'] == 'aarch64'
+- name: Ensure Docker apt keyring directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-- name: Add Docker apt repository Debian (not Raspberry Pi arm64)
-  ansible.builtin.apt_repository:
-    repo: deb https://download.docker.com/linux/debian {{ ansible_facts['distribution_release'] }} stable
-    filename: docker
-  when: ansible_facts['distribution'] == 'Debian' and ansible_facts['architecture'] != 'aarch64'
+- name: Install Docker CE apt signing key (keyring)
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/{{ docker_apt_linux_path }}/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-- name: Add Docker apt repository Ubuntu
+- name: Add Docker CE apt repository (signed-by keyring)
   ansible.builtin.apt_repository:
-    repo: deb https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} stable
+    repo: >-
+      deb [arch={{ docker_apt_deb_arch }} signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/{{ docker_apt_linux_path }}
+      {{ ansible_facts['distribution_release'] }} stable
     filename: docker
-  when: ansible_facts['distribution'] == 'Ubuntu'
+    state: present
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: "Install dependencies Red Hat"
   ansible.builtin.dnf:
