@@ -7,11 +7,9 @@ exclude_paths:
   - .cache/
   - .github/
   - .ansible/
-  - molecule/
   - roles/**/.molecule/
-  - roles/pihole
   - collections/
-  - inventroy/inventory.yaml
+  - inventory/inventory.yaml
   - playbooks/display.yaml
 
 skip_list:

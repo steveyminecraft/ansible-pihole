@@ -1,23 +1,20 @@
 ---
-# VirtualBox (192.168.56.0/24): use this file. For libvirt/KVM use
-# `inventory/vagrant_libvirt.yml` (192.168.121.0/24) — see `ip_virtualbox` / `ip_libvirt`
-# in `molecule/*/Vagrantfile`.
-# Molecule defaults to this file; for libvirt set MOLECULE_VAGRANT_INVENTORY=vagrant_libvirt.yml
-# or run via `scripts/molecule-vagrant` with VAGRANT_DEFAULT_PROVIDER=libvirt.
+# Same as vagrant.yml but with 192.168.121.x — for Molecule/Vagrant with the **libvirt/KVM**
+# provider (see ip_libvirt in molecule/*/Vagrantfile). VirtualBox uses vagrant.yml (56.x).
+# Molecule: MOLECULE_VAGRANT_INVENTORY=vagrant_libvirt.yml or scripts/molecule-vagrant + libvirt.
 all:
   hosts:
     vagrant-pihole-01:
-      ansible_host: 192.168.56.4
+      ansible_host: 192.168.121.4
       ansible_port: 22
       priority: 110
       keepalive_role: MASTER
     vagrant-pihole-02:
-      ansible_host: 192.168.56.5
+      ansible_host: 192.168.121.5
       ansible_port: 22
       priority: 100
       keepalive_role: BACKUP
   vars:
-    # Required by roles/pihole (docker-pihole): compose dir is not defaulted; align with role pihole_dir_loc
     pihole_compose_dir: "/opt/pihole"
     ansible_user: vagrant
     ansible_password: vagrant  # only used on first run
@@ -38,20 +35,20 @@ all:
       FTLCONF_dns_listeningMode: "all"
       DHCP_ACTIVE: false
       REV_SERVER: false
-      REV_SERVER_CIDR: "192.168.56.0/24"
-      REV_SERVER_TARGET: "192.168.56.1"
+      REV_SERVER_CIDR: "192.168.121.0/24"
+      REV_SERVER_TARGET: "192.168.121.1"
     pihole_ha_mode: true
-    pihole_vip_ipv4: "192.168.56.10/24"
+    pihole_vip_ipv4: "192.168.121.10/24"
     pihole_vip_ipv6: "fd00::10/64"
     dnsmasq_listening: single
     pihole_container_name: pihole
     vagrant_env: true
     docker_users: vagrant
     nebula_sync_container_name: nebula
-    nebula_sync_primary_url: "http://192.168.56.4"
+    nebula_sync_primary_url: "http://192.168.121.4"
     nebula_sync_primary_password: "{{ pihole_environment_variables.FTLCONF_webserver_api_password }}"
     nebula_sync_replicas:
-      - url: "http://192.168.56.5"
+      - url: "http://192.168.121.5"
         password: '{{ pihole_environment_variables.FTLCONF_webserver_api_password }}'
     nebula_sync_full_sync: true
     nebula_sync_cron: "*/15 * * * *"

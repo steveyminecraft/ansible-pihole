@@ -39,14 +39,14 @@
     path: /etc/timezone
     regexp: "^"
     line: "{{ timezone }}"
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Set localtime
   file:
     src: /usr/share/zoneinfo/{{ timezone }}
     dest: /etc/localtime
     state: link
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: "Set timezone to {{ timezone }}"
   community.general.timezone:
@@ -63,7 +63,7 @@
     regexp: "^"
     line: "{{ inventory_hostname }}"
   notify: Reboot after hostname change
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Set hosts
   lineinfile:
@@ -77,7 +77,7 @@
     path: /etc/dhcpcd.conf
     block: static domain_name_servers={{ static_dns }}
   notify: Restart dhcpcd
-  when: ansible_distribution == 'Debian'and ansible_architecture == 'aarch64'
+  when: ansible_facts['distribution'] == 'Debian' and ansible_facts['architecture'] == 'aarch64'
 
 - name: Install requirements Debian
   ansible.builtin.apt:
@@ -85,7 +85,7 @@
       - firewalld
       - python3-pip
     update_cache: true
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Install keepalived Rocky
   ansible.builtin.dnf:
@@ -93,7 +93,7 @@
       - python3-pip
       - bind-utils
     state: present
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
 
 - name: Flush handlers
