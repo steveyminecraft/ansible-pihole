@@ -3,13 +3,15 @@
   ansible.builtin.apt:
     force_apt_get: true
     name:
+      - ca-certificates
+      - curl
       - gnupg2
       - software-properties-common
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-# Ubuntu 22.04+ expects signed-by keyrings; plain "deb https://..." + apt_key often leaves the
-# Docker repo untrusted, so docker-ce / docker-compose-plugin never appear in apt cache.
-- name: Set Docker apt key/repo path for Debian family
+# Use deb822 + keyring (Docker / Ubuntu 24+). ansible.builtin.apt_repository has mangled
+# signed-by lines in the wild, leaving docker-compose-plugin out of the apt index.
+- name: Set Docker apt facts for Debian family
   ansible.builtin.set_fact:
     docker_apt_linux_path: >-
       {{
@@ -26,6 +28,21 @@
         else ('arm64' if ansible_facts['architecture'] in ['aarch64', 'arm64']
         else ansible_facts['architecture'])
       }}
+    docker_apt_suite: >-
+      {{
+        (
+          ansible_facts['distribution_release'] | default('')
+          or ansible_facts.get('lsb', {}).get('codename', '')
+        ) | trim
+      }}
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+
+- name: Ensure Debian/Ubuntu release codename is known for Docker CE apt
+  ansible.builtin.assert:
+    that:
+      - docker_apt_suite | length > 0
+    fail_msg: >-
+      Need distribution_release or lsb.codename to configure Docker's apt source (got empty).
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Ensure Docker apt keyring directory exists
@@ -42,14 +59,29 @@
     mode: "0644"
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-- name: Add Docker CE apt repository (signed-by keyring)
-  ansible.builtin.apt_repository:
-    repo: >-
-      deb [arch={{ docker_apt_deb_arch }} signed-by=/etc/apt/keyrings/docker.asc]
-      https://download.docker.com/linux/{{ docker_apt_linux_path }}
-      {{ ansible_facts['distribution_release'] }} stable
-    filename: docker
-    state: present
+- name: Remove legacy one-line Docker list from this role (avoid duplicate stanzas)
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/docker.list
+    state: absent
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+
+- name: Configure Docker CE apt source (deb822)
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/docker-ce.sources
+    mode: "0644"
+    content: |
+      Types: deb
+      URIs: https://download.docker.com/linux/{{ docker_apt_linux_path }}
+      Suites: {{ docker_apt_suite }}
+      Components: stable
+      Signed-By: /etc/apt/keyrings/docker.asc
+      Architectures: {{ docker_apt_deb_arch }}
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+
+- name: Refresh apt index after Docker CE source
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 0
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: "Install dependencies Red Hat"
@@ -81,12 +113,14 @@
 - name: Install Docker Debian
   ansible.builtin.apt:
     force_apt_get: true
-    update_cache: true
     name:
       - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
       - python3-setuptools
       - python3-pip
-      - docker-compose-plugin
     install_recommends: false
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
