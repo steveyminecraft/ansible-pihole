@@ -4,4 +4,4 @@
 roles:
   - name: pihole
     src: https://github.com/steveyminecraft/docker-pihole
-    version: feature/Add-Unbound-Support
+    version: master
