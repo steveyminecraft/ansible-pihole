@@ -8,3 +8,12 @@
     name: dhcpcd
     state: restarted
   when: not ansible_check_mode
+
+# docker-pihole (Galaxy) notifies this from unbound integration; bootstrap is always first in our plays.
+- name: Restart pihole stack
+  ansible.builtin.command:
+    cmd: docker compose -f "{{ pihole_compose_file }}" up -d
+  args:
+    chdir: "{{ pihole_compose_dir }}"
+  changed_when: true
+  when: not ansible_check_mode
