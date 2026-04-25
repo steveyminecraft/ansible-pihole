@@ -1,0 +1,37 @@
+---
+- name: Enable firewalld ports
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+    zone: public
+  loop:
+    - "{{ webport_http }}/tcp"
+    - "{{ webport_https }}/tcp"
+    - "53/tcp"
+    - "53/udp"
+
+- name: Bootps firewalld rule
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+    zone: public
+  with_items:
+    - bootps
+  when: pihole_environment_variables.REV_SERVER
+
+- name: Check if DHCP is enabled
+  set_fact:
+    pihole_dhcp_enabled: "{{ pihole_environment_variables.DHCP_ACTIVE | lower == 'true' }}"
+
+- name: Allow DHCP port in the firewall (if enabled)
+  ansible.posix.firewalld:
+    service: dhcp
+    permanent: true
+    state: enabled
+    immediate: true
+  when: pihole_dhcp_enabled
+  become: true

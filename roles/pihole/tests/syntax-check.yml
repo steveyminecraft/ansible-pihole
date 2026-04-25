@@ -1,0 +1,10 @@
+---
+# Syntax check only; role name is galaxy_info.role_name (pihole) under roles/pihole.
+- name: Pihole role syntax
+  hosts: local
+  gather_facts: false
+  become: true
+  roles:
+    - role: pihole
+      vars:
+        firewall_deploy: "false"

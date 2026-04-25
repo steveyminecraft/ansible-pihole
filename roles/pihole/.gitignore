@@ -130,7 +130,6 @@ celerybeat.pid
 # Environments
 .env
 .venv
-.venv-ci
 env/
 venv/
 ENV/
@@ -175,7 +174,6 @@ cython_debug/
 .env.leave
 .vagrant
 .tool-versions
-.ansible
-# Written by ansible-galaxy when the role is installed from Galaxy; not source.
-roles/pihole/meta/.galaxy_install_info
-inventory/inventory.yaml
+
+# ansible-galaxy collection install (CI / local)
+.ansible/
