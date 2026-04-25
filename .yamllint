@@ -21,4 +21,5 @@ ignore:
   - .github
   - .venv
   - .venv-ci
+  - .venv-pr
   - inventory/inventory.yaml

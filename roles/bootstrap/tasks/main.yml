@@ -4,6 +4,8 @@
     key: https://github.com/{{ github_user_for_ssh_key }}.keys
     user: "{{ ansible_user }}"
     comment: "github-{{ github_user_for_ssh_key }}"
+  # authorized_key cannot validate remote https:// URLs in check mode (CI uses --check).
+  when: not ansible_check_mode
 
 - name: "Lock password for {{ ansible_user }}"
   user:
@@ -15,10 +17,14 @@
   blockinfile:
     path: "{{ ansible_user_home_dir }}/.bashrc"
     block: alias ll='ls -la'
+    create: true
+    mode: "0644"
 
 - name: Bashrc for "{{ ansible_user }}"
   blockinfile:
     path: "{{ ansible_user_home_dir }}/.bashrc"
+    create: true
+    mode: "0644"
     block: |
       export LS_OPTIONS='--color=auto'
       eval "`dircolors`"
@@ -51,11 +57,14 @@
 - name: "Set timezone to {{ timezone }}"
   community.general.timezone:
     name: "{{ timezone }}"
+  # Uses hwclock; skip in check mode so CI and slim images do not need that binary.
+  when: not ansible_check_mode
 
 - name: Set a hostname
   ansible.builtin.hostname:
     name: "{{ inventory_hostname }}"
     use: systemd
+  when: not ansible_check_mode
 
 - name: Set hostname
   lineinfile:
