@@ -1,5 +1,7 @@
 ---
+# The upstream 'main' branch has no role content (LICENSE only). This branch
+# tracks the Unbound-integrated role and is ahead of 'dev' as of 2026-03.
 roles:
   - name: pihole
     src: https://github.com/steveyminecraft/docker-pihole
-    version: dev
+    version: feature/Add-Unbound-Support

@@ -6,13 +6,13 @@
     autoremove: true
     update_cache: true
     upgrade: dist
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Upgrade dnf packages
   ansible.builtin.yum:
     name: '*'
     state: latest  # noqa package-latest
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
 - name: Updates Reboot
   stat:

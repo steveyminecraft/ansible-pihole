@@ -1,8 +1,11 @@
 ---
-# molecule/default/destroy.yml
-- name: Destroy VMs
+- name: Destroy test platforms (Vagrant)
   hosts: localhost
+  connection: local
+  gather_facts: false
   tasks:
-    - name: Destroy Vagrant Instances
-      command: vagrant destroy -f
-
+    - name: Destroy Vagrant environment for this scenario
+      ansible.builtin.command: vagrant destroy -f
+      args:
+        chdir: "{{ playbook_dir }}"
+      changed_when: true

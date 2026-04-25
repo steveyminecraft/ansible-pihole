@@ -1,7 +1,11 @@
 ---
-# molecule/default/create.yml
-- name: Create VMs
+- name: Create test platforms (Vagrant)
   hosts: localhost
+  connection: local
+  gather_facts: false
   tasks:
-    - name: Create Vagrant Instances
-      command: vagrant up
+    - name: Start Vagrant environment for this scenario
+      ansible.builtin.command: vagrant up
+      args:
+        chdir: "{{ playbook_dir }}"
+      changed_when: true

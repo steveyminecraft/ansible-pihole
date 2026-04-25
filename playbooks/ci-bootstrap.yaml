@@ -17,8 +17,12 @@
     password_lock: false
     # Point Pi-hole image at something valid, but we're in --check anyway
     pihole_image: "pihole/pihole:latest"
+    pihole_compose_dir: "/opt/pihole"
 
   roles:
-    - bootstrap
-    - docker
-    - pihole
+    - role: bootstrap
+      tags: [bootstrap, system]
+    - role: docker
+      tags: [docker, container]
+    - role: pihole
+      tags: [pihole, dns]

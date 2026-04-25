@@ -10,4 +10,9 @@ galaxy_info:
       versions: [all]
     - name: EL
       versions: [all]
+  galaxy_tags:
+    - nebulasync
+    - nebula
+    - pihole
+    - sync
 dependencies: []

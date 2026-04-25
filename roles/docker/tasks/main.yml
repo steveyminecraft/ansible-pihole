@@ -1,31 +1,31 @@
 ---
-- name: Install dependencies Debain
+- name: Install dependencies Debian
   apt:
     force_apt_get: true
     name:
       - gnupg2
       - software-properties-common
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Add Docker apt key Debian family
   apt_key:
     url: https://download.docker.com/linux/raspbian/gpg
     id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Add Docker apt repository Raspbian
   apt_repository:
-    repo: deb https://download.docker.com/linux/raspbian {{ ansible_distribution_release }} stable
+    repo: deb https://download.docker.com/linux/raspbian {{ ansible_facts['distribution_release'] }} stable
     filename: docker
-  when: ansible_distribution == 'Debian'and ansible_architecture == 'aarch64'
+  when: ansible_facts['distribution'] == 'Debian' and ansible_facts['architecture'] == 'aarch64'
 
 - name: Add Docker apt repository Ubuntu
   apt_repository:
-    repo: deb https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
+    repo: deb https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }} {{ ansible_facts['distribution_release'] }} stable
     filename: docker
-  when: ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Ubuntu'
 
-- name: "Install dependencies Redhat"
+- name: "Install dependencies Red Hat"
   ansible.builtin.dnf:
     name:
       - dnf-utils
@@ -33,15 +33,15 @@
       - bind-utils
       - gnupg2
     state: present
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
 - name: Add signing key
   ansible.builtin.rpm_key:
     key: "https://download.docker.com/linux/rhel/gpg"
     state: present
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
-- name: Add Docker Redhat
+- name: Add Docker Red Hat repository
   ansible.builtin.yum_repository:
     name: docker-ce
     description: "Docker-CE Repo"
@@ -49,9 +49,9 @@
     enabled: true
     gpgcheck: true
     gpgkey: "https://download.docker.com/linux/rhel/gpg"
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
-- name: Install Docker Debain
+- name: Install Docker Debian
   apt:
     force_apt_get: true
     name:
@@ -60,7 +60,7 @@
       - python3-pip
       - docker-compose-plugin
     install_recommends: false
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
 - name: Install Docker Rocky
   ansible.builtin.dnf:
@@ -71,15 +71,15 @@
       - docker-compose-plugin
     state: present
     update_cache: true
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
-# Since yum doesn't like using notify because yum we have to this instead
-- name: Start docker service started, if not started
+# dnf does not always trigger handler ordering reliably with these tasks
+- name: Ensure Docker service is started and enabled
   ansible.builtin.service:
     name: docker
     state: started
     enabled: true
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
 - name: Install Docker SDK for python
   pip:

@@ -32,25 +32,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Ansible collections (optional)
-        if: hashFiles('collections/requirements.yml') != ''
-        run: |
-          ansible-galaxy collection install -r collections/requirements.yml -p ./collections
-
-      - name: Install Ansible roles (optional)
-        if: hashFiles('roles/requirements.yml') != ''
-        run: |
-          ansible-galaxy role install -r roles/requirements.yml -p ./roles
-
       - name: Install tooling
         run: |
           python -m pip install --upgrade pip
           pip install "ansible-core==2.20.1" "ansible-lint==25.12.1" "yamllint==1.37.1"
 
-      - name: Install collections
-        if: hashFiles('collections/requirements.yml') != ''
-        run: |
-          ansible-galaxy collection install -r collections/requirements.yml -p ./.ansible/collections
+      - name: Install Galaxy roles and collections
+        run: ./scripts/install-ansible-collections.sh
 
       - name: Ansible Lint
         env:
@@ -58,7 +46,7 @@ jobs:
         run: |
           ansible --version
           ansible-lint --version
-          ansible-lint -p roles playbooks
+          ansible-lint -p roles playbooks molecule
 
       - name: YAML lint
         run: yamllint .
@@ -85,15 +73,8 @@ jobs:
       - name: Show Ansible version
         run: ansible --version
 
-      - name: Install Ansible collections (optional)
-        if: hashFiles('collections/requirements.yml') != ''
-        run: |
-          ansible-galaxy collection install -r collections/requirements.yml -p ./collections
-
-      - name: Install Ansible roles (optional)
-        if: hashFiles('roles/requirements.yml') != ''
-        run: |
-          ansible-galaxy role install -r roles/requirements.yml -p ./roles
+      - name: Install Galaxy roles and collections
+        run: ./scripts/install-ansible-collections.sh
 
       # 1) Syntax-check all main playbooks
       - name: Syntax check playbooks

@@ -21,7 +21,7 @@
     pkg:
       - keepalived
     force_apt_get: true
-  when: ansible_distribution in ['Ubuntu', 'Debian']
+  when: ansible_facts['distribution'] in ['Ubuntu', 'Debian']
 
 - name: Install keepalived Rocky
   yum:
@@ -32,13 +32,13 @@
       - policycoreutils-python-utils
       - python3-pip
     state: present
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
 - name: Change the keepalived_t domain to permissive
   community.general.selinux_permissive:
     name: keepalived_t
     permissive: true
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
 # Since yum doesn't like using notify because yum we have to this instead
 - name: Start service keepalived started, if not started
@@ -46,7 +46,7 @@
     name: keepalived
     state: stopped
     enabled: true
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
 - name: Copy check_pihole.sh
   copy:
@@ -57,7 +57,7 @@
 # Finds the IP_ADDRS of the group and removes the ansible_host ip's from it's peer list
 - name: Find Local IP Addresses
   set_fact:
-    keepalived_local_ips: "{{ ansible_all_ipv4_addresses + ansible_all_ipv6_addresses }}"
+    keepalived_local_ips: "{{ ansible_facts['all_ipv4_addresses'] + ansible_facts['all_ipv6_addresses'] }}"
 
 - name: Create a list of peer IPs excluding local IPs and ensure /24 suffix
   set_fact:
@@ -107,8 +107,8 @@
     replace: 'eth1'
   when:
     - vagrant_env | default(false) | bool
-    - ansible_distribution in ['Rocky', 'Red Hat Enterprise Linux']
-    - ansible_distribution_major_version is version('9', '=')
+    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - ansible_facts['distribution_major_version'] is version('9', '=')
 
 # Fixes issues with ens5 being used for the vagrant vm access interfering with the code pick up of the primary interface
 - name: Vagrant test env support 10.x Rocky
@@ -118,8 +118,8 @@
     replace: 'ens6'
   when:
     - vagrant_env | default(false) | bool
-    - ansible_distribution in ['Rocky', 'Red Hat Enterprise Linux']
-    - ansible_distribution_major_version is version('10', '=')
+    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - ansible_facts['distribution_major_version'] is version('10', '=')
 
 ### Add in firewall rules for vrrp protocol
 - name: Add VRRP protocol to firewall
