@@ -84,31 +84,95 @@
     cache_valid_time: 0
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-- name: "Install dependencies Red Hat"
+- name: Disable kernel IPv6 (Rocky/EL) — avoids DNF/HTTPS stalls when guest IPv6 is misrouted
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    reload: true
+    sysctl_file: /etc/sysctl.d/50-ansible-docker-disable-ipv6.conf
+  loop:
+    - { name: net.ipv6.conf.all.disable_ipv6, value: "1" }
+    - { name: net.ipv6.conf.default.disable_ipv6, value: "1" }
+    - { name: net.ipv6.conf.lo.disable_ipv6, value: "0" }
+  when:
+    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - docker_disable_ipv6 | bool
+
+# dnf-plugins-core provides `dnf config-manager` (EL8+). DNF still loads *.repo from /etc/yum.repos.d/.
+- name: "Install dependencies Red Hat (DNF)"
   ansible.builtin.dnf:
     name:
-      - dnf-utils
+      - dnf-plugins-core
       - python3-pip
       - bind-utils
       - gnupg2
     state: present
+    lock_timeout: 300
   when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
-- name: Add signing key
+- name: Import Docker CE RPM signing key
   ansible.builtin.rpm_key:
-    key: "https://download.docker.com/linux/rhel/gpg"
+    key: https://download.docker.com/linux/rhel/gpg
     state: present
   when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
-- name: Add Docker Red Hat repository
-  ansible.builtin.yum_repository:
-    name: docker-ce
-    description: "Docker-CE Repo"
-    baseurl: https://download.docker.com/linux/rhel/$releasever/$basearch/stable
-    enabled: true
-    gpgcheck: true
-    gpgkey: "https://download.docker.com/linux/rhel/gpg"
+# Official repo file (same as `dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo`).
+# Ref: https://docs.docker.com/engine/install/rhel/
+- name: Install Docker CE repository for DNF
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/rhel/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: "0644"
   when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+
+- name: (docker) Compute repodata URL for preflight
+  ansible.builtin.set_fact:
+    docker_dnf_repodata_url: >-
+      {{ 'https://download.docker.com/linux/rhel/' ~ ansible_distribution_major_version ~ '/'
+      ~ ansible_architecture ~ '/stable/repodata/repomd.xml' }}
+  when:
+    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - docker_repo_diagnostics | bool
+
+# HTTPS from the guest; fails fast on DNS / TLS / routing (clearer than a silent hang in dnf).
+- name: (docker) Preflight — reach Docker CE repodata
+  ansible.builtin.uri:
+    url: "{{ docker_dnf_repodata_url }}"
+    method: GET
+    follow_redirects: all
+    status_code: [200]
+    timeout: 45
+  register: _docker_repodata_uri
+  when:
+    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - docker_repo_diagnostics | bool
+
+- name: (docker) Preflight result
+  ansible.builtin.debug:
+    msg:
+      - "repodata URL: {{ docker_dnf_repodata_url }}"
+      - "http status: {{ _docker_repodata_uri.status | default('?') }} elapsed={{ _docker_repodata_uri.elapsed | default('?') }}s (uri module)"
+  changed_when: false
+  when:
+    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - docker_repo_diagnostics | bool
+
+- name: Refresh DNF cache (Docker CE repo + bases)
+  ansible.builtin.dnf:
+    update_cache: true
+    cache_valid_time: 0
+    lock_timeout: 300
+  register: _docker_dnf_refresh
+  when: ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+
+- name: (docker) DNF refresh (verbose, diagnostics)
+  ansible.builtin.debug:
+    msg: "dnf update_cache changed={{ _docker_dnf_refresh.changed | default(false) }}"
+  changed_when: false
+  when:
+    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - docker_repo_diagnostics | bool
 
 - name: Install Docker Debian
   ansible.builtin.apt:
@@ -123,7 +187,7 @@
     install_recommends: false
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-- name: Install Docker Rocky
+- name: Install Docker CE packages (Rocky / RHEL via DNF)
   ansible.builtin.dnf:
     name:
       - docker-ce
@@ -131,10 +195,13 @@
       - containerd.io
       - docker-compose-plugin
     state: present
-    update_cache: true
+    update_cache: false
+    lock_timeout: 300
+    allowerasing: true
+    install_weak_deps: false
   when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
 
-# dnf does not always trigger handler ordering reliably with these tasks
+# Handler ordering: ensure service after DNF install
 - name: Ensure Docker service is started and enabled
   ansible.builtin.service:
     name: docker
@@ -146,7 +213,7 @@
   pip:
     name:
       - docker
-    extra_args: "--user"
+    extra_args: "--user --timeout 120"
     break_system_packages: true
 
 - name: Add user to docker group
@@ -155,8 +222,16 @@
     append: true
     groups: docker
 
-- name: Enable Docker IPv6
-  copy:
+- name: Configure Docker daemon (EL — bridge IPv6 follows docker_disable_ipv6)
+  ansible.builtin.template:
+    src: docker-daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: "0600"
+  notify: Restart Docker
+  when: ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+
+- name: Enable Docker IPv6 (Debian family)
+  ansible.builtin.copy:
     dest: /etc/docker/daemon.json
     mode: "0600"
     content: |
@@ -165,6 +240,7 @@
         "fixed-cidr-v6": "2001:db8:1::/64"
       }
   notify: Restart Docker
+  when: ansible_facts['distribution'] in ['Debian', 'Ubuntu']
 
 - name: Flush handlers
   meta: flush_handlers
