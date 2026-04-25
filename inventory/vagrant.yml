@@ -20,6 +20,8 @@ all:
     # Required by roles/pihole (docker-pihole): compose dir is not defaulted; align with role pihole_dir_loc
     pihole_compose_dir: "/opt/pihole"
     ansible_user: vagrant
+    # Vagrant’s authorized_keys always includes this keypair; use it (password auth is often off on EL images).
+    ansible_ssh_private_key_file: ~/.vagrant.d/insecure_private_key
     ansible_password: vagrant  # only used on first run
     password_lock: false  # Change to false if you still wish to login via passwd auth
     ansible_user_home_dir: /home/{{ ansible_user }}
@@ -46,7 +48,8 @@ all:
     dnsmasq_listening: single
     pihole_container_name: pihole
     vagrant_env: true
-    docker_users: vagrant
+    docker_users:
+      - vagrant
     nebula_sync_container_name: nebula
     nebula_sync_primary_url: "http://192.168.56.4"
     nebula_sync_primary_password: "{{ pihole_environment_variables.FTLCONF_webserver_api_password }}"

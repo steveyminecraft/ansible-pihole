@@ -1,0 +1,2 @@
+---
+# Handlers-only shim for roles/pihole (Galaxy). Keep this role before pihole in the play.

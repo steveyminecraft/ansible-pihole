@@ -1,0 +1,6 @@
+---
+- name: Restart pihole stack
+  ansible.builtin.command:
+    cmd: docker compose -f "{{ pihole_compose_file }}" up -d
+  args:
+    chdir: "{{ pihole_compose_dir }}"

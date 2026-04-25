@@ -93,16 +93,32 @@
     pkg:
       - firewalld
       - python3-pip
+      - python3-docker
     update_cache: true
   when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
 
-- name: Install keepalived Rocky
-  ansible.builtin.dnf:
-    name:
-      - python3-pip
-      - bind-utils
-    state: present
+- name: Install Rocky/RHEL base packages (pip, bind-utils, Docker Python SDK)
   when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+  block:
+    - name: Install packages via dnf
+      ansible.builtin.dnf:
+        name:
+          - python3-pip
+          - bind-utils
+          - python3-docker
+        state: present
+  rescue:
+    - name: Install packages via dnf without python3-docker RPM
+      ansible.builtin.dnf:
+        name:
+          - python3-pip
+          - bind-utils
+        state: present
+
+    - name: Install Docker Python library via pip
+      ansible.builtin.pip:
+        name: docker
+        state: present
 
 
 - name: Flush handlers

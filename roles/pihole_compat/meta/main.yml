@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  role_name: pihole_compat
+  author: ansible-pihole
+  description: Supplies handlers missing from vendored docker-pihole (notify targets).
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms: []
+  galaxy_tags: []
+dependencies: []

@@ -177,5 +177,6 @@ cython_debug/
 .vagrant
 .tool-versions
 roles/pihole
+roles/geerlingguy.docker
 .ansible
 inventory/inventory.yaml

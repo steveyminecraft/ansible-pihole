@@ -25,7 +25,9 @@
   roles:
     - role: bootstrap
       tags: [bootstrap, system]
-    - role: docker
+    - role: geerlingguy.docker
       tags: [docker, container]
+    - role: pihole_compat
+      tags: [pihole, dns]
     - role: pihole
       tags: [pihole, dns]

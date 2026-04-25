@@ -1,0 +1,6 @@
+---
+# geerlingguy.docker: https://galaxy.ansible.com/geerlingguy/docker
+# When true, omit Docker bridge IPv6 (lab guests often have broken IPv6 routes).
+docker_disable_ipv6: true
+# Written to /etc/docker/daemon.json only when non-empty (geerlingguy.docker).
+docker_daemon_options: "{{ {'ipv6': true, 'fixed-cidr-v6': '2001:db8:1::/64'} if not (docker_disable_ipv6 | bool) else {} }}"

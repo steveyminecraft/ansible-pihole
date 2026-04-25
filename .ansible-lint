@@ -10,6 +10,7 @@ exclude_paths:
   - roles/**/.molecule/
   # Installed from roles/requirements.yml (gitignored); lint upstream in docker-pihole.
   - roles/pihole/
+  - roles/geerlingguy.docker/
   - collections/
   - inventory/inventory.yaml
   - playbooks/display.yaml

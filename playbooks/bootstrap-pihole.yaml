@@ -14,10 +14,12 @@
       tags: [sshd, system]
     - role: keepalived
       tags: [keepalived, ha]
-    - role: docker
+    - role: geerlingguy.docker
       tags: [docker, container]
     - role: unbound
       tags: [unbound, dns]
+    - role: pihole_compat
+      tags: [pihole, dns]
     - role: pihole
       tags: [pihole, dns]
     - role: start_keepalived

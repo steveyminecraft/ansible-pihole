@@ -21,5 +21,10 @@ ignore:
   - .github
   - .venv
   - .venv-ci
+  - .venv-ci-check
   - .venv-pr
+  - .venv-verify
+  # Installed from roles/requirements.yml; lint upstream / Galaxy.
+  - roles/geerlingguy.docker
+  - roles/pihole
   - inventory/inventory.yaml
