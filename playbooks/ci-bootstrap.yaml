@@ -6,6 +6,9 @@
 
   # Keep this minimal and safe for generic Ubuntu runners
   vars:
+    _ci_ansible_user: "{{ lookup('env', 'USER') | default('runner', true) }}"
+    ansible_user: "{{ _ci_ansible_user }}"
+    ansible_user_home_dir: "{{ '/root' if _ci_ansible_user == 'root' else '/home/' ~ _ci_ansible_user }}"
     # Set simple/default-ish vars so roles don’t blow up
     github_user_for_ssh_key: "root"
     timezone: "Etc/UTC"

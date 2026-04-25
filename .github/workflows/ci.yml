@@ -85,7 +85,7 @@ jobs:
           ansible-playbook -i inventory/ci/ci.yml playbooks/sync.yaml --syntax-check
 
 
-      # 2) Optional: safe dry-run of a “happy path” bootstrap
-      - name: Check-mode converge (bootstrap)
+      # 2) Minimal roles only (inventory/ci/ci.yml defines group `ci` for this play)
+      - name: Check-mode converge (ci-bootstrap)
         run: |
-          ansible-playbook -i inventory/ci/hosts.ini playbooks/bootstrap-pihole.yaml --check
+          ansible-playbook -i inventory/ci/ci.yml playbooks/ci-bootstrap.yaml --check
