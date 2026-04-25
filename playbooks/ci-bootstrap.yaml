@@ -16,6 +16,8 @@
 
     # Make sure HA bits don’t run in CI
     pihole_ha_mode: false
+    # GitHub-hosted runners: skip firewalld port management (role default is true).
+    firewall_deploy: false
 
     password_lock: false
     # Point Pi-hole image at something valid, but we're in --check anyway

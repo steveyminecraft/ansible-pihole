@@ -14,7 +14,7 @@ name: CI - Ansible-Pihole Checks
   workflow_dispatch:
 
 env:
-  python_version: 3.12
+  python_version: "3.13"
 
 jobs:
   lint:
@@ -30,17 +30,17 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: ${{ env.python_version }}
 
-      - name: Install Python dependencies
+      - name: Install Ansible, linters, and controller Python deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install ansible requests docker
-
-      - name: Install tooling
-        run: |
-          python -m pip install --upgrade pip
-          pip install "ansible-core==2.20.1" "ansible-lint==25.12.1" "yamllint==1.37.1"
+          python -m pip install \
+            "ansible-core==2.20.1" \
+            "ansible-lint==25.12.1" \
+            "yamllint==1.37.1" \
+            requests \
+            docker
 
       - name: Install Galaxy roles and collections
         run: ./scripts/install-ansible-collections.sh
@@ -68,18 +68,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.13"
+          python-version: ${{ env.python_version }}
 
-      - name: Install Python dependencies
+      - name: Install Ansible and controller Python deps
         run: |
           python -m pip install --upgrade pip
-          python -m pip install ansible requests docker
-
-      - name: Install Ansible
-        run: |
-          python -m pip install --upgrade pip
-          # community.docker (e.g. docker_image_pull in roles/pihole) needs Docker SDK + requests on the controller
-          pip install ansible docker
+          python -m pip install \
+            "ansible-core==2.20.1" \
+            requests \
+            docker
 
       - name: Show Ansible version
         run: ansible --version
