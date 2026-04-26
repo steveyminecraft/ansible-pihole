@@ -26,7 +26,20 @@
           [ -z "${cidr:-}" ] && continue
           [[ "$cidr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$ ]] || continue
           seen["$cidr"]=1
-        done < <(docker network inspect "$id" 2>/dev/null | python3 -c 'import json,sys; raw=sys.stdin.read(); data=json.loads(raw) if raw.strip() else []; [print(c["Subnet"]) for n in data for c in (n.get("IPAM") or {}).get("Config") or [] if c.get("Subnet")]' 2>/dev/null || true)
+        done < <(
+          docker network inspect "$id" 2>/dev/null | python3 - 2>/dev/null <<'PY' || true
+import json
+import sys
+
+raw = sys.stdin.read()
+data = json.loads(raw) if raw.strip() else []
+for n in data:
+  ipam = n.get("IPAM") or {}
+  for c in (ipam.get("Config") or []):
+    if c.get("Subnet"):
+      print(c["Subnet"])
+PY
+        )
       done < <(docker network ls -q 2>/dev/null || true)
       for k in "${!seen[@]}"; do
         printf '%s\n' "$k"

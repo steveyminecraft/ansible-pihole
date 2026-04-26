@@ -133,13 +133,26 @@
   until: _docker_ce_repo is succeeded
   when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Install Docker CE repository for DNF (fallback via curl)
-  ansible.builtin.command:
-    cmd: >-
-      curl -fsSL --connect-timeout 10 --max-time 45
-      https://download.docker.com/linux/rhel/docker-ce.repo
-      -o /etc/yum.repos.d/docker-ce.repo
-  changed_when: true
+- name: Download Docker CE repo file (fallback)
+  ansible.builtin.uri:
+    url: https://download.docker.com/linux/rhel/docker-ce.repo
+    method: GET
+    return_content: true
+    status_code: [200]
+    timeout: 45
+  register: _docker_ce_repo_fallback
+  retries: 3
+  delay: 3
+  until: _docker_ce_repo_fallback is succeeded
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - _docker_ce_repo is failed
+
+- name: Write Docker CE repo file (fallback)
+  ansible.builtin.copy:
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: "0644"
+    content: "{{ _docker_ce_repo_fallback.content }}"
   when:
     - ansible_facts['os_family'] == 'RedHat'
     - _docker_ce_repo is failed
@@ -196,7 +209,7 @@
       - docker-ce-cli
       - containerd.io
       - docker-compose-plugin
-    state: latest
+    state: present
     update_cache: true
     lock_timeout: 300
     allowerasing: true
@@ -265,13 +278,6 @@
     - ansible_facts['os_family'] == 'RedHat'
     - _docker_bridge_nf_sysctl.stat.exists
 
-# Handler ordering: ensure service after DNF install
-- name: Reset Docker systemd start-limit (RedHat family)
-  ansible.builtin.command: systemctl reset-failed docker
-  changed_when: false
-  failed_when: false
-  when: ansible_facts['os_family'] == 'RedHat'
-
 - name: Ensure Docker service is started and enabled
   ansible.builtin.service:
     name: docker
@@ -280,8 +286,9 @@
   when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Show Docker service status (on failure)
-  ansible.builtin.command: systemctl --no-pager -l status docker
-  register: _docker_systemctl_status
+  ansible.builtin.systemd:
+    name: docker
+  register: _docker_systemd_status
   changed_when: false
   failed_when: false
   when: ansible_facts['os_family'] == 'RedHat'
