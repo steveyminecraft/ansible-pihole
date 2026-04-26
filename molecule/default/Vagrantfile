@@ -2,79 +2,84 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  # Global Settings
+  # VirtualBox: 192.168.56.0/24 — libvirt (vagrant-56): 192.168.121.0/24 by default here;
+  # override ip_libvirt if your KVM network differs. Match inventory file to provider.
   vm_settings = {
-    box: "local/rocky10-kvm",
-    memory: 2048,
+    box: "rockylinux/10",
+    memory: 4096,
     cpus: 4,
     machines: [
-      { name: "vagrant-pihole-01", mac: "52:54:00:56:00:04" },
-      { name: "vagrant-pihole-02", mac: "52:54:00:56:00:05" }
+      { name: "vagrant-pihole-01", mac: "52:54:00:56:00:04",
+        ip_virtualbox: "192.168.56.4", ip_libvirt: "192.168.121.4" },
+      { name: "vagrant-pihole-02", mac: "52:54:00:56:00:05",
+        ip_virtualbox: "192.168.56.5", ip_libvirt: "192.168.121.5" }
     ]
   }
 
   ### DEFINE SCRIPT ###
-  $script = <<-SCRIPT
-  echo I am provisioning...
-  date > /etc/vagrant_provisioned_at
-  # PUT EXTRA OPTIONS IN HERE
-  SCRIPT
+  # Official Vagrant insecure public keys (matches ~/.vagrant.d/insecure_private_key*):
+  # https://github.com/hashicorp/vagrant/blob/main/keys/vagrant.pub
+  $script = <<~'VAGRANT_SCRIPT'
+    echo I am provisioning...
+    date > /etc/vagrant_provisioned_at
+    install -d -m 700 -o vagrant -g vagrant /home/vagrant/.ssh
+    AUTH=/home/vagrant/.ssh/authorized_keys
+    touch "$AUTH"
+    chown vagrant:vagrant "$AUTH"
+    chmod 600 "$AUTH"
+    KEY_RSA='ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key'
+    KEY_ED25519='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN1YdxBpNlzxDqfJyw/QKow1F+wvG9hXGoqiysfJOn5Y vagrant insecure public key'
+    grep -qxF "$KEY_RSA" "$AUTH" || echo "$KEY_RSA" >> "$AUTH"
+    grep -qxF "$KEY_ED25519" "$AUTH" || echo "$KEY_ED25519" >> "$AUTH"
+    chown vagrant:vagrant "$AUTH"
+  VAGRANT_SCRIPT
 
-  # --- PROVIDERS --------------------------------------------------------
+  # --- PLUGINS ---------------------------------------------------------------
 
-  # VirtualBox provider (only actually used if VirtualBox is the selected provider)
-  config.vm.provider "virtualbox" do |v|
-    v.memory = vm_settings[:memory]
-    v.cpus   = vm_settings[:cpus]
-  end
-
-  # Libvirt/KVM provider (only define if plugin is installed)
-  if Vagrant.has_plugin?("vagrant-libvirt")
-    config.vm.provider "libvirt" do |l|
-      l.memory = vm_settings[:memory]
-      l.cpus   = vm_settings[:cpus]
-      l.driver = "kvm"
-
-      #l.management_network_name = "vagrant-56"
-      # You can keep this on or off; with fixed IPs it’s not required:
-      # l.qemu_use_agent = true
-    end
-  end
-
-  # --- PLUGINS ----------------------------------------------------------
-
-  # Vbguest auto-update but only if plugin is present (defaulted to off)
   if Vagrant.has_plugin?("vagrant-vbguest")
     config.vbguest.auto_update = false
   end
 
-  # --- MACHINES ---------------------------------------------------------
+  # --- MACHINES --------------------------------------------------------------
 
   vm_settings[:machines].each do |machine|
-    config.vm.define machine[:name] do |vm|
-      vm.vm.hostname         = machine[:name]
-      vm.vm.box              = vm_settings[:box]
-      vm.vm.box_check_update = false
+    config.vm.define machine[:name] do |node|
+      node.vm.hostname         = machine[:name]
+      node.vm.box              = vm_settings[:box]
+      node.vm.box_check_update = false
 
-      # NOTE: no "ip:" here – let DHCP assign based on MAC
-      vm.vm.network "private_network",
-                    type: "dhcp",
-                    libvirt__network_name: "vagrant-56",
-                    libvirt__mac: machine[:mac],
-                    libvirt__mgmt_network: "none"
-
-      vm.vm.provision "shell", inline: $script
-
-      # Cleanup known_hosts entry after destruction
-      vm.trigger.after :destroy do |trigger|
-        trigger.info = "Removing known_hosts entry for #{machine[:name]}"
-        trigger.on_error = :continue
-        trigger.run = {
-          inline: "ssh-keygen -R #{machine[:name]}"
-        }
+      node.vm.provider "virtualbox" do |v, o|
+        v.memory = vm_settings[:memory]
+        v.cpus   = vm_settings[:cpus]
+        o.vm.network "private_network",
+                     ip: machine[:ip_virtualbox],
+                     netmask: "255.255.255.0",
+                     auto_config: true
+        v.customize ["modifyvm", :id, "--macaddress2", machine[:mac].delete(":")]
       end
 
+      if Vagrant.has_plugin?("vagrant-libvirt")
+        node.vm.provider "libvirt" do |l, o|
+          l.memory = vm_settings[:memory]
+          l.cpus   = vm_settings[:cpus]
+          l.driver = "kvm"
+          o.vm.network "private_network",
+                       ip: machine[:ip_libvirt],
+                       netmask: "255.255.255.0",
+                       auto_config: true,
+                       libvirt__network_name: "vagrant-56",
+                       libvirt__mac: machine[:mac],
+                       libvirt__mgmt_network: "none"
+        end
+      end
 
+      node.vm.provision "shell", inline: $script
+
+      node.trigger.after :destroy do |trigger|
+        trigger.info = "Removing known_hosts entry for #{machine[:name]}"
+        trigger.on_error = :continue
+        trigger.run = { inline: "ssh-keygen -R #{machine[:name]}" }
+      end
     end
   end
 end

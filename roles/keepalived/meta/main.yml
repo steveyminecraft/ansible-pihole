@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: keepalived
+  author: your_name
+  description: Keepalived VRRP for Pi-hole high availability.
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: ["all"]
+    - name: Ubuntu
+      versions: ["all"]
+  galaxy_tags:
+    - keepalived
+    - ha
+
+dependencies: []

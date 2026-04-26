@@ -1,9 +1,8 @@
 ---
-# molecule/default/molecule.yml
+# Molecule scenario: Rocky-style image + full stack (see converge.yml).
 dependency:
-  name: galaxy
-  options:
-    role-file: requirements.yml
+  name: shell
+  command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
 driver:
   name: vagrant
 platforms:
@@ -28,30 +27,35 @@ platforms:
 
 provisioner:
   name: ansible
-  options:
-    vvv: true
   connection_options:
     ansible_ssh_user: vagrant
-    ansible_password: vagrant
+    # Rocky 9/10 images commonly disable password SSH for vagrant; use Vagrant's insecure key
+    # (the Vagrantfile provisions the matching public key into vagrant's authorized_keys).
+    ansible_ssh_private_key_file: ${HOME}/.vagrant.d/insecure_private_key
+    ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     ansible_become: true
   inventory:
     links:
-      hosts: ../../inventory/vagrant.yml
-      #group_vars: ../../group_vars/
-      #host_vars: ../../host_vars/
+      hosts: ../../inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}
   playbooks:
+    create: create.yml
+    prepare: prepare.yml
     converge: converge.yml
+    verify: verify.yml
+    destroy: destroy.yml
   env:
-    ANSIBLE_ROLES_PATH: ../../roles/
+    ANSIBLE_INJECT_FACTS_AS_VARS: "false"
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
 verifier:
   name: ansible
 scenario:
   name: default
   test_sequence:
     - dependency
+    - syntax
     - create
     - prepare
     - converge
     - verify
     - destroy
-

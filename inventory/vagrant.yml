@@ -1,4 +1,9 @@
 ---
+# VirtualBox (192.168.56.0/24): use this file. For libvirt/KVM use
+# `inventory/vagrant_libvirt.yml` (192.168.121.0/24) — see `ip_virtualbox` / `ip_libvirt`
+# in `molecule/*/Vagrantfile`.
+# Molecule defaults to this file; for libvirt set MOLECULE_VAGRANT_INVENTORY=vagrant_libvirt.yml
+# or run via `scripts/molecule-vagrant` with VAGRANT_DEFAULT_PROVIDER=libvirt.
 all:
   hosts:
     vagrant-pihole-01:
@@ -12,17 +17,23 @@ all:
       priority: 100
       keepalive_role: BACKUP
   vars:
+    # Required by roles/pihole (docker-pihole): compose dir is not defaulted; align with role pihole_dir_loc
+    pihole_compose_dir: "/opt/pihole"
     ansible_user: vagrant
     ansible_password: vagrant  # only used on first run
+    # Avoid failing on local /etc/ssh/ssh_config* permission issues; also suppress hostkey prompts.
+    ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     password_lock: false  # Change to false if you still wish to login via passwd auth
     ansible_user_home_dir: /home/{{ ansible_user }}
     ansible_python_interpreter: /usr/bin/python3
     github_user_for_ssh_key: steveyminecraft  # Change me to required value
     pihole_image: "pihole/pihole:latest"
     timezone: "Europe/London"
-    webport_http: '80'  # Port for HTTP-Requests to Webinterface.
-    webport_https: '443'  # Port for HTTPS-DoH Requests.
-    firewall_deploy: true  # will ensure firewalld is install and configured
+    pihole_webport_http: '80'  # Port for HTTP-Requests to Webinterface.
+    pihole_webport_https: '443'  # Port for HTTPS-DoH Requests.
+    pihole_firewall_deploy: false  # will ensure firewalld is install and configured
+    # Rocky/Vagrant debug: bypass Docker bridge and publish directly on host namespace
+    pihole_use_host_network: true
     DHCP_ACTIVE: false
     pihole_environment_variables:
       TZ: "{{ timezone }}"
@@ -33,6 +44,8 @@ all:
       REV_SERVER: false
       REV_SERVER_CIDR: "192.168.56.0/24"
       REV_SERVER_TARGET: "192.168.56.1"
+      PIHOLE_DNS_: "1.1.1.1;8.8.8.8"
+      DNSMASQ_LISTENING: "all"
     pihole_ha_mode: true
     pihole_vip_ipv4: "192.168.56.10/24"
     pihole_vip_ipv6: "fd00::10/64"
@@ -52,3 +65,4 @@ all:
     pihole_upstream_dns: "{{ unbound_container_name }}#{{ unbound_port }}"
     pihole_network_name: "{{ unbound_network_name }}"
     pihole_network_external: true
+    pihole_rocky_network_debug: true

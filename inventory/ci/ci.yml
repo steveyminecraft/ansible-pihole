@@ -1,5 +1,9 @@
 ---
+# `ci` is used by playbooks/ci-bootstrap.yaml; `all` still includes these hosts for
+# playbooks that target all (syntax-check, bootstrap-pihole, etc.).
 all:
-  hosts:
-    localhost:
-      ansible_connection: local
+  children:
+    ci:
+      hosts:
+        localhost:
+          ansible_connection: local

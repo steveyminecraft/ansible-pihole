@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: stop_keepalived
+  author: your_name
+  description: Stop keepalived to release VIP before maintenance.
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: ["all"]
+    - name: Ubuntu
+      versions: ["all"]
+  galaxy_tags:
+    - stopkeepalived
+    - drain
+    - ha
+
+dependencies: []

@@ -130,6 +130,10 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv-ci
+.venv-pr
+.venv-verify
+.vscode/
 env/
 venv/
 ENV/

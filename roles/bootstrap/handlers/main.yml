@@ -1,8 +1,10 @@
 ---
 - name: Reboot after hostname change
   reboot:
+  when: not ansible_check_mode
 
 - name: Restart dhcpcd
   service:
     name: dhcpcd
     state: restarted
+  when: not ansible_check_mode

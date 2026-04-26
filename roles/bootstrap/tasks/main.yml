@@ -4,6 +4,8 @@
     key: https://github.com/{{ github_user_for_ssh_key }}.keys
     user: "{{ ansible_user }}"
     comment: "github-{{ github_user_for_ssh_key }}"
+  # authorized_key cannot validate remote https:// URLs in check mode (CI uses --check).
+  when: not ansible_check_mode
 
 - name: "Lock password for {{ ansible_user }}"
   user:
@@ -15,10 +17,14 @@
   blockinfile:
     path: "{{ ansible_user_home_dir }}/.bashrc"
     block: alias ll='ls -la'
+    create: true
+    mode: "0644"
 
 - name: Bashrc for "{{ ansible_user }}"
   blockinfile:
     path: "{{ ansible_user_home_dir }}/.bashrc"
+    create: true
+    mode: "0644"
     block: |
       export LS_OPTIONS='--color=auto'
       eval "`dircolors`"
@@ -39,23 +45,26 @@
     path: /etc/timezone
     regexp: "^"
     line: "{{ timezone }}"
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Set localtime
   file:
     src: /usr/share/zoneinfo/{{ timezone }}
     dest: /etc/localtime
     state: link
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: "Set timezone to {{ timezone }}"
   community.general.timezone:
     name: "{{ timezone }}"
+  # Uses hwclock; skip in check mode so CI and slim images do not need that binary.
+  when: not ansible_check_mode
 
 - name: Set a hostname
   ansible.builtin.hostname:
     name: "{{ inventory_hostname }}"
     use: systemd
+  when: not ansible_check_mode
 
 - name: Set hostname
   lineinfile:
@@ -63,7 +72,7 @@
     regexp: "^"
     line: "{{ inventory_hostname }}"
   notify: Reboot after hostname change
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Set hosts
   lineinfile:
@@ -77,7 +86,7 @@
     path: /etc/dhcpcd.conf
     block: static domain_name_servers={{ static_dns }}
   notify: Restart dhcpcd
-  when: ansible_distribution == 'Debian'and ansible_architecture == 'aarch64'
+  when: ansible_facts['os_family'] == 'Debian' and ansible_facts['architecture'] == 'aarch64'
 
 - name: Install requirements Debian
   ansible.builtin.apt:
@@ -85,15 +94,15 @@
       - firewalld
       - python3-pip
     update_cache: true
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
-- name: Install keepalived Rocky
+- name: Install keepalived / requirements (RedHat family)
   ansible.builtin.dnf:
     name:
       - python3-pip
       - bind-utils
     state: present
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+  when: ansible_facts['os_family'] == 'RedHat'
 
 
 - name: Flush handlers

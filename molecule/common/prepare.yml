@@ -1,0 +1,41 @@
+---
+# Shared Molecule prepare: minimal packages for Ansible + verification (dig, ip).
+- name: Prepare instances for Ansible and tests
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Install Python and DNS tools (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-apt
+          - python3-requests
+          - python3-packaging
+          - dnsutils
+          - iproute2
+        update_cache: true
+        state: present
+      when: ansible_facts['os_family'] == 'Debian'
+
+    - name: Install Python and DNS tools (RedHat family)
+      ansible.builtin.dnf:
+        name:
+          - python3
+          - python3-requests
+          - python3-packaging
+          - bind-utils
+          - iproute
+        state: present
+      when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Stop PackageKit and DNF makecache (RedHat family)
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      loop:
+        - packagekit
+        - dnf-makecache.timer
+        - dnf-makecache.service
+      failed_when: false
+      when: ansible_facts['os_family'] == 'RedHat'

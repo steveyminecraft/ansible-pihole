@@ -1,3 +1,3 @@
 ---
-- import_playbook: ../../playbooks/bootstrap-pihole.yaml
-- import_playbook: ../../playbooks/sync.yaml
+- name: Converge — bootstrap Pi-hole stack
+  import_playbook: ../../playbooks/bootstrap-pihole.yaml

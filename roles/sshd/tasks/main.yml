@@ -2,12 +2,12 @@
 - name: Set correct handler for RedHat family
   ansible.builtin.set_fact:
     sshd_target_handler: Restart_SSHD
-  when: ansible_distribution in ['Rocky', 'Red Hat Enterprise Linux']
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Set correct handler for Debian family
   ansible.builtin.set_fact:
     sshd_target_handler: Restart_SSH
-  when: ansible_distribution in ['Ubuntu', 'Debian']
+  when: ansible_facts['os_family'] == 'Debian'
 
 # Required for Ubuntu to stop freaking out
 - name: Ensure sshd runtime directory exists
@@ -18,7 +18,7 @@
     owner: root
     group: root
     mode: '0755'
-  when: ansible_distribution in ['Ubuntu', 'Debian']
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Configure sshd
   lineinfile:

@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "**/roles/**/tasks/**/*.yml": "ansible",
+    "**/roles/**/tasks/**/*.yaml": "ansible",
+    "**/roles/**/handlers/**/*.yml": "ansible",
+    "**/roles/**/handlers/**/*.yaml": "ansible"
+  }
+}

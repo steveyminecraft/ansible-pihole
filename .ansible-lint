@@ -7,11 +7,11 @@ exclude_paths:
   - .cache/
   - .github/
   - .ansible/
-  - molecule/
   - roles/**/.molecule/
-  - roles/pihole
+  # Installed from roles/requirements.yml (gitignored); lint upstream in docker-pihole.
+  - roles/pihole/
   - collections/
-  - inventroy/inventory.yaml
+  - inventory/inventory.yaml
   - playbooks/display.yaml
 
 skip_list:

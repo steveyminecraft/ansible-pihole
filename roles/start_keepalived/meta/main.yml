@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: start_keepalived
+  author: your_name
+  description: Start keepalived after maintenance.
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: ["all"]
+    - name: Ubuntu
+      versions: ["all"]
+  galaxy_tags:
+    - startkeepalived
+    - resume
+    - ha
+
+dependencies: []

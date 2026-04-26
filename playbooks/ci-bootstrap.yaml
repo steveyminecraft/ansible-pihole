@@ -1,11 +1,14 @@
 ---
 - name: CI sanity check for ansible-pihole
-  hosts: ci
+  hosts: "{{ ci_target_hosts | default('ci') }}"
   gather_facts: true
   become: true
 
   # Keep this minimal and safe for generic Ubuntu runners
   vars:
+    _ci_ansible_user: "{{ lookup('env', 'USER') | default('runner', true) }}"
+    ansible_user: "{{ _ci_ansible_user }}"
+    ansible_user_home_dir: "{{ '/root' if _ci_ansible_user == 'root' else '/home/' ~ _ci_ansible_user }}"
     # Set simple/default-ish vars so roles don’t blow up
     github_user_for_ssh_key: "root"
     timezone: "Etc/UTC"
@@ -17,8 +20,17 @@
     password_lock: false
     # Point Pi-hole image at something valid, but we're in --check anyway
     pihole_image: "pihole/pihole:latest"
+    pihole_compose_dir: "/opt/pihole"
 
   roles:
-    - bootstrap
-    - docker
-    - pihole
+    - role: bootstrap
+      tags: [bootstrap, system]
+    # In --check mode, apt repo changes aren't applied, which makes Docker packages
+    # appear "missing" and fails the dry-run. Docker is exercised elsewhere (lint/molecule);
+    # CI check-mode should stay side-effect free.
+    - role: docker
+      tags: [docker, container]
+      when: not ansible_check_mode
+    - role: pihole
+      tags: [pihole, dns]
+      when: not ansible_check_mode

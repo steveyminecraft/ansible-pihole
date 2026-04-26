@@ -6,13 +6,20 @@
     autoremove: true
     update_cache: true
     upgrade: dist
-  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
-- name: Upgrade dnf packages
-  ansible.builtin.yum:
-    name: '*'
+- name: Clean DNF cache (RedHat family)
+  ansible.builtin.command: dnf clean all
+  changed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Upgrade DNF packages (RedHat family)
+  ansible.builtin.dnf:
+    name: "*"
     state: latest  # noqa package-latest
-  when: ansible_distribution == 'Rocky' or ansible_distribution == 'Red Hat Enterprise Linux'
+    update_cache: true
+    lock_timeout: 300
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Updates Reboot
   stat:

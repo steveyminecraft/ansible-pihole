@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: updates
+  author: your_name
+  description: System package updates (apt and related).
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: ["all"]
+    - name: Ubuntu
+      versions: ["all"]
+  galaxy_tags:
+    - updates
+    - system
+
+dependencies: []

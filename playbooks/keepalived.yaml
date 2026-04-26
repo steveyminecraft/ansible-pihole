@@ -4,6 +4,9 @@
   become: true
   serial: 1
   roles:
-    - stop_keepalived
-    - keepalived
-    - start_keepalived
+    - role: stop_keepalived
+      tags: [stopkeepalived, drain, ha]
+    - role: keepalived
+      tags: [keepalived, ha]
+    - role: start_keepalived
+      tags: [startkeepalived, resume, ha]

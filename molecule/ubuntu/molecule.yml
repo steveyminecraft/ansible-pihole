@@ -1,12 +1,13 @@
 ---
-# molecule/ubuntu/molecule.yml
+# Molecule scenario: Ubuntu 24.04 + full stack (see converge.yml).
 dependency:
-  name: galaxy
-  options:
-    role-file: requirements.yml
+  name: shell
+  # Roles + collections (ansible.posix from git via CLI — see script; avoids galaxy semver + git ref bug).
+  command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
 driver:
   name: vagrant
 platforms:
+  # Private IP in molecule.yml matches VirtualBox; libvirt uses .121.x (see Vagrantfile + inventory).
   - name: vagrant-pihole-01
     box: "bento/ubuntu-24.04"
     hostname: vagrant-pihole-01
@@ -28,30 +29,32 @@ platforms:
 
 provisioner:
   name: ansible
-  options:
-    vvv: true
   connection_options:
     ansible_ssh_user: vagrant
     ansible_password: vagrant
     ansible_become: true
   inventory:
     links:
-      hosts: ../../inventory/vagrant.yml
-      #group_vars: ../../group_vars/
-      #host_vars: ../../host_vars/
+      hosts: ../../inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}
   playbooks:
+    create: create.yml
+    prepare: prepare.yml
     converge: converge.yml
+    verify: verify.yml
+    destroy: destroy.yml
   env:
-    ANSIBLE_ROLES_PATH: ../../roles/
+    ANSIBLE_INJECT_FACTS_AS_VARS: "false"
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
 verifier:
   name: ansible
 scenario:
   name: ubuntu
   test_sequence:
     - dependency
+    - syntax
     - create
     - prepare
     - converge
     - verify
     - destroy
-

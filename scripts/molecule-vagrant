@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Align Molecule inventory with the Vagrant provider (VirtualBox vs libvirt).
+#
+# Interactive (no args): pick a provider, see the env + molecule commands, optionally run tests.
+# Pass-through: forwards to molecule after setting MOLECULE_VAGRANT_INVENTORY from
+#   VAGRANT_DEFAULT_PROVIDER (same as before).
+#
+# Examples:
+#   ./scripts/molecule-vagrant
+#   VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s ubuntu
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+
+sync_inventory_from_provider() {
+  case "${VAGRANT_DEFAULT_PROVIDER:-virtualbox}" in
+    libvirt|kvm)
+      export MOLECULE_VAGRANT_INVENTORY="${MOLECULE_VAGRANT_INVENTORY:-vagrant_libvirt.yml}"
+      ;;
+    *)
+      export MOLECULE_VAGRANT_INVENTORY="${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}"
+      ;;
+  esac
+}
+
+if [[ $# -gt 0 ]]; then
+  sync_inventory_from_provider
+  exec molecule "$@"
+fi
+
+echo "Molecule + Vagrant — pick a provider (inventory + VM network must match):"
+echo "  1) VirtualBox  (inventory/vagrant.yml, 192.168.56.x)"
+echo "  2) libvirt / KVM (inventory/vagrant_libvirt.yml, 192.168.121.x)"
+read -r -p "Choice [1-2]: " choice
+
+case "$choice" in
+  1)
+    provider="virtualbox"
+    inventory="vagrant.yml"
+    ;;
+  2)
+    provider="libvirt"
+    inventory="vagrant_libvirt.yml"
+    ;;
+  *)
+    echo "Invalid choice." >&2
+    exit 1
+    ;;
+esac
+
+echo ""
+echo "From the repo root ($repo_root), run:"
+echo ""
+echo "  export VAGRANT_DEFAULT_PROVIDER=$provider"
+echo "  export MOLECULE_VAGRANT_INVENTORY=$inventory"
+echo "  cd \"$repo_root\""
+echo "  molecule test -s ubuntu"
+echo ""
+echo "One line (same effect):"
+echo ""
+echo "  cd \"$repo_root\" && VAGRANT_DEFAULT_PROVIDER=$provider MOLECULE_VAGRANT_INVENTORY=$inventory molecule test -s ubuntu"
+echo ""
+echo "Using this helper instead of manual exports:"
+echo ""
+echo "  cd \"$repo_root\" && VAGRANT_DEFAULT_PROVIDER=$provider ./scripts/molecule-vagrant test -s ubuntu"
+echo ""
+echo "Other scenario (Rocky, etc.): replace -s ubuntu with -s default"
+echo ""
+
+read -r -p "Run \`molecule test -s ubuntu\` now with this provider? [y/N] " run_now
+case "${run_now,,}" in
+  y|yes)
+    cd "$repo_root"
+    export VAGRANT_DEFAULT_PROVIDER="$provider"
+    export MOLECULE_VAGRANT_INVENTORY="$inventory"
+    exec molecule test -s ubuntu
+    ;;
+  *)
+    exit 0
+    ;;
+esac

@@ -27,7 +27,7 @@
 - name: Pull docker image
   community.docker.docker_image_pull:
     name: "{{ nebula_sync_image }}:{{ nebula_sync_image_tag }}"
-    platform: "{{ ansible_architecture }}"
+    platform: "{{ ansible_facts['architecture'] }}"
 
 - name: Bring up nebula-sync with Docker Compose v2
   ansible.builtin.command:

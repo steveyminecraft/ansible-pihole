@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  role_name: bootstrap
+  author: your_name
+  description: Base Raspberry Pi / Debian bootstrap (SSH, timezone, users).
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: ["all"]
+    - name: Ubuntu
+      versions: ["all"]
+  galaxy_tags:
+    - bootstrap
+    - system
+
+dependencies: []

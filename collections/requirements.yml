@@ -1,6 +1,14 @@
 ---
+# Galaxy-only collections (semver). ansible.posix is installed separately — see
+# scripts/install-ansible-collections.sh (git install avoids resolver bugs with git SHAs in YAML).
+# When https://github.com/ansible-collections/ansible.posix/pull/690 is released, add:
+#   - name: ansible.posix
+#     version: ">=2.2.0"
+# and remove the git step from the script.
 collections:
-  - name: ansible.posix
   - name: community.docker
+    version: ">=3.10.0"
   - name: community.crypto
+    version: ">=2.20.0"
   - name: community.general
+    version: ">=9.0.0"

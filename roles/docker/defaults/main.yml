@@ -1,0 +1,16 @@
+---
+# Default to disabling IPv6 on EL guests because DNF/HTTPS can hang
+# when the VirtualBox guest has misrouted IPv6 connectivity.
+docker_disable_ipv6: true
+
+# Extra repo connectivity diagnostics are off by default (only used when debugging).
+docker_repo_diagnostics: false
+
+# Whether Docker should manage iptables rules itself. In some VM kernels
+# (e.g. VirtualBox guests) required xtables matches may be unavailable.
+docker_manage_iptables: "{{ not (vagrant_env | default(false) | bool) }}"
+
+# When Docker iptables is off on EL, discover IPv4 subnets (docker network inspect) and add
+# nftables masquerade per subnet (iptables MASQUERADE is unreliable on EL9+ nf_tables); re-run
+# after compose so project networks exist. Falls back to 172.16.0.0/12 if discovery is empty.
+docker_el_nat_fallback: true

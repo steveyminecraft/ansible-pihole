@@ -1,0 +1,3 @@
+---
+- name: Destroy test platforms (Vagrant)
+  import_playbook: ../default/destroy.yml

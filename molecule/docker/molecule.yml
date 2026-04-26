@@ -1,0 +1,59 @@
+---
+# Molecule scenario: Docker role only (fast iteration).
+dependency:
+  name: shell
+  command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
+driver:
+  name: vagrant
+platforms:
+  - name: vagrant-pihole-01
+    box: "local/rocky10-kvm"
+    hostname: vagrant-pihole-01
+    interfaces:
+      - network_name: private_network
+        type: static
+        ip: 192.168.56.4
+    memory: 2048
+    cpus: 2
+  - name: vagrant-pihole-02
+    box: "local/rocky10-kvm"
+    hostname: vagrant-pihole-02
+    interfaces:
+      - network_name: private_network
+        type: static
+        ip: 192.168.56.5
+    memory: 2048
+    cpus: 2
+
+provisioner:
+  name: ansible
+  connection_options:
+    ansible_ssh_user: vagrant
+    ansible_ssh_private_key_file: ${HOME}/.vagrant.d/insecure_private_key
+    ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    ansible_become: true
+  inventory:
+    links:
+      hosts: ../../inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}
+  playbooks:
+    create: create.yml
+    prepare: prepare.yml
+    converge: converge.yml
+    destroy: destroy.yml
+  env:
+    ANSIBLE_INJECT_FACTS_AS_VARS: "false"
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
+
+verifier:
+  name: ansible
+
+scenario:
+  name: docker
+  test_sequence:
+    - dependency
+    - syntax
+    - create
+    - prepare
+    - converge
+    - destroy
