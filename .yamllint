@@ -22,4 +22,6 @@ ignore:
   - .venv
   - .venv-ci
   - .venv-pr
+  - .venv-verify
+  - roles/pihole
   - inventory/inventory.yaml
