@@ -21,7 +21,7 @@
     pkg:
       - keepalived
     force_apt_get: true
-  when: ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Install keepalived Rocky
   yum:
@@ -32,13 +32,13 @@
       - policycoreutils-python-utils
       - python3-pip
     state: present
-  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Change the keepalived_t domain to permissive
   community.general.selinux_permissive:
     name: keepalived_t
     permissive: true
-  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+  when: ansible_facts['os_family'] == 'RedHat'
 
 # Since yum doesn't like using notify because yum we have to this instead
 - name: Start service keepalived started, if not started
@@ -46,7 +46,7 @@
     name: keepalived
     state: stopped
     enabled: true
-  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Copy check_pihole.sh
   copy:
@@ -107,7 +107,7 @@
     replace: 'eth1'
   when:
     - vagrant_env | default(false) | bool
-    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - ansible_facts['os_family'] == 'RedHat'
     - ansible_facts['distribution_major_version'] is version('9', '=')
 
 # Fixes issues with ens5 being used for the vagrant vm access interfering with the code pick up of the primary interface
@@ -118,7 +118,7 @@
     replace: 'ens6'
   when:
     - vagrant_env | default(false) | bool
-    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+    - ansible_facts['os_family'] == 'RedHat'
     - ansible_facts['distribution_major_version'] is version('10', '=')
 
 ### Add in firewall rules for vrrp protocol

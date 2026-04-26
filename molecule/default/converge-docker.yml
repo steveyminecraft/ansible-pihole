@@ -1,0 +1,10 @@
+---
+- name: Converge — docker role only
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    docker_manage_iptables: false
+  roles:
+    - role: docker
+

@@ -21,6 +21,8 @@ all:
     pihole_compose_dir: "/opt/pihole"
     ansible_user: vagrant
     ansible_password: vagrant  # only used on first run
+    # Avoid failing on local /etc/ssh/ssh_config* permission issues; also suppress hostkey prompts.
+    ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     password_lock: false  # Change to false if you still wish to login via passwd auth
     ansible_user_home_dir: /home/{{ ansible_user }}
     ansible_python_interpreter: /usr/bin/python3

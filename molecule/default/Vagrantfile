@@ -6,7 +6,7 @@ Vagrant.configure("2") do |config|
   # override ip_libvirt if your KVM network differs. Match inventory file to provider.
   vm_settings = {
     box: "rockylinux/10",
-    memory: 2048,
+    memory: 4096,
     cpus: 4,
     machines: [
       { name: "vagrant-pihole-01", mac: "52:54:00:56:00:04",
@@ -17,11 +17,22 @@ Vagrant.configure("2") do |config|
   }
 
   ### DEFINE SCRIPT ###
-  $script = <<-SCRIPT
-  echo I am provisioning...
-  date > /etc/vagrant_provisioned_at
-  # PUT EXTRA OPTIONS IN HERE
-  SCRIPT
+  # Official Vagrant insecure public keys (matches ~/.vagrant.d/insecure_private_key*):
+  # https://github.com/hashicorp/vagrant/blob/main/keys/vagrant.pub
+  $script = <<~'VAGRANT_SCRIPT'
+    echo I am provisioning...
+    date > /etc/vagrant_provisioned_at
+    install -d -m 700 -o vagrant -g vagrant /home/vagrant/.ssh
+    AUTH=/home/vagrant/.ssh/authorized_keys
+    touch "$AUTH"
+    chown vagrant:vagrant "$AUTH"
+    chmod 600 "$AUTH"
+    KEY_RSA='ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key'
+    KEY_ED25519='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN1YdxBpNlzxDqfJyw/QKow1F+wvG9hXGoqiysfJOn5Y vagrant insecure public key'
+    grep -qxF "$KEY_RSA" "$AUTH" || echo "$KEY_RSA" >> "$AUTH"
+    grep -qxF "$KEY_ED25519" "$AUTH" || echo "$KEY_ED25519" >> "$AUTH"
+    chown vagrant:vagrant "$AUTH"
+  VAGRANT_SCRIPT
 
   # --- PLUGINS ---------------------------------------------------------------
 

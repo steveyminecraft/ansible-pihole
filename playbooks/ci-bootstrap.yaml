@@ -1,6 +1,6 @@
 ---
 - name: CI sanity check for ansible-pihole
-  hosts: ci
+  hosts: "{{ ci_target_hosts | default('ci') }}"
   gather_facts: true
   become: true
 

@@ -1,5 +1,5 @@
 ---
-# Molecule scenario: Rocky-style image + full stack (see converge.yml).
+# Molecule scenario: Docker role only (fast iteration).
 dependency:
   name: shell
   command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
@@ -29,8 +29,6 @@ provisioner:
   name: ansible
   connection_options:
     ansible_ssh_user: vagrant
-    # Rocky 9/10 images commonly disable password SSH for vagrant; use Vagrant's insecure key
-    # (the Vagrantfile provisions the matching public key into vagrant's authorized_keys).
     ansible_ssh_private_key_file: ${HOME}/.vagrant.d/insecure_private_key
     ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     ansible_become: true
@@ -41,21 +39,22 @@ provisioner:
     create: create.yml
     prepare: prepare.yml
     converge: converge.yml
-    verify: verify.yml
     destroy: destroy.yml
   env:
     ANSIBLE_INJECT_FACTS_AS_VARS: "false"
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
     ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
+
 verifier:
   name: ansible
+
 scenario:
-  name: default
+  name: docker
   test_sequence:
     - dependency
     - syntax
     - create
     - prepare
     - converge
-    - verify
     - destroy
+
