@@ -7,7 +7,7 @@
       - curl
       - gnupg2
       - software-properties-common
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 # Use deb822 + keyring (Docker / Ubuntu 24+). ansible.builtin.apt_repository has mangled
 # signed-by lines in the wild, leaving docker-compose-plugin out of the apt index.
@@ -35,7 +35,7 @@
           or ansible_facts.get('lsb', {}).get('codename', '')
         ) | trim
       }}
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Ensure Debian/Ubuntu release codename is known for Docker CE apt
   ansible.builtin.assert:
@@ -43,27 +43,28 @@
       - docker_apt_suite | length > 0
     fail_msg: >-
       Need distribution_release or lsb.codename to configure Docker's apt source (got empty).
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Ensure Docker apt keyring directory exists
   ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
     mode: "0755"
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Install Docker CE apt signing key (keyring)
   ansible.builtin.get_url:
     url: https://download.docker.com/linux/{{ docker_apt_linux_path }}/gpg
     dest: /etc/apt/keyrings/docker.asc
     mode: "0644"
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+    timeout: 45
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Remove legacy one-line Docker list from this role (avoid duplicate stanzas)
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/docker.list
     state: absent
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Configure Docker CE apt source (deb822)
   ansible.builtin.copy:
@@ -76,13 +77,13 @@
       Components: stable
       Signed-By: /etc/apt/keyrings/docker.asc
       Architectures: {{ docker_apt_deb_arch }}
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Refresh apt index after Docker CE source
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 0
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Disable kernel IPv6 (Rocky/EL) — avoids DNF/HTTPS stalls when guest IPv6 is misrouted
   ansible.posix.sysctl:
@@ -96,8 +97,8 @@
     - { name: net.ipv6.conf.default.disable_ipv6, value: "1" }
     - { name: net.ipv6.conf.lo.disable_ipv6, value: "0" }
   when:
-    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
-    - docker_disable_ipv6 | bool
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_disable_ipv6 | default(false) | bool
 
 # dnf-plugins-core provides `dnf config-manager` (EL8+). DNF still loads *.repo from /etc/yum.repos.d/.
 - name: "Install dependencies Red Hat (DNF)"
@@ -105,17 +106,18 @@
     name:
       - dnf-plugins-core
       - python3-pip
+      - python3-packaging
       - bind-utils
       - gnupg2
     state: present
     lock_timeout: 300
-  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Import Docker CE RPM signing key
   ansible.builtin.rpm_key:
     key: https://download.docker.com/linux/rhel/gpg
     state: present
-  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+  when: ansible_facts['os_family'] == 'RedHat'
 
 # Official repo file (same as `dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo`).
 # Ref: https://docs.docker.com/engine/install/rhel/
@@ -124,7 +126,23 @@
     url: https://download.docker.com/linux/rhel/docker-ce.repo
     dest: /etc/yum.repos.d/docker-ce.repo
     mode: "0644"
-  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+    timeout: 45
+  register: _docker_ce_repo
+  retries: 3
+  delay: 3
+  until: _docker_ce_repo is succeeded
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install Docker CE repository for DNF (fallback via curl)
+  ansible.builtin.command:
+    cmd: >-
+      curl -fsSL --connect-timeout 10 --max-time 45
+      https://download.docker.com/linux/rhel/docker-ce.repo
+      -o /etc/yum.repos.d/docker-ce.repo
+  changed_when: true
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - _docker_ce_repo is failed
 
 - name: (docker) Compute repodata URL for preflight
   ansible.builtin.set_fact:
@@ -132,8 +150,8 @@
       {{ 'https://download.docker.com/linux/rhel/' ~ ansible_distribution_major_version ~ '/'
       ~ ansible_architecture ~ '/stable/repodata/repomd.xml' }}
   when:
-    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
-    - docker_repo_diagnostics | bool
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_repo_diagnostics | default(false) | bool
 
 # HTTPS from the guest; fails fast on DNS / TLS / routing (clearer than a silent hang in dnf).
 - name: (docker) Preflight — reach Docker CE repodata
@@ -145,8 +163,8 @@
     timeout: 45
   register: _docker_repodata_uri
   when:
-    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
-    - docker_repo_diagnostics | bool
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_repo_diagnostics | default(false) | bool
 
 - name: (docker) Preflight result
   ansible.builtin.debug:
@@ -155,24 +173,8 @@
       - "http status: {{ _docker_repodata_uri.status | default('?') }} elapsed={{ _docker_repodata_uri.elapsed | default('?') }}s (uri module)"
   changed_when: false
   when:
-    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
-    - docker_repo_diagnostics | bool
-
-- name: Refresh DNF cache (Docker CE repo + bases)
-  ansible.builtin.dnf:
-    update_cache: true
-    cache_valid_time: 0
-    lock_timeout: 300
-  register: _docker_dnf_refresh
-  when: ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
-
-- name: (docker) DNF refresh (verbose, diagnostics)
-  ansible.builtin.debug:
-    msg: "dnf update_cache changed={{ _docker_dnf_refresh.changed | default(false) }}"
-  changed_when: false
-  when:
-    - ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
-    - docker_repo_diagnostics | bool
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_repo_diagnostics | default(false) | bool
 
 - name: Install Docker Debian
   ansible.builtin.apt:
@@ -185,7 +187,7 @@
       - python3-setuptools
       - python3-pip
     install_recommends: false
-  when: ansible_facts['distribution'] == 'Debian' or ansible_facts['distribution'] == 'Ubuntu'
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Install Docker CE packages (Rocky / RHEL via DNF)
   ansible.builtin.dnf:
@@ -194,20 +196,97 @@
       - docker-ce-cli
       - containerd.io
       - docker-compose-plugin
-    state: present
-    update_cache: false
+    state: latest
+    update_cache: true
     lock_timeout: 300
     allowerasing: true
     install_weak_deps: false
-  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install kernel modules extras for iptables (RedHat family)
+  ansible.builtin.dnf:
+    name:
+      - kernel-modules-extra
+    state: present
+    lock_timeout: 300
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Load required kernel modules for Docker networking (RedHat family)
+  ansible.builtin.command: "modprobe {{ item }}"
+  loop:
+    - overlay
+    - bridge
+    - br_netfilter
+    - xt_addrtype
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Enable IPv4 forwarding (RedHat family)
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: true
+    reload: true
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Configure Docker daemon to not manage iptables (VirtualBox/vagrant workaround)
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+    content: |
+      {
+        "iptables": false,
+        "ip6tables": false
+      }
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - not docker_manage_iptables | bool
+
+- name: Check if bridge netfilter sysctl exists (RedHat family)
+  ansible.builtin.stat:
+    path: /proc/sys/net/bridge/bridge-nf-call-iptables
+  register: _docker_bridge_nf_sysctl
+  changed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Enable bridge netfilter for iptables (RedHat family)
+  ansible.posix.sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: "1"
+    sysctl_set: true
+    reload: true
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - _docker_bridge_nf_sysctl.stat.exists
 
 # Handler ordering: ensure service after DNF install
+- name: Reset Docker systemd start-limit (RedHat family)
+  ansible.builtin.command: systemctl reset-failed docker
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
 - name: Ensure Docker service is started and enabled
   ansible.builtin.service:
     name: docker
     state: started
     enabled: true
-  when: ansible_facts['distribution'] == 'Rocky' or ansible_facts['distribution'] == 'Red Hat Enterprise Linux'
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Show Docker service status (on failure)
+  ansible.builtin.command: systemctl --no-pager -l status docker
+  register: _docker_systemctl_status
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Show Docker journal logs (on failure)
+  ansible.builtin.command: journalctl --no-pager -u docker --since "10 minutes ago"
+  register: _docker_journal
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Install Docker SDK for python
   pip:
@@ -222,13 +301,19 @@
     append: true
     groups: docker
 
-- name: Configure Docker daemon (EL — bridge IPv6 follows docker_disable_ipv6)
-  ansible.builtin.template:
-    src: docker-daemon.json.j2
+- name: Configure Docker daemon (RedHat family)
+  ansible.builtin.copy:
     dest: /etc/docker/daemon.json
     mode: "0600"
+    content: >-
+      {{
+        {
+          'iptables': (docker_manage_iptables | bool),
+          'ip6tables': (docker_manage_iptables | bool) and (not docker_disable_ipv6 | default(false) | bool)
+        } | to_nice_json
+      }}
   notify: Restart Docker
-  when: ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
+  when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Enable Docker IPv6 (Debian family)
   ansible.builtin.copy:
@@ -240,7 +325,7 @@
         "fixed-cidr-v6": "2001:db8:1::/64"
       }
   notify: Restart Docker
-  when: ansible_facts['distribution'] in ['Debian', 'Ubuntu']
+  when: ansible_facts['os_family'] == 'Debian'
 
 - name: Flush handlers
   meta: flush_handlers

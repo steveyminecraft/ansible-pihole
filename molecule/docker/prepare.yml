@@ -1,0 +1,4 @@
+---
+- name: Molecule prepare (shared)
+  import_playbook: ../default/prepare.yml
+

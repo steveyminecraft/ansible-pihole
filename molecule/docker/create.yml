@@ -1,0 +1,4 @@
+---
+- name: Create test platforms (Vagrant)
+  import_playbook: ../default/create.yml
+
