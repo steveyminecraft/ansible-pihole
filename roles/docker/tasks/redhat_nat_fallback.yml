@@ -27,7 +27,7 @@
           [[ "$cidr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$ ]] || continue
           seen["$cidr"]=1
         done < <(
-          docker network inspect "$id" 2>/dev/null | python3 - 2>/dev/null <<'PY' || true
+          docker network inspect "$id" 2>/dev/null | python3 -c '
 import json
 import sys
 
@@ -38,7 +38,7 @@ for n in data:
   for c in (ipam.get("Config") or []):
     if c.get("Subnet"):
       print(c["Subnet"])
-PY
+' 2>/dev/null || true
         )
       done < <(docker network ls -q 2>/dev/null || true)
       for k in "${!seen[@]}"; do
