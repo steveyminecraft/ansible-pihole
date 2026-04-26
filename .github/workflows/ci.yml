@@ -49,7 +49,7 @@ jobs:
           ansible-lint -p roles playbooks molecule
 
       - name: YAML lint
-        run: yamllint .
+        run: yamllint roles playbooks molecule inventory
 
   ansible-tests-ubuntu:
     name: Ansible syntax & dry-run
