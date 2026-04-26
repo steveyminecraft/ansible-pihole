@@ -25,7 +25,11 @@
   roles:
     - role: bootstrap
       tags: [bootstrap, system]
+    # In --check mode, apt repo changes aren't applied, which makes Docker packages
+    # appear "missing" and fails the dry-run. Docker is exercised elsewhere (lint/molecule);
+    # CI check-mode should stay side-effect free.
     - role: docker
       tags: [docker, container]
+      when: not ansible_check_mode
     - role: pihole
       tags: [pihole, dns]
