@@ -33,3 +33,4 @@
       when: not ansible_check_mode
     - role: pihole
       tags: [pihole, dns]
+      when: not ansible_check_mode
