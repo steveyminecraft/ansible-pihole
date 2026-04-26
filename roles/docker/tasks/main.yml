@@ -218,6 +218,11 @@
     - bridge
     - br_netfilter
     - xt_addrtype
+    - nf_conntrack
+    - nf_nat
+    - nft_chain_nat
+    - nft_nat
+    - nft_masq
   changed_when: false
   failed_when: false
   when: ansible_facts['os_family'] == 'RedHat'
@@ -329,3 +334,11 @@
 
 - name: Flush handlers
   meta: flush_handlers
+
+# After Docker restarts (handler), re-apply NAT — restart can reset netfilter state before rules land.
+- name: EL container egress when Docker does not manage iptables (NAT fallback)
+  ansible.builtin.include_tasks: redhat_nat_fallback.yml
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - not (docker_manage_iptables | bool)
+    - docker_el_nat_fallback | default(true) | bool

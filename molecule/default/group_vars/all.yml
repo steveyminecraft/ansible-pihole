@@ -1,0 +1,8 @@
+---
+# Rocky Molecule scenario — isolate host firewall vs Docker vs Pi-hole for dig @127.0.0.1 issues.
+pihole_rocky_network_debug: true
+# Leave false unless you intentionally want a full nft flush (then re-apply NAT fallback).
+pihole_rocky_network_debug_flush_nft: false
+
+# Rocky/Vagrant test: run Pi-hole with host networking to bypass Docker bridge issues
+pihole_use_host_network: false

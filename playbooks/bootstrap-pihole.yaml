@@ -4,21 +4,21 @@
   become: true
   serial: 1
   roles:
-   # - role: stop_keepalived
-   #   tags: [stopkeepalived, drain, ha]
+    - role: stop_keepalived
+      tags: [stopkeepalived, drain, ha]
     - role: bootstrap
       tags: [bootstrap, system]
-   # - role: updates
-   #   tags: [updates, system]
+    - role: updates
+      tags: [updates, system]
     - role: sshd
       tags: [sshd, system]
-   # - role: keepalived
-   #   tags: [keepalived, ha]
+    - role: keepalived
+      tags: [keepalived, ha]
     - role: docker
       tags: [docker, container]
-   # - role: unbound
-  #    tags: [unbound, dns]
+    - role: unbound
+      tags: [unbound, dns]
     - role: pihole
       tags: [pihole, dns]
-   # - role: start_keepalived
-  #    tags: [startkeepalived, resume, ha]
+    - role: start_keepalived
+      tags: [startkeepalived, resume, ha]
