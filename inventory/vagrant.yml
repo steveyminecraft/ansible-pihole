@@ -66,4 +66,3 @@ all:
     pihole_network_name: "{{ unbound_network_name }}"
     pihole_network_external: true
     pihole_rocky_network_debug: true
-
