@@ -7,4 +7,3 @@
     docker_manage_iptables: false
   roles:
     - role: docker
-

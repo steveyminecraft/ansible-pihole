@@ -14,4 +14,3 @@ docker_manage_iptables: "{{ not (vagrant_env | default(false) | bool) }}"
 # nftables masquerade per subnet (iptables MASQUERADE is unreliable on EL9+ nf_tables); re-run
 # after compose so project networks exist. Falls back to 172.16.0.0/12 if discovery is empty.
 docker_el_nat_fallback: true
-
