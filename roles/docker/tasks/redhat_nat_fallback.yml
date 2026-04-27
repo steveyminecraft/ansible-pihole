@@ -27,7 +27,7 @@
           [[ "$cidr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$ ]] || continue
           seen["$cidr"]=1
         done < <(
-          docker network inspect "$id" 2>/dev/null | python3 -c "$(
+          timeout 60s docker network inspect "$id" 2>/dev/null | python3 -c "$(
             printf '%s\n' \
               'import json' \
               'import sys' \
@@ -41,7 +41,7 @@
               '      print(c[\"Subnet\"])'
           )" 2>/dev/null || true
         )
-      done < <(docker network ls -q 2>/dev/null || true)
+      done < <(timeout 60s docker network ls -q 2>/dev/null || true)
       for k in "${!seen[@]}"; do
         printf '%s\n' "$k"
       done | sort -u
@@ -82,9 +82,9 @@
         echo "nft not found; install nftables" >&2
         exit 1
       fi
-      timeout 10s nft delete table ip ansible_docker_nat 2>/dev/null || true
-      timeout 10s nft add table ip ansible_docker_nat
-      timeout 10s nft add chain ip ansible_docker_nat postrouting '{ type nat hook postrouting priority 100; policy accept; }'
+      timeout 20s nft delete table ip ansible_docker_nat 2>/dev/null || true
+      timeout 20s nft add table ip ansible_docker_nat
+      timeout 20s nft add chain ip ansible_docker_nat postrouting '{ type nat hook postrouting priority 100; policy accept; }'
       echo CHANGED
     executable: /bin/bash
   register: _docker_nat_nft
@@ -94,7 +94,7 @@
   ansible.builtin.command:
     argv:
       - timeout
-      - "10s"
+      - "20s"
       - nft
       - add
       - rule
