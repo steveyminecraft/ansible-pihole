@@ -47,6 +47,34 @@ Roles include (among others):
 
 Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`, `pihole_vip_ipv4` / `pihole_vip_ipv6`) are typically set in inventory; see the [docker-pi-hole environment docs](https://github.com/pi-hole/docker-pi-hole#environment-variables) for image variables.
 
+Unbound is deployed before Pi-hole and can be used as Pi-hole's upstream resolver over a shared Docker network. By default the Unbound role now chooses an image from `unbound_image_arch_map` using the target host architecture:
+
+```yaml
+unbound_image: ""  # empty means auto-select
+unbound_image_arch_map:
+  x86_64: "mvance/unbound:latest"
+  amd64: "mvance/unbound:latest"
+  aarch64: "vincejv/unbound:latest"
+  arm64: "vincejv/unbound:latest"
+  armv7l: "vincejv/unbound:latest"
+```
+
+Set `unbound_image` explicitly in inventory to override that selection. For Pi-hole v6, use `FTLCONF_dns_upstreams` rather than the older `PIHOLE_DNS_` variable:
+
+```yaml
+unbound_network_name: "dns_net"
+pihole_network_name: "{{ unbound_network_name }}"
+unbound_container_name: "unbound"
+unbound_port: 5335
+pihole_unbound_upstream: "{{ unbound_container_name }}#{{ unbound_port }}"
+
+pihole_environment_variables:
+  FTLCONF_dns_upstreams: "{{ pihole_unbound_upstream }}"
+  FTLCONF_dns_listeningMode: "all"
+```
+
+When Pi-hole talks to Unbound on the shared Docker network, `unbound_publish_to_host` can usually be `false`; publish Unbound only if you also want to query it directly from the host.
+
 ### `playbooks/update-pihole.yaml`
 
 Faster follow-up runs (updates + Pi-hole-focused changes).

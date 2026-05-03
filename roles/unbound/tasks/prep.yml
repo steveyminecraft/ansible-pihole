@@ -1,4 +1,21 @@
 ---
+- name: Ensure DNS lookup tools are installed for verification
+  ansible.builtin.package:
+    name: "{{ 'bind-utils' if ansible_facts['os_family'] == 'RedHat' else 'dnsutils' }}"
+    state: present
+
+- name: Select Unbound image for host architecture
+  ansible.builtin.set_fact:
+    unbound_effective_image: >-
+      {{
+        unbound_image
+        if (unbound_image | default('') | string | length > 0)
+        else unbound_image_arch_map.get(
+          ansible_facts['architecture'] | default(ansible_architecture | default('')),
+          unbound_image_arch_default
+        )
+      }}
+
 - name: Ensure docker network exists
   community.docker.docker_network:
     name: "{{ unbound_network_name }}"
