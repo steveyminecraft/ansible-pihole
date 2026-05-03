@@ -145,6 +145,47 @@
         fail_msg: "VIP DNS did not return a valid IPv4."
       run_once: true
 
+    # --- Nebula Sync ---
+    - name: Check Nebula Sync container
+      community.docker.docker_container_info:
+        name: "{{ nebula_sync_container_name | default('nebula') }}"
+      register: nebula_sync_container_info
+      when: nebula_sync_primary_url is defined
+
+    - name: Assert Nebula Sync container is running
+      ansible.builtin.assert:
+        that:
+          - nebula_sync_container_info.exists | default(false)
+          - nebula_sync_container_info.container.State.Running | default(false)
+        fail_msg: "Nebula Sync container is not running."
+      when: nebula_sync_primary_url is defined
+
+    - name: Set Docker inspect environment format
+      ansible.builtin.set_fact:
+        docker_inspect_env_fmt: "{{ '{{range .Config.Env}}{{println .}}{{end}}' }}"
+      when: nebula_sync_primary_url is defined
+
+    - name: Read Nebula Sync container environment
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - "{{ docker_inspect_env_fmt }}"
+          - "{{ nebula_sync_container_name | default('nebula') }}"
+      register: nebula_sync_env
+      changed_when: false
+      when: nebula_sync_primary_url is defined
+
+    - name: Assert Nebula Sync points at expected Pi-hole instances
+      ansible.builtin.assert:
+        that:
+          - ('PRIMARY=' ~ nebula_sync_primary_url ~ '|' ~ nebula_sync_primary_password) in nebula_sync_env.stdout_lines
+          - nebula_sync_replicas | length > 0
+          - nebula_sync_env.stdout_lines | select('search', '^REPLICAS=.*' ~ nebula_sync_replicas[0].url) | list | length > 0
+        fail_msg: "Nebula Sync PRIMARY/REPLICAS environment does not match inventory."
+      when: nebula_sync_primary_url is defined
+
     # --- Docker container stop triggers VIP move ---
     - name: Check HA container on primary before docker failover test
       community.docker.docker_container_info:
