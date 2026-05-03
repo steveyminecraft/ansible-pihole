@@ -6,11 +6,13 @@ services:
 {% if nebula_sync_use_env_file | bool %}
     env_file:
       - "{{ nebula_sync_env_filename }}"
-{% else %}
+{% endif %}
     environment:
+{% if not (nebula_sync_use_env_file | bool) %}
       TZ: "{{ nebula_sync_tz }}"
       PRIMARY: "{{ nebula_sync_primary_url }}|{{ nebula_sync_primary_password }}"
       REPLICAS: "{% for r in nebula_sync_replicas %}{{ r.url }}|{{ r.password }}{% if not loop.last %},{% endif %}{% endfor %}"
+{% endif %}
       FULL_SYNC: "{{ nebula_sync_full_sync | string | lower }}"
       RUN_GRAVITY: "{{ nebula_sync_run_gravity | string | lower }}"
       CRON: "{{ nebula_sync_cron }}"
@@ -32,4 +34,3 @@ services:
       SYNC_GRAVITY_DOMAIN_LIST_BY_GROUP: "{{ nebula_sync_sync_gravity.domain_list_by_group | string | lower }}"
       SYNC_GRAVITY_CLIENT: "{{ nebula_sync_sync_gravity.client | string | lower }}"
       SYNC_GRAVITY_CLIENT_BY_GROUP: "{{ nebula_sync_sync_gravity.client_by_group | string | lower }}"
-{% endif %}
