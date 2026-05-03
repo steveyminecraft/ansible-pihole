@@ -6,6 +6,11 @@ docker_disable_ipv6: true
 # Extra repo connectivity diagnostics are off by default (only used when debugging).
 docker_repo_diagnostics: false
 
+# Install kernel-modules-extra on RedHat/Rocky so Docker/netfilter modules are
+# available. Set false on hosts where the modules already exist or /boot cannot
+# accommodate kernel package churn.
+docker_install_kernel_modules_extra: true
+
 # Whether Docker should manage iptables rules itself. In some VM kernels
 # (e.g. VirtualBox guests) required xtables matches may be unavailable.
 docker_manage_iptables: "{{ not (vagrant_env | default(false) | bool) }}"

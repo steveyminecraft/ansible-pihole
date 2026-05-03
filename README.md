@@ -45,6 +45,12 @@ Roles include (among others):
 - [`bootstrap`](roles/bootstrap/tasks/main.yml): SSH key from GitHub (`github_user_for_ssh_key`), optional password lock, aliases, timezone, hostname, packages such as firewalld on Debian/Ubuntu.
 - [`updates`](roles/updates/tasks/main.yml), [`sshd`](roles/sshd/tasks/main.yml), [`docker`](roles/docker/tasks/main.yml), [`unbound`](roles/unbound/tasks/main.yml), [`pihole`](roles/pihole/tasks/main.yml) (often from Galaxy; see [`roles/requirements.yml`](roles/requirements.yml)), [`keepalived`](roles/keepalived/tasks/main.yml), [`start_keepalived`](roles/start_keepalived/tasks/main.yml) / [`stop_keepalived`](roles/stop_keepalived/tasks/main.yml) as used in the play.
 
+On RedHat/Rocky hosts the Docker role installs `kernel-modules-extra` by default for Docker/netfilter support. If a real host already has the needed modules and `/boot` is too tight for kernel package changes, opt out in inventory:
+
+```yaml
+docker_install_kernel_modules_extra: false
+```
+
 Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`, `pihole_vip_ipv4` / `pihole_vip_ipv6`) are typically set in inventory; see the [docker-pi-hole environment docs](https://github.com/pi-hole/docker-pi-hole#environment-variables) for image variables.
 
 Unbound is deployed before Pi-hole and can be used as Pi-hole's upstream resolver over a shared Docker network. By default the Unbound role now chooses an image from `unbound_image_arch_map` using the target host architecture:

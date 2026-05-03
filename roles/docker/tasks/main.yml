@@ -222,7 +222,9 @@
       - kernel-modules-extra
     state: present
     lock_timeout: 300
-  when: ansible_facts['os_family'] == 'RedHat'
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_install_kernel_modules_extra | default(true) | bool
 
 - name: Load required kernel modules for Docker networking (RedHat family)
   ansible.builtin.command: "modprobe {{ item }}"
