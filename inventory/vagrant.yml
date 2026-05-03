@@ -32,8 +32,7 @@ all:
     pihole_webport_http: '80'  # Port for HTTP-Requests to Webinterface.
     pihole_webport_https: '443'  # Port for HTTPS-DoH Requests.
     pihole_firewall_deploy: false  # will ensure firewalld is install and configured
-    # Rocky/Vagrant debug: bypass Docker bridge and publish directly on host namespace
-    pihole_use_host_network: true
+    pihole_use_host_network: false
     DHCP_ACTIVE: false
     pihole_environment_variables:
       TZ: "{{ timezone }}"
@@ -44,8 +43,7 @@ all:
       REV_SERVER: false
       REV_SERVER_CIDR: "192.168.56.0/24"
       REV_SERVER_TARGET: "192.168.56.1"
-      PIHOLE_DNS_: "1.1.1.1;8.8.8.8"
-      DNSMASQ_LISTENING: "all"
+      FTLCONF_dns_upstreams: "{{ pihole_unbound_upstream }}"
     pihole_ha_mode: true
     pihole_vip_ipv4: "192.168.56.10/24"
     pihole_vip_ipv6: "fd00::10/64"
@@ -62,7 +60,7 @@ all:
     nebula_sync_full_sync: true
     nebula_sync_cron: "*/15 * * * *"
     nebula_sync_dir: "/opt/nebula"
-    pihole_upstream_dns: "{{ unbound_container_name }}#{{ unbound_port }}"
+    pihole_unbound_upstream: "{{ unbound_container_name }}#{{ unbound_port }}"
     pihole_network_name: "{{ unbound_network_name }}"
     pihole_network_external: true
     pihole_rocky_network_debug: true

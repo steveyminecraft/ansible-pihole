@@ -3,6 +3,10 @@ services:
     image: "{{ nebula_sync_image }}:{{ nebula_sync_image_tag }}"
     container_name: "{{ nebula_sync_container_name }}"
     restart: unless-stopped
+{% if nebula_sync_use_env_file | bool %}
+    env_file:
+      - "{{ nebula_sync_env_filename }}"
+{% else %}
     environment:
       TZ: "{{ nebula_sync_tz }}"
       PRIMARY: "{{ nebula_sync_primary_url }}|{{ nebula_sync_primary_password }}"
@@ -10,3 +14,22 @@ services:
       FULL_SYNC: "{{ nebula_sync_full_sync | string | lower }}"
       RUN_GRAVITY: "{{ nebula_sync_run_gravity | string | lower }}"
       CRON: "{{ nebula_sync_cron }}"
+      CLIENT_SKIP_TLS_VERIFICATION: "{{ nebula_sync_client_skip_tls_verification | string | lower }}"
+      CLIENT_RETRY_DELAY_SECONDS: "{{ nebula_sync_client_retry_delay_seconds }}"
+      CLIENT_TIMEOUT_SECONDS: "{{ nebula_sync_client_timeout_seconds }}"
+      SYNC_CONFIG_DNS: "{{ nebula_sync_sync_config.dns | string | lower }}"
+      SYNC_CONFIG_DHCP: "{{ nebula_sync_sync_config.dhcp | string | lower }}"
+      SYNC_CONFIG_NTP: "{{ nebula_sync_sync_config.ntp | string | lower }}"
+      SYNC_CONFIG_RESOLVER: "{{ nebula_sync_sync_config.resolver | string | lower }}"
+      SYNC_CONFIG_DATABASE: "{{ nebula_sync_sync_config.database | string | lower }}"
+      SYNC_CONFIG_MISC: "{{ nebula_sync_sync_config.misc | string | lower }}"
+      SYNC_CONFIG_DEBUG: "{{ nebula_sync_sync_config.debug | string | lower }}"
+      SYNC_GRAVITY_DHCP_LEASES: "{{ nebula_sync_sync_gravity.dhcp_leases | string | lower }}"
+      SYNC_GRAVITY_GROUP: "{{ nebula_sync_sync_gravity.group | string | lower }}"
+      SYNC_GRAVITY_AD_LIST: "{{ nebula_sync_sync_gravity.ad_list | string | lower }}"
+      SYNC_GRAVITY_AD_LIST_BY_GROUP: "{{ nebula_sync_sync_gravity.ad_list_by_group | string | lower }}"
+      SYNC_GRAVITY_DOMAIN_LIST: "{{ nebula_sync_sync_gravity.domain_list | string | lower }}"
+      SYNC_GRAVITY_DOMAIN_LIST_BY_GROUP: "{{ nebula_sync_sync_gravity.domain_list_by_group | string | lower }}"
+      SYNC_GRAVITY_CLIENT: "{{ nebula_sync_sync_gravity.client | string | lower }}"
+      SYNC_GRAVITY_CLIENT_BY_GROUP: "{{ nebula_sync_sync_gravity.client_by_group | string | lower }}"
+{% endif %}
