@@ -1,8 +1,50 @@
 ---
-# Basic sanity check: query a root name via the container itself
-- name: Sanity check Unbound is answering inside the container
+# Basic sanity check: query Unbound over its Docker-network address. Some
+# compatible Unbound images do not include client tools such as dig/drill.
+- name: Set docker inspect format for Unbound networks
+  ansible.builtin.set_fact:
+    unbound_docker_networks_fmt: "{{ '{{json .NetworkSettings.Networks}}' }}"
+
+- name: Inspect Unbound container networks
   ansible.builtin.command:
-    cmd: docker exec "{{ unbound_container_name }}" dig @127.0.0.1 -p "{{ unbound_port }}" cloudflare.com +short
+    argv:
+      - docker
+      - inspect
+      - --format
+      - "{{ unbound_docker_networks_fmt }}"
+      - "{{ unbound_container_name }}"
+  register: unbound_networks_json
+  changed_when: false
+
+- name: Set Unbound container IPv4
+  ansible.builtin.set_fact:
+    unbound_container_ipv4: >-
+      {{
+        (
+          unbound_networks_json.stdout | from_json
+          | dict2items
+          | map(attribute='value.IPAddress')
+          | reject('equalto', '')
+          | list
+          | first
+          | default('', true)
+        )
+      }}
+
+- name: Sanity check Unbound is answering on the Docker network
+  ansible.builtin.command:
+    argv:
+      - dig
+      - "@{{ unbound_container_ipv4 }}"
+      - -p
+      - "{{ unbound_port | string }}"
+      - cloudflare.com
+      - +short
+      - +time=3
+      - +tries=2
   register: unbound_dig_test
+  retries: 12
+  delay: 5
+  until: unbound_dig_test.stdout | trim != ""
   changed_when: false
   failed_when: unbound_dig_test.stdout | trim == ""

@@ -4,7 +4,16 @@ unbound_compose_dir: /opt/unbound
 unbound_compose_file: "{{ unbound_compose_dir }}/docker-compose.yml"
 
 # Image/container
-unbound_image: "mvance/unbound"
+# Leave empty to select from unbound_image_arch_map based on the host architecture.
+# Set this explicitly in inventory to override the automatic selection.
+unbound_image: ""
+unbound_image_arch_default: "vincejv/unbound:latest"
+unbound_image_arch_map:
+  x86_64: "mvance/unbound:latest"
+  amd64: "mvance/unbound:latest"
+  aarch64: "vincejv/unbound:latest"
+  arm64: "vincejv/unbound:latest"
+  armv7l: "vincejv/unbound:latest"
 unbound_container_name: "unbound"
 unbound_hostname: "{{ unbound_container_name }}"
 unbound_restart_policy: "unless-stopped"
