@@ -8,11 +8,10 @@
        done < <(docker network ls -q 2>/dev/null || true)
        for k in "${!seen[@]}"; do
          printf '%s\n' "$k"
-@@ -44,6 +43,27 @@
-   register: _docker_nat_subnets
+@@ -45,6 +44,27 @@
    changed_when: false
    failed_when: false
-+
+ 
 +- name: Compute NAT fallback subnet list
 +  ansible.builtin.set_fact:
 +    docker_nat_fallback_subnets: >-
@@ -20,22 +19,23 @@
 +        (
 +          (_docker_nat_subnets.stdout_lines | default([]))
 +          | map('trim')
-+          | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$')
++          | select('match', '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$')
 +          | list
 +          | unique
 +        )
 +        if (
 +          (_docker_nat_subnets.stdout_lines | default([]))
 +          | map('trim')
-+          | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$')
++          | select('match', '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$')
 +          | list
 +          | length
 +        ) > 0
 +        else ['172.16.0.0/12']
 +      }}
- 
++
  - name: Apply Docker bridge egress NAT (nftables masquerade)
    ansible.builtin.shell:
+     cmd: |
 @@ -56,21 +76,33 @@
          echo "nft not found; install nftables" >&2
          exit 1
