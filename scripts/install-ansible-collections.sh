@@ -26,29 +26,12 @@ if [[ -f "$PIHOLE_UNBOUND_TASKS" ]] && grep -q "Wait until Pi-hole is healthy" "
 fi
 
 PIHOLE_DEFAULTS="$ROOT/roles/pihole/defaults/main.yml"
-PIHOLE_DNS_PATCH="$ROOT/patches/docker-pihole-default-docker-dns.patch"
 if [[ -f "$PIHOLE_DEFAULTS" ]] && grep -q "Public DNS first" "$PIHOLE_DEFAULTS"; then
-  patch --forward -p0 -d "$ROOT" -i "$PIHOLE_DNS_PATCH"
+  python3 "$ROOT/scripts/apply_pihole_galaxy_install_overrides.py" defaults "$PIHOLE_DEFAULTS"
 fi
 
-PIHOLE_UPSTREAM_PATCH="$ROOT/patches/docker-pihole-unbound-ip-upstream.patch"
-if [[ -f "$PIHOLE_UNBOUND_TASKS" ]] && grep -q "pihole_unbound_upstream | default('unbound#5335')" "$PIHOLE_UNBOUND_TASKS"; then
-  patch --forward -p0 -d "$ROOT" -i "$PIHOLE_UPSTREAM_PATCH"
-fi
-
-PIHOLE_LOCAL_DNS_PATCH="$ROOT/patches/docker-pihole-local-dns-retry.patch"
-if [[ -f "$PIHOLE_UNBOUND_TASKS" ]] && ! grep -q "retries: 60" "$PIHOLE_UNBOUND_TASKS"; then
-  patch --forward -p0 -d "$ROOT" -i "$PIHOLE_LOCAL_DNS_PATCH"
-fi
-
-PIHOLE_STARTUP_RESOLVER_PATCH="$ROOT/patches/docker-pihole-unbound-startup-resolver.patch"
-if [[ -f "$PIHOLE_UNBOUND_TASKS" ]] && ! grep -q "Use public DNS as Pi-hole container startup resolver" "$PIHOLE_UNBOUND_TASKS"; then
-  patch --forward -p0 -d "$ROOT" -i "$PIHOLE_STARTUP_RESOLVER_PATCH"
-fi
-
-PIHOLE_RESOLV_PATCH="$ROOT/patches/docker-pihole-resolv-conf-override.patch"
-if [[ -f "$PIHOLE_UNBOUND_TASKS" ]] && ! grep -q "Override Pi-hole container resolv.conf" "$PIHOLE_UNBOUND_TASKS"; then
-  patch --forward -p0 -d "$ROOT" -i "$PIHOLE_RESOLV_PATCH"
+if [[ -f "$PIHOLE_UNBOUND_TASKS" ]]; then
+  python3 "$ROOT/scripts/apply_pihole_galaxy_install_overrides.py" unbound "$PIHOLE_UNBOUND_TASKS"
 fi
 
 # Pinned merge commit from https://github.com/ansible-collections/ansible.posix/pull/690
