@@ -15,9 +15,9 @@ if [[ -f "$ROOT/roles/requirements.yml" ]]; then
 fi
 
 PIHOLE_NAT_TASKS="$ROOT/roles/pihole/tasks/redhat_nat_fallback.yml"
-PIHOLE_NAT_PATCH="$ROOT/patches/docker-pihole-redhat-nat-fallback.patch"
 if [[ -f "$PIHOLE_NAT_TASKS" ]] && ! grep -q "Add nftables masquerade rules per Docker subnet" "$PIHOLE_NAT_TASKS"; then
-  patch --forward -p0 -d "$ROOT" -i "$PIHOLE_NAT_PATCH"
+  # Python, not patch(1): older GNU patch (e.g. Ubuntu 22.04 CI) rejects some valid unified hunks.
+  python3 "$ROOT/scripts/apply_pihole_redhat_nat_fallback.py" "$PIHOLE_NAT_TASKS"
 fi
 
 PIHOLE_UNBOUND_TASKS="$ROOT/roles/pihole/tasks/unbound.yml"
