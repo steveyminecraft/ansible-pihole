@@ -160,8 +160,8 @@
 - name: (docker) Compute repodata URL for preflight
   ansible.builtin.set_fact:
     docker_dnf_repodata_url: >-
-      {{ 'https://download.docker.com/linux/rhel/' ~ ansible_distribution_major_version ~ '/'
-      ~ ansible_architecture ~ '/stable/repodata/repomd.xml' }}
+      {{ 'https://download.docker.com/linux/rhel/' ~ ansible_facts['distribution_major_version'] ~ '/'
+      ~ ansible_facts['architecture'] ~ '/stable/repodata/repomd.xml' }}
   when:
     - ansible_facts['os_family'] == 'RedHat'
     - docker_repo_diagnostics | default(false) | bool
