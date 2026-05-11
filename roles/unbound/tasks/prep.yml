@@ -11,7 +11,7 @@
         unbound_image
         if (unbound_image | default('') | string | length > 0)
         else unbound_image_arch_map.get(
-          ansible_facts['architecture'] | default(ansible_architecture | default('')),
+          ansible_facts['architecture'] | default(''),
           unbound_image_arch_default
         )
       }}

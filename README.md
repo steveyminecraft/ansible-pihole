@@ -15,9 +15,9 @@ For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker
 ./scripts/install-ansible-collections.sh
 ```
 
-This installs Galaxy **roles** ([`roles/requirements.yml`](roles/requirements.yml)), **`ansible.posix` from git** (the merged commit from [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) with ansible-core 2.24-safe imports until a Galaxy release includes it), then **collections** listed in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for that `ansible.posix` step.
+This installs Galaxy **roles** ([`roles/requirements.yml`](roles/requirements.yml)), applies local role compatibility patches from [`patches/`](patches/) when needed, installs **`ansible.posix` from git** (the merged commit from [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) with ansible-core 2.24-safe imports until a Galaxy release includes it), then **collections** listed in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for that `ansible.posix` step.
 
-Ansible uses [`ansible.cfg`](ansible.cfg) (`roles_path`, `collections_path`). Re-run the script after changing dependency files.
+Ansible uses [`ansible.cfg`](ansible.cfg) (`roles_path`, `collections_path`) and disables top-level fact injection so roles use `ansible_facts[...]` consistently with ansible-core 2.24+. Re-run the script after changing dependency files.
 
 ## Base setup (targets)
 

@@ -1,0 +1,75 @@
+--- roles/pihole/tasks/unbound.yml
++++ roles/pihole/tasks/unbound.yml
+@@ -8,6 +8,45 @@
+   ansible.builtin.set_fact:
+     pihole_unbound_present: "{{ (unbound_running.rc == 0) and (unbound_running.stdout | trim == 'true') }}"
+
++- name: Set docker inspect format
++  ansible.builtin.set_fact:
++    docker_inspect_networks_fmt: "{{ '{{json .NetworkSettings.Networks}}' }}"
++  when: pihole_unbound_present
++
++- name: Inspect Unbound container networks
++  ansible.builtin.command:
++    argv:
++      - docker
++      - inspect
++      - --format
++      - "{{ docker_inspect_networks_fmt }}"
++      - "{{ unbound_container_name | default('unbound') }}"
++  register: unbound_net_json
++  changed_when: false
++  failed_when: unbound_net_json.rc != 0
++  when: pihole_unbound_present
++
++- name: Set Unbound container primary IPv4 for Pi-hole upstream
++  ansible.builtin.set_fact:
++    pihole_unbound_container_ipv4: >-
++      {{
++        (
++          unbound_net_json.stdout | from_json
++          | dict2items
++          | map(attribute='value.IPAddress')
++          | reject('equalto', '')
++          | list
++          | first
++          | default('', true)
++        )
++      }}
++  when: pihole_unbound_present
++
++- name: Set Pi-hole Unbound DNS target
++  ansible.builtin.set_fact:
++    pihole_unbound_dns_target: >-
++      {{
++        pihole_unbound_container_ipv4
++        if (pihole_unbound_container_ipv4 | default('') | length > 0)
++        else (unbound_container_name | default('unbound'))
++      }}
++  when: pihole_unbound_present
++
+ - name: Ensure shared external docker network exists (dns_net)
+   ansible.builtin.command:
+     cmd: docker network inspect "{{ pihole_network_name | default(pihole_unbound_network_name | default('dns_net')) }}"
+@@ -32,7 +71,7 @@
+       {{
+         (pihole_environment_variables | default({}))
+         | combine({
+-            'FTLCONF_dns_upstreams': (pihole_unbound_upstream | default('unbound#5335')),
++            'FTLCONF_dns_upstreams': ((pihole_unbound_dns_target | default(unbound_container_name | default('unbound'))) ~ '#' ~ (unbound_port | default(5335) | string)),
+             'FTLCONF_dns_listeningMode': 'all'
+           }, recursive=True)
+       }}
+@@ -195,7 +234,9 @@
+       | list
+       | length) == 0
+-  when: pihole_unbound_present
++  when:
++    - pihole_unbound_present
++    - pihole_unbound_dns_target == (unbound_container_name | default('unbound'))
+
+ - name: Verify Unbound answers DNS queries (from Pi-hole container)
+   ansible.builtin.command: >
+     docker exec {{ pihole_container_name | default('pihole') }}
+-    sh -lc "dig @{{ unbound_container_name | default('unbound') }} -p {{ unbound_port | default(5335) }} {{ pihole_unbound_verify_qname }} +short"
++    sh -lc "dig @{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }} -p {{ unbound_port | default(5335) }} {{ pihole_unbound_verify_qname }} +short"

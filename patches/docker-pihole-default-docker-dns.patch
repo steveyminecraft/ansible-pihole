@@ -1,0 +1,20 @@
+--- roles/pihole/defaults/main.yml
++++ roles/pihole/defaults/main.yml
+@@ -51,14 +51,9 @@
+ # Container name (used by unbound.yml checks)
+ pihole_container_name: "pihole"
+
+-# Docker Compose `dns:` for the Pi-hole service — written into the container's resolv.conf.
+-# Public DNS first: with Docker `"iptables": false"` (common on EL/Vagrant), 127.0.0.11 is often
+-# refused; gravity needs resolvers that work. Keep 127.0.0.11 last so Docker hostnames (e.g.
+-# unbound) still resolve after earlier servers return NXDOMAIN. Set to [] to omit `dns:`.
+-pihole_docker_dns:
+-  - "8.8.8.8"
+-  - "8.8.4.4"
+-  - "127.0.0.11"
++# Docker Compose `dns:` for the Pi-hole service. Keep empty by default so Docker's
++# embedded resolver can resolve shared-network service names such as `unbound`.
++pihole_docker_dns: []
+
+ # QNAME used in Unbound integration checks (from host / from Pi-hole container)
+ pihole_unbound_verify_qname: "cloudflare.com"

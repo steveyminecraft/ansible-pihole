@@ -1,0 +1,23 @@
+--- roles/pihole/tasks/unbound.yml
++++ roles/pihole/tasks/unbound.yml
+@@ -103,6 +103,21 @@
+   failed_when: pihole_compose_up.rc != 0
+   when: pihole_unbound_present
+
++- name: Override Pi-hole container resolv.conf when Docker DNS redirect is unavailable
++  ansible.builtin.shell:
++    cmd: docker exec -i "{{ pihole_container_name | default('pihole') }}" sh -c 'cat > /etc/resolv.conf'
++    stdin: |
++      {% for nameserver in pihole_docker_dns | default([]) %}
++      nameserver {{ nameserver }}
++      {% endfor %}
++      options ndots:0
++  changed_when: true
++  when:
++    - pihole_unbound_present
++    - not (docker_manage_iptables | default(true) | bool)
++    - pihole_docker_dns | default([]) | length > 0
++
+ - name: Inspect Docker DNS network for attached containers
+   ansible.builtin.command:
+     argv:
