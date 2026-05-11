@@ -21,9 +21,8 @@ if [[ -f "$PIHOLE_NAT_TASKS" ]] && ! grep -q "Add nftables masquerade rules per 
 fi
 
 PIHOLE_UNBOUND_TASKS="$ROOT/roles/pihole/tasks/unbound.yml"
-PIHOLE_HEALTH_PATCH="$ROOT/patches/docker-pihole-unbound-health-wait.patch"
 if [[ -f "$PIHOLE_UNBOUND_TASKS" ]] && grep -q "Wait until Pi-hole is healthy" "$PIHOLE_UNBOUND_TASKS"; then
-  patch --forward -p0 -d "$ROOT" -i "$PIHOLE_HEALTH_PATCH"
+  python3 "$ROOT/scripts/apply_pihole_unbound_health_wait.py" "$PIHOLE_UNBOUND_TASKS"
 fi
 
 PIHOLE_DEFAULTS="$ROOT/roles/pihole/defaults/main.yml"
