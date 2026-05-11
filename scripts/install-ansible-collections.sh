@@ -14,9 +14,9 @@ if [[ -f "$ROOT/roles/requirements.yml" ]]; then
   ansible-galaxy role install -r "$ROOT/roles/requirements.yml" -p "$ROOT/roles"
 fi
 
-# Pinned branch: https://github.com/ansible-collections/ansible.posix/pull/690
+# Pinned merge commit from https://github.com/ansible-collections/ansible.posix/pull/690
 ansible-galaxy collection install \
-  git+https://github.com/barpavel/ansible.posix.git,fix-686-module-utils-deprecation \
+  git+https://github.com/ansible-collections/ansible.posix.git,2022c1bd86e42d8f8f682caa1c7fffd301f80ab9 \
   -p "$COL" \
   --force
 
