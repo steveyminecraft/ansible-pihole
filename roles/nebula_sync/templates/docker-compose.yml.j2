@@ -3,12 +3,21 @@ services:
     image: "{{ nebula_sync_image }}:{{ nebula_sync_image_tag }}"
     container_name: "{{ nebula_sync_container_name }}"
     restart: unless-stopped
+{% if nebula_sync_use_secret_files | bool %}
+    volumes:
+      - "{{ nebula_sync_secret_dir }}/{{ nebula_sync_primary_secret_filename }}:{{ nebula_sync_secret_container_dir }}/{{ nebula_sync_primary_secret_filename }}:ro"
+      - "{{ nebula_sync_secret_dir }}/{{ nebula_sync_replicas_secret_filename }}:{{ nebula_sync_secret_container_dir }}/{{ nebula_sync_replicas_secret_filename }}:ro"
+{% endif %}
 {% if nebula_sync_use_env_file | bool %}
     env_file:
       - "{{ nebula_sync_env_filename }}"
 {% endif %}
     environment:
-{% if not (nebula_sync_use_env_file | bool) %}
+{% if (nebula_sync_use_secret_files | bool) and not (nebula_sync_use_env_file | bool) %}
+      TZ: "{{ nebula_sync_tz }}"
+      PRIMARY_FILE: "{{ nebula_sync_secret_container_dir }}/{{ nebula_sync_primary_secret_filename }}"
+      REPLICAS_FILE: "{{ nebula_sync_secret_container_dir }}/{{ nebula_sync_replicas_secret_filename }}"
+{% elif not (nebula_sync_use_env_file | bool) %}
       TZ: "{{ nebula_sync_tz }}"
       PRIMARY: "{{ nebula_sync_primary_url }}|{{ nebula_sync_primary_password }}"
       REPLICAS: "{% for r in nebula_sync_replicas %}{{ r.url }}|{{ r.password }}{% if not loop.last %},{% endif %}{% endfor %}"

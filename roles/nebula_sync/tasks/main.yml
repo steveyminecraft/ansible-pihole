@@ -7,6 +7,38 @@
     group: "{{ ansible_user }}"
     mode: '0755'
 
+- name: Ensure nebula-sync secrets directory exists
+  when: nebula_sync_use_secret_files | bool
+  ansible.builtin.file:
+    path: "{{ nebula_sync_secret_dir }}"
+    state: directory
+    owner: "{{ nebula_sync_secret_file_owner }}"
+    group: "{{ nebula_sync_secret_file_group }}"
+    mode: "0700"
+
+- name: Render nebula-sync primary secret file
+  when: nebula_sync_use_secret_files | bool
+  no_log: true
+  ansible.builtin.copy:
+    dest: "{{ nebula_sync_secret_dir }}/{{ nebula_sync_primary_secret_filename }}"
+    content: "{{ nebula_sync_primary_url }}|{{ nebula_sync_primary_password }}\n"
+    owner: "{{ nebula_sync_secret_file_owner }}"
+    group: "{{ nebula_sync_secret_file_group }}"
+    mode: "0400"
+  register: nebula_sync_primary_secret
+
+- name: Render nebula-sync replicas secret file
+  when: nebula_sync_use_secret_files | bool
+  no_log: true
+  ansible.builtin.copy:
+    dest: "{{ nebula_sync_secret_dir }}/{{ nebula_sync_replicas_secret_filename }}"
+    content: |
+      {% for r in nebula_sync_replicas %}{{ r.url }}|{{ r.password }}{% if not loop.last %},{% endif %}{% endfor %}
+    owner: "{{ nebula_sync_secret_file_owner }}"
+    group: "{{ nebula_sync_secret_file_group }}"
+    mode: "0400"
+  register: nebula_sync_replicas_secret
+
 - name: Render docker-compose.yml
   ansible.builtin.template:
     src: docker-compose.yml.j2
@@ -14,34 +46,58 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
+  register: nebula_sync_compose_template
 
-- name: Render .env (contains Pi-hole passwords) when enabled
+- name: Render .env when enabled
   when: nebula_sync_use_env_file | bool
+  no_log: "{{ nebula_sync_use_secret_files | bool }}"
   ansible.builtin.template:
     src: env.j2
     dest: "{{ nebula_sync_dir }}/{{ nebula_sync_env_filename }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"
+  register: nebula_sync_env_template
 
 - name: Pull docker image
   community.docker.docker_image_pull:
     name: "{{ nebula_sync_image }}:{{ nebula_sync_image_tag }}"
     platform: "{{ ansible_facts['architecture'] }}"
 
+- name: Determine whether nebula-sync must be recreated
+  ansible.builtin.set_fact:
+    nebula_sync_force_recreate: >-
+      {{
+        (nebula_sync_compose_template.changed | default(false) | bool)
+        or (nebula_sync_env_template.changed | default(false) | bool)
+        or (nebula_sync_primary_secret.changed | default(false) | bool)
+        or (nebula_sync_replicas_secret.changed | default(false) | bool)
+      }}
+
+- name: Build nebula-sync compose up command
+  ansible.builtin.set_fact:
+    nebula_sync_compose_up_argv: >-
+      {{
+        [
+          'docker',
+          'compose',
+          '-f',
+          (nebula_compose_file | default(nebula_sync_dir ~ '/docker-compose.yml')),
+          'up',
+          '-d'
+        ]
+        + (['--force-recreate'] if nebula_sync_force_recreate | bool else [])
+      }}
+
 - name: Bring up nebula-sync with Docker Compose v2
   ansible.builtin.command:
-    argv:
-      - docker
-      - compose
-      - -f
-      - "{{ nebula_compose_file | default(nebula_sync_dir ~ '/docker-compose.yml') }}"
-      - up
-      - -d
+    argv: "{{ nebula_sync_compose_up_argv }}"
   args:
     chdir: "{{ nebula_sync_dir }}"
   register: nebula_sync_compose_up
   changed_when: >
+    nebula_sync_force_recreate | bool
+    or
     nebula_sync_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\b')
     or nebula_sync_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\b')
   failed_when: nebula_sync_compose_up.rc != 0
