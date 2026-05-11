@@ -1,6 +1,6 @@
 --- roles/pihole/tasks/redhat_nat_fallback.yml
 +++ roles/pihole/tasks/redhat_nat_fallback.yml
-@@ -34,7 +34,6 @@
+@@ -35,7 +35,6 @@
            [[ "$cidr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$ ]] || continue
            seen["$cidr"]=1
          done < <(docker network inspect "$id" 2>/dev/null | python3 "$H" 2>/dev/null || true)
@@ -8,10 +8,11 @@
        done < <(docker network ls -q 2>/dev/null || true)
        for k in "${!seen[@]}"; do
          printf '%s\n' "$k"
-@@ -46,6 +45,27 @@
+@@ -44,6 +43,27 @@
+   register: _docker_nat_subnets
    changed_when: false
    failed_when: false
-
++
 +- name: Compute NAT fallback subnet list
 +  ansible.builtin.set_fact:
 +    docker_nat_fallback_subnets: >-
@@ -32,11 +33,10 @@
 +        ) > 0
 +        else ['172.16.0.0/12']
 +      }}
-+
+ 
  - name: Apply Docker bridge egress NAT (nftables masquerade)
    ansible.builtin.shell:
-     cmd: |
-@@ -58,23 +78,35 @@
+@@ -56,21 +76,33 @@
          echo "nft not found; install nftables" >&2
          exit 1
        fi
