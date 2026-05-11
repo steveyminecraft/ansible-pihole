@@ -93,6 +93,8 @@ Deploy or adjust keepalived HA between Pi-hole instances. Priorities and VIPs ar
 
 Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) via [`roles/nebula_sync`](roles/nebula_sync/tasks/main.yml). Override `nebula_sync_image_tag` in inventory if you do not want `latest`.
 
+Set `nebula_sync_use_secret_files: true` to write the Nebula Sync `PRIMARY` and `REPLICAS` values to rootless-readable files and mount them into the container as `PRIMARY_FILE` / `REPLICAS_FILE`. The role defaults ownership to UID/GID `1001`, matching the upstream container user.
+
 ### Playbook tags
 
 Roles are tagged (e.g. `pihole`, `docker`, `unbound`, `ha`, `stopkeepalived`, `startkeepalived`; `sync.yaml` uses `nebulasync`, `nebula`, `sync`). Limit execution, for example:
