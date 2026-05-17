@@ -42,7 +42,7 @@ jobs:
         if: >-
           github.event_name == 'workflow_dispatch' && inputs.publish-galaxy
           || github.ref_type == 'tag'
-        uses: ./.github/actions/import-galaxy-role
+        uses: ./.github/actions/import-galaxy-role@v3
         with:
           role-name: ${{ inputs.galaxy-role-name || 'ansible-pihole' }}
         env:
