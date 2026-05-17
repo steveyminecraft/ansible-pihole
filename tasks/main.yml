@@ -1,5 +1,5 @@
 ---
-- name: ansible-pihole is a playbook repository
+- name: Ansible-pihole is a playbook repository
   ansible.builtin.fail:
     msg: >-
       This Galaxy role only declares dependencies. Clone

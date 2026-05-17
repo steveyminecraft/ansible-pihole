@@ -179,7 +179,7 @@ GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) r
 
 ### Releases and Ansible Galaxy
 
-Galaxy metadata is in [`meta/main.yml`](meta/main.yml) (same layout as [`ansible-role-regolith`](https://github.com/steveyminecraft/ansible-role-regolith)). This repository publishes as **`steveyminecraft.ansible-pihole`** (meta role declaring a dependency on **`steveyminecraft.docker-pihole`**). The Pi-hole implementation role is published from [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) ([PR #32](https://github.com/steveyminecraft/docker-pihole/pull/32)).
+Galaxy metadata is in [`meta/main.yml`](meta/main.yml) (`role_name` **`ansible_pihole`**; Galaxy listing **`ansible-pihole`**). This repository publishes as **`steveyminecraft.ansible-pihole`** (meta role depending on **`steveyminecraft.docker-pihole`**). The Pi-hole role is maintained in [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole).
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
@@ -187,4 +187,4 @@ Galaxy metadata is in [`meta/main.yml`](meta/main.yml) (same layout as [`ansible
 | [Publish to Ansible Galaxy](.github/workflows/galaxy-publish.yml) | Push to `master`, manual | Imports `steveyminecraft.ansible-pihole` from this repository |
 | [Release](.github/workflows/release.yml) | Tag `v*`, manual | GitHub release plus Galaxy import |
 
-Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key). Merge **docker-pihole** Galaxy PR first so dependency version `1.0.0` exists on Galaxy. Skip auto-tagging with `[skip tag]` in the commit message.
+Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key). Skip auto-tagging with `[skip tag]` in the commit message.

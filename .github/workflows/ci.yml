@@ -57,7 +57,7 @@ jobs:
         run: |
           ansible --version
           ansible-lint --version
-          ansible-lint -p . roles playbooks molecule
+          ansible-lint -p roles playbooks molecule
 
       - name: YAML lint
         run: yamllint roles playbooks molecule inventory

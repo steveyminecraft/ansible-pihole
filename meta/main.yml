@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   namespace: steveyminecraft
-  role_name: ansible-pihole
+  role_name: ansible_pihole
   author: steveyminecraft
   description: >-
     Playbooks and roles to deploy Pi-hole with Docker, optional Unbound,
