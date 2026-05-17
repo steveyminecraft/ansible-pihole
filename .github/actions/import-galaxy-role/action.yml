@@ -1,0 +1,55 @@
+---
+name: Import role to Ansible Galaxy
+description: Import a GitHub repository as a legacy role on Ansible Galaxy
+
+inputs:
+  github-owner:
+    description: GitHub owner (user or org); default is the workflow repository owner
+    required: false
+    default: ""
+  github-repo:
+    description: GitHub repository name; default is the workflow repository name
+    required: false
+    default: ""
+  role-name:
+    description: Galaxy role name
+    required: false
+    default: ansible-pihole
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: "3.13"
+
+    - name: Install Ansible
+      shell: bash
+      run: python -m pip install 'ansible-core>=2.20,<2.21'
+
+    - name: Import role into Ansible Galaxy
+      shell: bash
+      env:
+        GALAXY_API_KEY: ${{ env.GALAXY_API_KEY }}
+      run: |
+        set -euo pipefail
+        if [ -z "${GALAXY_API_KEY:-}" ]; then
+          echo "GALAXY_API_KEY is not set; skipping Galaxy import."
+          exit 0
+        fi
+
+        owner="${{ inputs.github-owner }}"
+        repo="${{ inputs.github-repo }}"
+        if [ -z "${owner}" ]; then
+          owner="${GITHUB_REPOSITORY_OWNER}"
+        fi
+        if [ -z "${repo}" ]; then
+          repo="${GITHUB_REPOSITORY#*/}"
+        fi
+
+        ansible-galaxy role import \
+          --api-key "${GALAXY_API_KEY}" \
+          --role-name "${{ inputs.role-name }}" \
+          "${owner}" \
+          "${repo}"

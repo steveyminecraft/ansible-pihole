@@ -1,0 +1,42 @@
+---
+galaxy_info:
+  namespace: steveyminecraft
+  role_name: ansible_pihole
+  author: steveyminecraft
+  description: >-
+    Playbooks and roles to deploy Pi-hole with Docker, optional Unbound,
+    keepalived HA, and Nebula Sync. Clone this repository and run playbooks
+    from playbooks/; Galaxy install declares the Pi-hole role dependency.
+  issue_tracker_url: https://github.com/steveyminecraft/ansible-pihole/issues
+
+  license: MIT
+
+  min_ansible_version: "2.20"
+  github_branch: master
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+    - name: EL
+      versions:
+        - "9"
+        - "10"
+
+  galaxy_tags:
+    - pihole
+    - docker
+    - dns
+    - ha
+    - keepalived
+    - unbound
+    - ansible
+    - playbook
+
+dependencies:
+  - role: steveyminecraft.docker-pihole
+    version: v1.0.0
