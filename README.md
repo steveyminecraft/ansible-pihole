@@ -15,7 +15,7 @@ For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker
 ./scripts/install-ansible-collections.sh
 ```
 
-This installs Galaxy **roles** ([`roles/requirements.yml`](roles/requirements.yml)), applies local role compatibility edits (see [`patches/`](patches/) only if any remain; Pi-hole Galaxy overrides use Python—[`scripts/apply_pihole_redhat_nat_fallback.py`](scripts/apply_pihole_redhat_nat_fallback.py), [`scripts/apply_pihole_unbound_health_wait.py`](scripts/apply_pihole_unbound_health_wait.py), and [`scripts/apply_pihole_galaxy_install_overrides.py`](scripts/apply_pihole_galaxy_install_overrides.py)—so `patch(1)` is not required for those steps on older Ubuntu runners), installs **`ansible.posix` from git** (the merged commit from [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) with ansible-core 2.24-safe imports until a Galaxy release includes it), then **collections** listed in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for that `ansible.posix` step.
+This installs the Pi-hole Galaxy role **`steveyminecraft.docker-pihole`** (pinned in [`roles/requirements.yml`](roles/requirements.yml); first release **`v1.0.0`** is created when [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) merges the Galaxy auto-tag workflows), applies local role compatibility edits (see [`patches/`](patches/) only if any remain; Pi-hole Galaxy overrides use Python—[`scripts/apply_pihole_redhat_nat_fallback.py`](scripts/apply_pihole_redhat_nat_fallback.py), [`scripts/apply_pihole_unbound_health_wait.py`](scripts/apply_pihole_unbound_health_wait.py), and [`scripts/apply_pihole_galaxy_install_overrides.py`](scripts/apply_pihole_galaxy_install_overrides.py)—so `patch(1)` is not required for those steps on older Ubuntu runners), installs **`ansible.posix` from git** (the merged commit from [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) with ansible-core 2.24-safe imports until a Galaxy release includes it), then **collections** listed in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for that `ansible.posix` step.
 
 Ansible uses [`ansible.cfg`](ansible.cfg) (`roles_path`, `collections_path`) and disables top-level fact injection so roles use `ansible_facts[...]` consistently with ansible-core 2.24+. Re-run the script after changing dependency files.
 
@@ -163,6 +163,28 @@ molecule test -s ubuntu
 VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s ubuntu
 ```
 
+### `scripts/word_analysis.py`
+
+Small utility to count **total words**, **unique word types**, type–token ratio, and per-word frequencies from a text file or stdin:
+
+```bash
+./scripts/word_analysis.py path/to/file.txt
+echo 'some text' | ./scripts/word_analysis.py
+./scripts/word_analysis.py --json --sort alpha notes.md
+```
+
 ## CI
 
 GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint (ansible-lint, yamllint), installs dependencies via [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh), and syntax-checks / check-modes selected playbooks against [`inventory/ci/`](inventory/ci/).
+
+### Releases and Ansible Galaxy (Pi-hole role)
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| [Auto-tag on master](.github/workflows/auto-tag.yml) | Push to `master` | Bumps `v*.*.*` tags on this playbook repo (starts at `v1.0.0`) |
+| [Publish Pi-hole role to Galaxy](.github/workflows/galaxy-publish.yml) | Push to `master`, manual | Imports [`steveyminecraft/docker-pihole`](https://github.com/steveyminecraft/docker-pihole) into Galaxy |
+| [Release](.github/workflows/release.yml) | Tag `v*`, manual | GitHub release for this repo; optional Galaxy re-import of `docker-pihole` |
+
+The **role** that Galaxy publishes lives in the [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) repository (same auto-tag / Galaxy workflows should exist there so role versions match Git tags). Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key) on both repos if you use the publish workflows from either side.
+
+Skip auto-tagging for a merge with `[skip tag]` in the commit message.

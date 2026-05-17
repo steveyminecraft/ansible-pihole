@@ -1,6 +1,6 @@
 ---
-# Pin to fork default branch for a stable role tree (see git history).
+# Pi-hole role: Galaxy release (preferred) or GitHub master (fallback while tagging rolls out).
 roles:
   - name: pihole
-    src: https://github.com/steveyminecraft/docker-pihole
-    version: master
+    src: steveyminecraft.docker-pihole
+    version: "1.0.0"
