@@ -39,4 +39,4 @@ galaxy_info:
 
 dependencies:
   - role: steveyminecraft.docker-pihole
-    version: "1.0.0"
+    version: v1.0.0

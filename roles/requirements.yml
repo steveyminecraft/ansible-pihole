@@ -3,4 +3,4 @@
 roles:
   - name: pihole
     src: steveyminecraft.docker-pihole
-    version: "1.0.0"
+    version: v1.0.0
