@@ -8,13 +8,13 @@ on:  # yamllint disable-line rule:truthy
   workflow_dispatch:
     inputs:
       publish-galaxy:
-        description: "Import steveyminecraft.docker-pihole into Ansible Galaxy"
+        description: "Import steveyminecraft.ansible-pihole into Ansible Galaxy"
         default: true
         required: false
         type: boolean
       galaxy-role-name:
         description: "Galaxy role name"
-        default: docker-pihole
+        default: ansible-pihole
         required: false
         type: string
 
@@ -38,14 +38,12 @@ jobs:
         with:
           generate_release_notes: true
 
-      - name: Import Pi-hole role into Ansible Galaxy
+      - name: Import role into Ansible Galaxy
         if: >-
           github.event_name == 'workflow_dispatch' && inputs.publish-galaxy
           || github.ref_type == 'tag'
         uses: ./.github/actions/import-galaxy-role
         with:
-          github-owner: steveyminecraft
-          github-repo: docker-pihole
-          role-name: ${{ inputs.galaxy-role-name || 'docker-pihole' }}
+          role-name: ${{ inputs.galaxy-role-name || 'ansible-pihole' }}
         env:
           GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}

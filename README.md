@@ -177,14 +177,14 @@ echo 'some text' | ./scripts/word_analysis.py
 
 GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint (ansible-lint, yamllint), installs dependencies via [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh), and syntax-checks / check-modes selected playbooks against [`inventory/ci/`](inventory/ci/).
 
-### Releases and Ansible Galaxy (Pi-hole role)
+### Releases and Ansible Galaxy
+
+Galaxy metadata is in [`meta/main.yml`](meta/main.yml) (same layout as [`ansible-role-regolith`](https://github.com/steveyminecraft/ansible-role-regolith)). This repository publishes as **`steveyminecraft.ansible-pihole`** (meta role declaring a dependency on **`steveyminecraft.docker-pihole`**). The Pi-hole implementation role is published from [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) ([PR #32](https://github.com/steveyminecraft/docker-pihole/pull/32)).
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| [Auto-tag on master](.github/workflows/auto-tag.yml) | Push to `master` | Bumps `v*.*.*` tags on this playbook repo (starts at `v1.0.0`) |
-| [Publish Pi-hole role to Galaxy](.github/workflows/galaxy-publish.yml) | Push to `master`, manual | Imports [`steveyminecraft/docker-pihole`](https://github.com/steveyminecraft/docker-pihole) into Galaxy |
-| [Release](.github/workflows/release.yml) | Tag `v*`, manual | GitHub release for this repo; optional Galaxy re-import of `docker-pihole` |
+| [Auto-tag on master](.github/workflows/auto-tag.yml) | Push to `master` | Bumps `v*.*.*` tags on this repo (starts at `v1.0.0`) |
+| [Publish to Ansible Galaxy](.github/workflows/galaxy-publish.yml) | Push to `master`, manual | Imports `steveyminecraft.ansible-pihole` from this repository |
+| [Release](.github/workflows/release.yml) | Tag `v*`, manual | GitHub release plus Galaxy import |
 
-The **role** that Galaxy publishes lives in the [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) repository (same auto-tag / Galaxy workflows should exist there so role versions match Git tags). Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key) on both repos if you use the publish workflows from either side.
-
-Skip auto-tagging for a merge with `[skip tag]` in the commit message.
+Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key). Merge **docker-pihole** Galaxy PR first so dependency version `1.0.0` exists on Galaxy. Skip auto-tagging with `[skip tag]` in the commit message.

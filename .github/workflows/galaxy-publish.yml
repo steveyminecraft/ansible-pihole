@@ -1,5 +1,5 @@
 ---
-name: Publish Pi-hole role to Ansible Galaxy
+name: Publish to Ansible Galaxy
 
 on:  # yamllint disable-line rule:truthy
   push:
@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   publish:
-    name: Import docker-pihole role
+    name: Import ansible-pihole role
     runs-on: ubuntu-24.04
 
     steps:
@@ -26,8 +26,6 @@ jobs:
       - name: Import role into Ansible Galaxy
         uses: ./.github/actions/import-galaxy-role
         with:
-          github-owner: steveyminecraft
-          github-repo: docker-pihole
-          role-name: docker-pihole
+          role-name: ansible-pihole
         env:
           GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
