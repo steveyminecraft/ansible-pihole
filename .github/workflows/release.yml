@@ -75,7 +75,7 @@ jobs:
         env:
           GALAXY_API_KEY: ${{ secrets.GALAXY_API_KEY }}
         run: |
-          python -m pip install --upgrade pip 'ansible-core>=2.20,<2.21' pyyaml
+          python -m pip install --upgrade pip 'ansible-core>=2.20.5,<2.21' pyyaml
           ansible-galaxy collection build
           if [ -z "${GALAXY_API_KEY:-}" ]; then
             echo "GALAXY_API_KEY is not set; skipping Galaxy publish."

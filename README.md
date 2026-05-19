@@ -204,14 +204,27 @@ GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) r
 
 ### Releases and Ansible Galaxy
 
-Collection metadata is in [`galaxy.yml`](galaxy.yml). The collection is published as **`steveyminecraft.pihole`** on [galaxy.ansible.com](https://galaxy.ansible.com/ui/collections/). Bump `version` in `galaxy.yml` when preparing a release (release tags `v*.*.*` sync into `galaxy.yml` in CI).
+Collection metadata is in [`galaxy.yml`](galaxy.yml). The collection is published as **`steveyminecraft.pihole`** on [galaxy.ansible.com](https://galaxy.ansible.com/ui/collections/).
+
+Releases use **[release-please](https://github.com/googleapis/release-please)** (same approach as [ansible-pihole-cluster](https://github.com/danylomikula/ansible-pihole-cluster)):
+
+1. Merge conventional commits to **`master`** (`feat:`, `fix:`, `chore:`, etc.).
+2. Release-please opens or updates a **Release PR** with [`CHANGELOG.md`](CHANGELOG.md) and a bumped `galaxy.yml` version.
+3. Merging that PR creates a **git tag** (`v*.*.*`), a **GitHub release** with notes, and publishes the collection to Galaxy.
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| [Auto-tag on master](.github/workflows/auto-tag.yml) | Push to `master` | Bumps `v*.*.*` tags on this repo (starts at `v1.0.0`) |
+| [Release](.github/workflows/release-please.yml) | Push to `master`, manual | Release PR, tag, GitHub release, Galaxy publish |
 | [Validate collection for Ansible Galaxy](.github/workflows/galaxy-publish.yml) | Push/PR to `master`, manual | Builds the collection artifact and runs `galaxy-importer` |
-| [Release](.github/workflows/release.yml) | Tag `v*`, manual | GitHub release plus `ansible-galaxy collection publish` |
 
-Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key). Skip auto-tagging with `[skip tag]` in the commit message.
+Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
+
+**Install a specific version:**
+
+```bash
+ansible-galaxy collection install steveyminecraft.pihole:==1.0.2
+```
+
+See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.
 
 Legacy Galaxy **roles** `steveyminecraft.ansible-pihole` and `steveyminecraft.docker-pihole` are superseded by this collection; use `ansible-galaxy collection install steveyminecraft.pihole` instead.
