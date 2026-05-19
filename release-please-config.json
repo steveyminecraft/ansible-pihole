@@ -1,0 +1,18 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "yaml",
+          "path": "galaxy.yml",
+          "jsonpath": "$.version"
+        }
+      ]
+    }
+  },
+  "pull-request-title-pattern": "chore: release ${version}",
+  "pull-request-footer": "Merges this PR to create a GitHub release, git tag, and publish steveyminecraft.pihole to Ansible Galaxy."
+}
