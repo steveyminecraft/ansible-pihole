@@ -1,5 +1,5 @@
 ---
-# Mirror CI: Python 3.13/3.14 + ansible-core 2.20.x (.github/workflows/ci.yml).
+# Mirror CI: Python 3.13/3.14 + ansible-core 2.20.5+ (.github/workflows/ci.yml). Stay on 2.20.x until 2.21 migration.
 repos:
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0
