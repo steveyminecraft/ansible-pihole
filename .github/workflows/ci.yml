@@ -43,7 +43,7 @@ jobs:
       - name: Install tooling
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade 'ansible-core>=2.20,<2.21' ansible-lint yamllint galaxy-importer
+          python -m pip install --upgrade 'ansible-core>=2.20.5,<2.21' ansible-lint yamllint galaxy-importer
 
       - name: Build and validate collection for Ansible Galaxy
         run: |
@@ -87,7 +87,7 @@ jobs:
       - name: Install Ansible
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade 'ansible-core>=2.20,<2.21'
+          python -m pip install --upgrade 'ansible-core>=2.20.5,<2.21'
 
       - name: Show Ansible version
         run: ansible --version
