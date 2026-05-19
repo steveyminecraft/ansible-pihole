@@ -6,4 +6,4 @@
   vars:
     docker_manage_iptables: false
   roles:
-    - role: docker
+    - role: steveyminecraft.pihole.docker

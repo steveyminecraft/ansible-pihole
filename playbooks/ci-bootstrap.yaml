@@ -23,14 +23,14 @@
     pihole_compose_dir: "/opt/pihole"
 
   roles:
-    - role: bootstrap
+    - role: steveyminecraft.pihole.bootstrap
       tags: [bootstrap, system]
     # In --check mode, apt repo changes aren't applied, which makes Docker packages
     # appear "missing" and fails the dry-run. Docker is exercised elsewhere (lint/molecule);
     # CI check-mode should stay side-effect free.
-    - role: docker
+    - role: steveyminecraft.pihole.docker
       tags: [docker, container]
       when: not ansible_check_mode
-    - role: pihole
+    - role: steveyminecraft.pihole.pihole
       tags: [pihole, dns]
       when: not ansible_check_mode

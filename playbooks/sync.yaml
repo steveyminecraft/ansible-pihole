@@ -4,5 +4,5 @@
   become: true
   serial: 1
   roles:
-    - role: nebula_sync
+    - role: steveyminecraft.pihole.nebula_sync
       tags: [nebulasync, nebula, sync]

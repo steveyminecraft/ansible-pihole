@@ -1,0 +1,28 @@
+---
+namespace: steveyminecraft
+name: pihole
+version: 1.0.0
+readme: README.md
+authors:
+  - steveyminecraft
+description: >-
+  Deploy Pi-hole with Docker, optional Unbound, keepalived HA, and Nebula Sync.
+  Includes playbooks for bootstrap, updates, and configuration sync.
+license:
+  - MIT
+tags:
+  - pihole
+  - docker
+  - dns
+  - ha
+  - keepalived
+  - unbound
+  - ansible
+repository: https://github.com/steveyminecraft/ansible-pihole
+documentation: https://github.com/steveyminecraft/ansible-pihole#readme
+homepage: https://github.com/steveyminecraft/ansible-pihole
+issues: https://github.com/steveyminecraft/ansible-pihole/issues
+dependencies:
+  community.docker: ">=3.10.0"
+  community.crypto: ">=2.20.0"
+  community.general: ">=9.0.0"

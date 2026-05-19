@@ -4,11 +4,11 @@
   become: true
   serial: 1
   roles:
-    - role: stop_keepalived
+    - role: steveyminecraft.pihole.stop_keepalived
       tags: [stopkeepalived, drain, ha]
-    - role: updates
+    - role: steveyminecraft.pihole.updates
       tags: [updates, system]
-    - role: pihole
+    - role: steveyminecraft.pihole.pihole
       tags: [pihole, dns]
-    - role: start_keepalived
+    - role: steveyminecraft.pihole.start_keepalived
       tags: [startkeepalived, resume, ha]

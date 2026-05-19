@@ -8,20 +8,41 @@ For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker
 
 ## Controller setup (your laptop or CI)
 
-- Install [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/index.html) (ansible-core 2.15+ is a practical minimum; CI pins a newer release in [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
-- Clone this repo and from the **repository root** run:
+- **ansible-core 2.20.x** (see [`requirements.txt`](requirements.txt)).
+- **Python 3.13 or 3.14** for the controller (CI tests both; Ubuntu 26.04 ships 3.14—see [`.python-version`](.python-version)).
+
+```bash
+./scripts/setup-env.sh
+source env/bin/activate
+./scripts/install-ansible-collections.sh
+ansible --version   # ansible-core 2.20.x from env/bin/ansible
+```
+
+Manual venv (if you prefer): `python3.13 -m venv env` or `python3.14 -m venv env`, then `pip install -r requirements.txt`.
+
+This repository is an **Ansible collection** published as **`steveyminecraft.pihole`** on [Ansible Galaxy](https://galaxy.ansible.com/ui/collections/). Collection metadata is in [`galaxy.yml`](galaxy.yml); runtime requirements are in [`meta/runtime.yml`](meta/runtime.yml).
+
+**From Galaxy** (consumers):
+
+```bash
+ansible-galaxy collection install steveyminecraft.pihole
+```
+
+**From a git clone** (development):
 
 ```bash
 ./scripts/install-ansible-collections.sh
 ```
 
-This installs the Pi-hole Galaxy role **`steveyminecraft.docker-pihole`** at **`v1.0.0`** (see [`roles/requirements.yml`](roles/requirements.yml)), applies local role compatibility edits (see [`patches/`](patches/) only if any remain; Pi-hole Galaxy overrides use Python—[`scripts/apply_pihole_redhat_nat_fallback.py`](scripts/apply_pihole_redhat_nat_fallback.py), [`scripts/apply_pihole_unbound_health_wait.py`](scripts/apply_pihole_unbound_health_wait.py), and [`scripts/apply_pihole_galaxy_install_overrides.py`](scripts/apply_pihole_galaxy_install_overrides.py)—so `patch(1)` is not required for those steps on older Ubuntu runners), installs **`ansible.posix` from git** (the merged commit from [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) with ansible-core 2.24-safe imports until a Galaxy release includes it), then **collections** listed in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for that `ansible.posix` step.
+That script builds and installs this collection locally, installs **`ansible.posix` from git** (merged [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) until a Galaxy release includes it), then installs dependencies in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for the `ansible.posix` step.
 
-Ansible uses [`ansible.cfg`](ansible.cfg) (`roles_path`, `collections_path`) and disables top-level fact injection so roles use `ansible_facts[...]` consistently with ansible-core 2.24+. Re-run the script after changing dependency files.
+[`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables top-level fact injection so roles use `ansible_facts[...]` with ansible-core 2.20+. Playbooks reference roles by FQCN (for example `steveyminecraft.pihole.pihole`). Re-run the install script after changing [`galaxy.yml`](galaxy.yml) or [`collections/requirements.yml`](collections/requirements.yml).
+
+The Pi-hole Docker role lives in this collection as [`roles/pihole`](roles/pihole/) (sourced from [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) with ansible-pihole compatibility changes applied in-tree).
 
 ## Base setup (targets)
 
-- Targets can be **Raspberry Pi OS** (as originally documented) or other Linux distros supported by the roles (Molecule uses Ubuntu 24.04 and Rocky-style images).
+- Targets can be **Raspberry Pi OS** (as originally documented) or other Linux distros supported by the roles (Molecule uses Ubuntu 24.04, Ubuntu 26.04, and Rocky-style images).
 - The [openssh_keypair](https://docs.ansible.com/ansible/latest/collections/community/crypto/openssh_keypair_module.html) collection module is pulled in via `collections/requirements.yml`.
 - **Headless Pi** (if applicable): enable SSH, configure user and networking, set static IPs (DHCP reservation is enough).
 - **Inventory:** define hosts and group vars (see examples in [`inventory/vagrant.yml`](inventory/vagrant.yml) for lab-style vars such as `pihole_*`, `nebula_sync_*`, VIPs). There is no single checked-in “production” inventory filename; use `-i` pointing at your file.
@@ -43,7 +64,7 @@ If Docker tasks fail on a first run, reboot the host and re-run.
 Roles include (among others):
 
 - [`bootstrap`](roles/bootstrap/tasks/main.yml): SSH key from GitHub (`github_user_for_ssh_key`), optional password lock, aliases, timezone, hostname, packages such as firewalld on Debian/Ubuntu.
-- [`updates`](roles/updates/tasks/main.yml), [`sshd`](roles/sshd/tasks/main.yml), [`docker`](roles/docker/tasks/main.yml), [`unbound`](roles/unbound/tasks/main.yml), [`pihole`](roles/pihole/tasks/main.yml) (often from Galaxy; see [`roles/requirements.yml`](roles/requirements.yml)), [`keepalived`](roles/keepalived/tasks/main.yml), [`start_keepalived`](roles/start_keepalived/tasks/main.yml) / [`stop_keepalived`](roles/stop_keepalived/tasks/main.yml) as used in the play.
+- [`updates`](roles/updates/tasks/main.yml), [`sshd`](roles/sshd/tasks/main.yml), [`docker`](roles/docker/tasks/main.yml), [`unbound`](roles/unbound/tasks/main.yml), [`pihole`](roles/pihole/tasks/main.yml), [`keepalived`](roles/keepalived/tasks/main.yml), [`start_keepalived`](roles/start_keepalived/tasks/main.yml) / [`stop_keepalived`](roles/stop_keepalived/tasks/main.yml) as used in the play (FQCN prefix `steveyminecraft.pihole.` in playbooks).
 
 On RedHat/Rocky hosts the Docker role installs `kernel-modules-extra` by default for Docker/netfilter support. If a real host already has the needed modules and `/boot` is too tight for kernel package changes, opt out in inventory:
 
@@ -130,18 +151,20 @@ For **idempotence** tuning (second converge should report no changes), run `mole
 | Scenario | Path | Platforms |
 |----------|------|-----------|
 | `ubuntu` | [`molecule/ubuntu/`](molecule/ubuntu/) | Ubuntu 24.04 (`bento/ubuntu-24.04`) |
+| `ubuntu-26.04` | [`molecule/ubuntu-26.04/`](molecule/ubuntu-26.04/) | Ubuntu 26.04 — VirtualBox: `konstruktoid/ubuntu-26.04` (Bento); libvirt: `cloud-image/ubuntu-26.04` |
 | `default` | [`molecule/default/`](molecule/default/) | Rocky-style box (see `molecule.yml`) |
 
 Examples:
 
 ```bash
 molecule test -s ubuntu
+molecule test -s ubuntu-26.04
 molecule converge -s ubuntu    # iterate without full test sequence
 ```
 
 ### VirtualBox vs libvirt and inventory
 
-Private guest IPs depend on the provider (see [`molecule/ubuntu/Vagrantfile`](molecule/ubuntu/Vagrantfile)):
+Private guest IPs depend on the provider (see [`molecule/ubuntu/Vagrantfile`](molecule/ubuntu/Vagrantfile) and [`molecule/ubuntu-26.04/Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile)):
 
 - **VirtualBox** — typically `192.168.56.0/24` → [`inventory/vagrant.yml`](inventory/vagrant.yml)
 - **libvirt** — typically `192.168.121.0/24` → [`inventory/vagrant_libvirt.yml`](inventory/vagrant_libvirt.yml)
@@ -153,6 +176,8 @@ export VAGRANT_DEFAULT_PROVIDER=libvirt
 export MOLECULE_VAGRANT_INVENTORY=vagrant_libvirt.yml
 molecule test -s ubuntu
 ```
+
+**`ubuntu-26.04`:** do not use `cloud-image/ubuntu-26.04` on VirtualBox (vmwgfx DRM errors). The scenario [`Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile) selects **`konstruktoid/ubuntu-26.04`** (Bento build) for VirtualBox and **`cloud-image/ubuntu-26.04`** only for libvirt. After changing boxes, run `molecule destroy -s ubuntu-26.04` then `molecule test -s ubuntu-26.04`.
 
 ### Helper: `scripts/molecule-vagrant`
 
@@ -179,12 +204,14 @@ GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) r
 
 ### Releases and Ansible Galaxy
 
-Galaxy metadata is in [`meta/main.yml`](meta/main.yml) (`role_name` **`ansible_pihole`**; Galaxy listing **`ansible-pihole`**). This repository publishes as **`steveyminecraft.ansible-pihole`** (meta role depending on **`steveyminecraft.docker-pihole`**). The Pi-hole role is maintained in [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole).
+Collection metadata is in [`galaxy.yml`](galaxy.yml). The collection is published as **`steveyminecraft.pihole`** on [galaxy.ansible.com](https://galaxy.ansible.com/ui/collections/). Bump `version` in `galaxy.yml` when preparing a release (release tags `v*.*.*` sync into `galaxy.yml` in CI).
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | [Auto-tag on master](.github/workflows/auto-tag.yml) | Push to `master` | Bumps `v*.*.*` tags on this repo (starts at `v1.0.0`) |
-| [Publish to Ansible Galaxy](.github/workflows/galaxy-publish.yml) | Push to `master`, manual | Imports `steveyminecraft.ansible-pihole` from this repository |
-| [Release](.github/workflows/release.yml) | Tag `v*`, manual | GitHub release plus Galaxy import |
+| [Validate collection for Ansible Galaxy](.github/workflows/galaxy-publish.yml) | Push/PR to `master`, manual | Builds the collection artifact and runs `galaxy-importer` |
+| [Release](.github/workflows/release.yml) | Tag `v*`, manual | GitHub release plus `ansible-galaxy collection publish` |
 
 Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key). Skip auto-tagging with `[skip tag]` in the commit message.
+
+Legacy Galaxy **roles** `steveyminecraft.ansible-pihole` and `steveyminecraft.docker-pihole` are superseded by this collection; use `ansible-galaxy collection install steveyminecraft.pihole` instead.

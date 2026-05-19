@@ -30,20 +30,6 @@ updates:
       - dependencies
       - python
 
-  - package-ecosystem: pip
-    directory: /roles/pihole
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:00"
-      timezone: Europe/London
-    cooldown:
-      default-days: 5
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - python
-
   - package-ecosystem: pre-commit
     directory: /
     schedule:
