@@ -206,15 +206,19 @@ GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) r
 
 Collection metadata is in [`galaxy.yml`](galaxy.yml). The collection is published as **`steveyminecraft.pihole`** on [galaxy.ansible.com](https://galaxy.ansible.com/ui/collections/).
 
-Releases use **[release-please](https://github.com/googleapis/release-please)** (same approach as [ansible-pihole-cluster](https://github.com/danylomikula/ansible-pihole-cluster)):
+Releases and **git tags** are only created from **`master`** (not `dev` or topic branches). There is no manual release workflow or tag-push publish path.
 
-1. Merge conventional commits to **`master`** (`feat:`, `fix:`, `chore:`, etc.).
-2. Release-please opens or updates a **Release PR** with [`CHANGELOG.md`](CHANGELOG.md) and a bumped `galaxy.yml` version.
-3. Merging that PR creates a **git tag** (`v*.*.*`), a **GitHub release** with notes, and publishes the collection to Galaxy.
+Uses **[release-please](https://github.com/googleapis/release-please)** (same approach as [ansible-pihole-cluster](https://github.com/danylomikula/ansible-pihole-cluster)):
+
+1. Land work on **`dev`**, then open a PR **`dev` → `master`** and merge (promotion to the release branch).
+2. That push to **`master`** makes release-please open or update a **Release PR** targeting `master` (changelog + `galaxy.yml` version bump).
+3. Merge the **Release PR** into **`master`** to create the **git tag** (`v*.*.*`), **GitHub release**, and **Galaxy publish**.
+
+Use conventional commits on PRs (`feat:`, `fix:`, etc.) so release-please can choose semver correctly.
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| [Release](.github/workflows/release-please.yml) | Push to `master`, manual | Release PR, tag, GitHub release, Galaxy publish |
+| [Release](.github/workflows/release-please.yml) | Push to `master` only | Release PR; tag + GitHub release + Galaxy publish when the Release PR merges |
 | [Validate collection for Ansible Galaxy](.github/workflows/galaxy-publish.yml) | Push/PR to `master`, manual | Builds the collection artifact and runs `galaxy-importer` |
 
 Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
@@ -222,7 +226,7 @@ Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 **Install a specific version:**
 
 ```bash
-ansible-galaxy collection install steveyminecraft.pihole:==1.0.2
+ansible-galaxy collection install steveyminecraft.pihole:==1.1.0
 ```
 
 See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.

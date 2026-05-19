@@ -1,11 +1,14 @@
 ---
+# Releases and tags are only produced from the master branch.
+# Typical flow: merge topic → dev → PR dev → master (opens/updates a Release PR) →
+# merge Release PR → tag v*.*.*, GitHub release, Galaxy publish.
+# No workflow_dispatch or tag-push triggers (see removed release.yml).
 name: Release
 
 on:  # yamllint disable-line rule:truthy
   push:
     branches:
       - master
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,7 +21,9 @@ concurrency:
 jobs:
   release-please:
     name: Release please
-    if: github.repository_owner == 'steveyminecraft'
+    if: >-
+      github.repository_owner == 'steveyminecraft'
+      && github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -35,7 +40,9 @@ jobs:
   publish-galaxy:
     name: Publish collection to Ansible Galaxy
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    if: >-
+      needs.release-please.outputs.release_created == 'true'
+      && github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
 
     steps:
