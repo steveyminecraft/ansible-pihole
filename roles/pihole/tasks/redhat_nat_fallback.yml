@@ -106,4 +106,3 @@
   register: _docker_nat_rules
   changed_when: true
   loop: "{{ docker_nat_fallback_subnets }}"
-

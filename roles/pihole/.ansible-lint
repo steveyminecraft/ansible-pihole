@@ -1,0 +1,4 @@
+---
+# Vendored from docker-pihole; upstream variable names predate pihole_ prefix convention.
+skip_list:
+  - var-naming
