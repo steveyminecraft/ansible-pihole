@@ -1,5 +1,5 @@
 ---
-# Mirror CI: .github/workflows/ci.yml (pip versions pinned there; align when bumping).
+# Mirror CI: Python 3.13/3.14 + ansible-core 2.20.x (.github/workflows/ci.yml).
 repos:
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0

@@ -178,7 +178,7 @@ cython_debug/
 .env.leave
 .vagrant
 .tool-versions
-roles/pihole
 .ansible
+steveyminecraft-pihole-*.tar.gz
 inventory/inventory.yaml
 inventory/rnet.yml

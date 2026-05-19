@@ -1,6 +1,0 @@
----
-# Pi-hole role from Galaxy (steveyminecraft.docker-pihole, v1.0.0+).
-roles:
-  - name: pihole
-    src: steveyminecraft.docker-pihole
-    version: v1.0.0

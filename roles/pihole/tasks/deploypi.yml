@@ -1,0 +1,98 @@
+---
+- name: Create pihole directory
+  ansible.builtin.file:
+    path: "{{ pihole_compose_dir }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    state: directory
+    mode: '0755'
+
+- name: Deploy Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ pihole_compose_dir }}/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+  register: pihole_compose_template
+
+- name: Pull docker image
+  community.docker.docker_image_pull:
+    name: "{{ pihole_image }}"
+    platform: "{{ ansible_facts['architecture'] }}"
+
+# Free 127.0.0.1:53 / avoid stub on 127.0.0.53 fighting Docker-published Pi-hole DNS.
+# Not gated on firewall_deploy — firewalld and resolved are separate concerns.
+- name: Configure systemd-resolved for Pi-hole (Debian family)
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+    - pihole_configure_systemd_resolved | default(true) | bool
+
+  block:
+    - name: Disable stub listener
+      ansible.builtin.replace:
+        path: /etc/systemd/resolved.conf
+        regexp: '^#?DNSStubListener=.*'
+        replace: 'DNSStubListener=no'
+
+    - name: Disable DNSStubListener in systemd-resolved configuration
+      ansible.builtin.lineinfile:
+        path: /etc/systemd/resolved.conf
+        regexp: '^#?DNSStubListener='
+        line: 'DNSStubListener=no'
+        backup: true
+
+    - name: Remove /etc/resolv.conf if it exists
+      ansible.builtin.file:
+        path: /etc/resolv.conf
+        state: absent
+
+    - name: Create symlink for resolv.conf
+      ansible.builtin.file:
+        src: /run/systemd/resolve/resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+
+    - name: Restart systemd-resolved
+      ansible.builtin.service:
+        name: systemd-resolved
+        state: restarted
+      failed_when: false
+
+# Bounce Docker so daemon picks up /etc/docker/daemon.json (e.g. iptables: false) before we bring up
+# project networks. EL bridge egress still needs the nft MASQ block after `compose up` (redhat_nat_fallback).
+- name: Restart docker
+  ansible.builtin.service:
+    name: docker
+    state: restarted
+
+- name: Start Pi-hole service (docker compose)
+  vars:
+    _pihole_compose_needs_recreate: >-
+      {{
+        (not (docker_manage_iptables | default(true) | bool))
+        or (pihole_compose_template.changed | default(false) | bool)
+      }}
+    _pihole_compose_recreate_flag: "{{ ' --force-recreate' if _pihole_compose_needs_recreate else '' }}"
+  ansible.builtin.command:
+    cmd: >-
+      docker compose
+      -f {{ pihole_compose_file | default(pihole_compose_dir ~ '/docker-compose.yml') }}
+      up -d{{ _pihole_compose_recreate_flag }}
+  args:
+    chdir: "{{ pihole_compose_dir }}"
+  register: pihole_compose_up
+  changed_when: >-
+    pihole_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
+    or pihole_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
+  failed_when: pihole_compose_up.rc != 0
+
+# Compose creates project networks (e.g. pihole_default); NAT must match real IPAM subnets.
+- name: Refresh EL Docker NAT rules after compose networks exist
+  ansible.builtin.include_tasks:
+    file: "{{ role_path }}/tasks/redhat_nat_fallback.yml"
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - not (docker_manage_iptables | default(true) | bool)
+    - docker_el_nat_fallback | default(true) | bool
