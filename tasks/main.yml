@@ -1,7 +1,0 @@
----
-- name: Ansible-pihole is a playbook repository
-  ansible.builtin.fail:
-    msg: >-
-      This Galaxy role only declares dependencies. Clone
-      https://github.com/steveyminecraft/ansible-pihole and run playbooks from
-      playbooks/ (for example playbooks/bootstrap-pihole.yaml).
