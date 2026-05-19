@@ -14,5 +14,5 @@
     }
   },
   "pull-request-title-pattern": "chore: release ${version}",
-  "pull-request-footer": "Merges this PR to create a GitHub release, git tag, and publish steveyminecraft.pihole to Ansible Galaxy."
+  "pull-request-footer": "Merge this PR into master to create the git tag, GitHub release, and publish steveyminecraft.pihole to Ansible Galaxy. Feature work should land on master via dev first."
 }
