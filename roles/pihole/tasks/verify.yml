@@ -15,18 +15,18 @@
 - name: DNS test for google.com via local Pi-hole
   ansible.builtin.command:
     cmd: dig +short google.com @127.0.0.1 +timeout=3 +tries=2
-  register: dns_test_google
+  register: pihole_dns_test_google
   changed_when: false
   failed_when: false
   retries: 18
   delay: 5
-  until: (dns_test_google.rc | default(1)) == 0 and (dns_test_google.stdout | default('') | trim | length > 0)
+  until: (pihole_dns_test_google.rc | default(1)) == 0 and (pihole_dns_test_google.stdout | default('') | trim | length > 0)
 
 - name: Assert google.com result looks like valid IPv4
   ansible.builtin.assert:
     that:
-      - dns_test_google.stdout_lines | length > 0
-      - dns_test_google.stdout_lines | select(
+      - pihole_dns_test_google.stdout_lines | length > 0
+      - pihole_dns_test_google.stdout_lines | select(
           'match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$'
         ) | list | length > 0
-    fail_msg: "DNS did not return at least one valid IPv4 for google.com via Pi-hole:\n{{ dns_test_google.stdout }}"
+    fail_msg: "DNS did not return at least one valid IPv4 for google.com via Pi-hole:\n{{ pihole_dns_test_google.stdout }}"

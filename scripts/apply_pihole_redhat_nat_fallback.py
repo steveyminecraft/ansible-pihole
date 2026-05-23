@@ -53,9 +53,9 @@ NEW_NFT = (
 
 OLD_STDIN_TAIL = (
     "    executable: /bin/bash\n"
-    "    stdin: \"{{ _docker_nat_subnets.stdout | default('') }}\"\n"
-    "  register: _docker_nat_nft\n"
-    "  changed_when: \"'CHANGED' in (_docker_nat_nft.stdout | default(''))\""
+    "    stdin: \"{{ pihole_docker_nat_subnets.stdout | default('') }}\"\n"
+    "  register: pihole_docker_nat_nft\n"
+    "  changed_when: \"'CHANGED' in (pihole_docker_nat_nft.stdout | default(''))\""
 )
 
 
@@ -79,7 +79,7 @@ def _add_nft_task_block() -> str:
     ref = _reference_text()
     s = ref.index("- name: Add nftables masquerade rules per Docker subnet")
     rest = ref[s:]
-    eol = rest.index("\n", rest.index('loop: "{{ docker_nat_fallback_subnets }}"')) + 1
+    eol = rest.index("\n", rest.index('loop: "{{ pihole_docker_nat_fallback_subnets }}"')) + 1
     return rest[:eol]
 
 
@@ -90,8 +90,8 @@ def _insert_block() -> str:
 def _new_stdin_tail() -> str:
     return (
         "    executable: /bin/bash\n"
-        "  register: _docker_nat_nft\n"
-        "  changed_when: \"'CHANGED' in (_docker_nat_nft.stdout | default(''))\"\n"
+        "  register: pihole_docker_nat_nft\n"
+        "  changed_when: \"'CHANGED' in (pihole_docker_nat_nft.stdout | default(''))\"\n"
         "\n"
         + _add_nft_task_block()
     )

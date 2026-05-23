@@ -2,18 +2,26 @@
 # Main task file for Pi-hole setup using Ansible
 - name: Combine pihole_environment_variables with inventory values take precedence
   ansible.builtin.set_fact:
-    pihole_environment_variables: "{{ vars_pihole_environment_variables | default({}) | combine(pihole_environment_variables, recursive=True) }}"
+    pihole_environment_variables: "{{ pihole_vars_environment_variables | default({}) | combine(pihole_environment_variables, recursive=True) }}"
 
-# Inventory often sets pihole_compose_dir only; pre.yml and docker volumes use dir_loc.
-# Keep a single effective root so bind-mount paths match compose and deploypi chdir.
-- name: Align dir_loc with pihole_compose_dir from inventory
+# Inventory often sets pihole_compose_dir only; pre.yml and docker volumes use
+# pihole_dir_loc. Keep a single effective root so bind-mount paths match compose and
+# deploypi chdir.
+- name: Align pihole_dir_loc with pihole_compose_dir from inventory
   ansible.builtin.set_fact:
-    dir_loc: "{{ pihole_compose_dir | default(dir_loc | default('/opt/pihole')) }}"
+    pihole_dir_loc: >-
+      {{
+        pihole_compose_dir
+        | default(
+            pihole_dir_loc
+            | default(vars['dir_loc'] if ('dir_loc' in vars) else '/opt/pihole')
+          )
+      }}
 
-# Inventory often sets pihole_firewall_deploy; role tasks use firewall_deploy.
-- name: Honor inventory pihole_firewall_deploy for firewall_deploy
+# Role tasks use pihole_firewall_deploy; normalize to a strict bool.
+- name: Normalize pihole_firewall_deploy to bool
   ansible.builtin.set_fact:
-    firewall_deploy: "{{ pihole_firewall_deploy | bool }}"
+    pihole_firewall_deploy: "{{ pihole_firewall_deploy | bool }}"
   when: pihole_firewall_deploy is defined
 
 - name: Validate Pi-hole Web/API password is configured securely
@@ -55,7 +63,7 @@
 
 - name: Configure firewall
   ansible.builtin.include_tasks: firewall.yml
-  when: firewall_deploy | lower == 'true'
+  when: pihole_firewall_deploy | bool
 
 - name: Added Unbound
   ansible.builtin.include_tasks: unbound.yml
