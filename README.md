@@ -183,6 +183,8 @@ The `ubuntu` Molecule scenario now includes an explicit `idempotence` step in
 - Molecule, Ansible, Vagrant, and **VirtualBox** or **libvirt** (`vagrant-libvirt`) as appropriate.
 - Run Molecule from the **repository root** so paths and inventory links resolve.
 - **Lint:** CI runs [ansible-lint](https://ansible-lint.readthedocs.io/) on `roles`, `playbooks`, and `molecule`; [yamllint](https://yamllint.readthedocs.io/) includes `molecule/`.
+- Full `molecule test` with Vagrant providers is intended for local or self-hosted
+  environments where Vagrant + provider support is guaranteed.
 
 ### Scenarios
 
@@ -240,7 +242,9 @@ echo 'some text' | ./scripts/word_analysis.py
 
 GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint (ansible-lint, yamllint), installs dependencies via [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh), and syntax-checks / check-modes selected playbooks against [`inventory/ci/`](inventory/ci/).
 
-CI also runs a lightweight Molecule `ubuntu` syntax job on pull requests.
+Hosted CI also runs lightweight safety checks for Molecule configuration files (YAML/schema
+sanity) that do not require Vagrant or a VM provider. Full Molecule Vagrant scenarios remain
+local/self-hosted validation steps.
 
 ## Operational docs
 
