@@ -40,23 +40,23 @@
         printf '%s\n' "$k"
       done | sort -u
     executable: /bin/bash
-  register: _docker_nat_subnets
+  register: pihole_docker_nat_subnets
   changed_when: false
   failed_when: false
 
 - name: Compute NAT fallback subnet list
   ansible.builtin.set_fact:
-    docker_nat_fallback_subnets: >-
+    pihole_docker_nat_fallback_subnets: >-
       {{
         (
-          (_docker_nat_subnets.stdout_lines | default([]))
+          (pihole_docker_nat_subnets.stdout_lines | default([]))
           | map('trim')
           | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$')
           | list
           | unique
         )
         if (
-          (_docker_nat_subnets.stdout_lines | default([]))
+          (pihole_docker_nat_subnets.stdout_lines | default([]))
           | map('trim')
           | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$')
           | list
@@ -81,8 +81,8 @@
       timeout 20s nft add chain ip ansible_docker_nat postrouting '{ type nat hook postrouting priority 100; policy accept; }'
       echo CHANGED
     executable: /bin/bash
-  register: _docker_nat_nft
-  changed_when: "'CHANGED' in (_docker_nat_nft.stdout | default(''))"
+  register: pihole_docker_nat_nft
+  changed_when: "'CHANGED' in (pihole_docker_nat_nft.stdout | default(''))"
 
 - name: Add nftables masquerade rules per Docker subnet
   ansible.builtin.command:
@@ -103,6 +103,6 @@
       - "!="
       - "{{ item }}"
       - masquerade
-  register: _docker_nat_rules
+  register: pihole_docker_nat_rules
   changed_when: true
-  loop: "{{ docker_nat_fallback_subnets }}"
+  loop: "{{ pihole_docker_nat_fallback_subnets }}"

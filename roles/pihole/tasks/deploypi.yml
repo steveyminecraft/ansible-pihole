@@ -23,7 +23,7 @@
     platform: "{{ ansible_facts['architecture'] }}"
 
 # Free 127.0.0.1:53 / avoid stub on 127.0.0.53 fighting Docker-published Pi-hole DNS.
-# Not gated on firewall_deploy — firewalld and resolved are separate concerns.
+# Not gated on pihole_firewall_deploy — firewalld and resolved are separate concerns.
 - name: Configure systemd-resolved for Pi-hole (Debian family)
   when:
     - ansible_facts['os_family'] == 'Debian'
@@ -62,7 +62,7 @@
   vars:
     _pihole_compose_needs_recreate: >-
       {{
-        (not (docker_manage_iptables | default(true) | bool))
+        (not (pihole_docker_manage_iptables | default(true) | bool))
         or (pihole_compose_template.changed | default(false) | bool)
       }}
   community.docker.docker_compose_v2:
@@ -79,5 +79,5 @@
     file: "{{ role_path }}/tasks/redhat_nat_fallback.yml"
   when:
     - ansible_facts['os_family'] == 'RedHat'
-    - not (docker_manage_iptables | default(true) | bool)
-    - docker_el_nat_fallback | default(true) | bool
+    - not (pihole_docker_manage_iptables | default(true) | bool)
+    - pihole_docker_el_nat_fallback | default(true) | bool

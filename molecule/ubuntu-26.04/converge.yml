@@ -1,0 +1,5 @@
+---
+- name: Converge — bootstrap Pi-hole stack
+  import_playbook: ../../playbooks/bootstrap-pihole.yaml
+- name: Converge — sync configuration
+  import_playbook: ../../playbooks/sync.yaml

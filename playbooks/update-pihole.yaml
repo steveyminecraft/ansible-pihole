@@ -41,12 +41,14 @@
     - name: Verify local Unbound DNS when enabled
       ansible.builtin.command:
         argv:
-          - dig
-          - +short
-          - "@{{ unbound_container_name | default('unbound') }}"
-          - -p
-          - "{{ unbound_port | default(5335) | string }}"
-          - "{{ pihole_update_health_qname }}"
+          - docker
+          - exec
+          - "{{ pihole_container_name | default('pihole') }}"
+          - sh
+          - -lc
+          - >-
+            dig +short @{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}
+            -p {{ unbound_port | default(5335) | string }} {{ pihole_update_health_qname }}
       register: pihole_update_unbound_dns
       changed_when: false
       failed_when: >

@@ -1,15 +1,14 @@
 ---
-# Molecule scenario: Ubuntu 24.04 + full stack (see converge.yml).
+# Molecule scenario: Ubuntu 26.04 + full stack (see converge.yml).
+# VirtualBox: konstruktoid/ubuntu-26.04 (Bento build). Libvirt: cloud-image/ubuntu-26.04.
 dependency:
   name: shell
-  # Roles + collections (ansible.posix from git via CLI — see script; avoids galaxy semver + git ref bug).
   command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
 driver:
   name: vagrant
 platforms:
-  # Private IP in molecule.yml matches VirtualBox; libvirt uses .121.x (see Vagrantfile + inventory).
   - name: vagrant-pihole-01
-    box: "bento/ubuntu-24.04"
+    box: "konstruktoid/ubuntu-26.04"
     hostname: vagrant-pihole-01
     interfaces:
       - network_name: private_network
@@ -18,7 +17,7 @@ platforms:
     memory: 2048
     cpus: 4
   - name: vagrant-pihole-02
-    box: "bento/ubuntu-24.04"
+    box: "konstruktoid/ubuntu-26.04"
     hostname: vagrant-pihole-02
     interfaces:
       - network_name: private_network
@@ -32,6 +31,8 @@ provisioner:
   connection_options:
     ansible_ssh_user: vagrant
     ansible_password: vagrant
+    ansible_ssh_private_key_file: ${HOME}/.vagrant.d/insecure_private_key
+    ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     ansible_become: true
   inventory:
     links:
@@ -49,7 +50,7 @@ provisioner:
 verifier:
   name: ansible
 scenario:
-  name: ubuntu
+  name: ubuntu-26.04
   test_sequence:
     - dependency
     - syntax

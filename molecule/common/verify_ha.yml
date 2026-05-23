@@ -8,6 +8,8 @@
     node1: "{{ (groups['all'] | sort)[0] }}"
     node2: "{{ (groups['all'] | sort)[1] }}"
     ha_container_name: "{{ pihole_container_name | default('pihole') }}"
+    pihole_gravity_db: "{{ pihole_compose_dir | default('/opt/pihole') }}/etc/pihole/gravity.db"
+    nebula_sync_test_list_url: "https://example.invalid/nebula-sync-test.txt"
   tasks:
     - name: Ensure node is reachable
       ansible.builtin.ping:
@@ -187,50 +189,66 @@
       when: nebula_sync_primary_url is defined
 
     - name: Create temporary gravity list entry on primary (Nebula Sync replication check)
-      ansible.builtin.command: >
-        docker exec {{ pihole_container_name | default('pihole') }}
-        sh -lc "sqlite3 /etc/pihole/gravity.db
-        \\\"INSERT OR IGNORE INTO adlist(address,enabled,comment)
-        VALUES ('https://example.invalid/nebula-sync-test.txt',1,'molecule-nebula-sync-test');\\\""
+      ansible.builtin.command:
+        argv:
+          - sqlite3
+          - "{{ pihole_gravity_db }}"
+          - >-
+            INSERT OR IGNORE INTO adlist(address,enabled,comment)
+            VALUES ('{{ nebula_sync_test_list_url }}',1,'molecule-nebula-sync-test');
       register: nebula_sync_test_insert
       changed_when: true
       when: inventory_hostname == node1 and nebula_sync_primary_url is defined
 
-    - name: Run nebula-sync container once on primary
-      ansible.builtin.command: docker exec {{ nebula_sync_container_name | default('nebula') }} /app/nebula-sync
+    - name: Restart Nebula Sync container to trigger sync on primary
+      ansible.builtin.command:
+        argv:
+          - docker
+          - restart
+          - "{{ nebula_sync_container_name | default('nebula') }}"
       register: nebula_sync_test_run
       changed_when: true
       when: inventory_hostname == node1 and nebula_sync_primary_url is defined
 
     - name: Wait for replicated gravity list entry on secondary
-      ansible.builtin.command: >
-        docker exec {{ pihole_container_name | default('pihole') }}
-        sh -lc "sqlite3 /etc/pihole/gravity.db
-        \\\"SELECT address FROM adlist WHERE address='https://example.invalid/nebula-sync-test.txt';\\\""
+      ansible.builtin.command:
+        argv:
+          - sqlite3
+          - "{{ pihole_gravity_db }}"
+          - >-
+            SELECT address FROM adlist
+            WHERE address='{{ nebula_sync_test_list_url }}';
       register: nebula_sync_replica_lookup
       changed_when: false
       retries: 20
       delay: 3
-      until: "'https://example.invalid/nebula-sync-test.txt' in nebula_sync_replica_lookup.stdout"
+      until: nebula_sync_test_list_url in nebula_sync_replica_lookup.stdout
       when: inventory_hostname == node2 and nebula_sync_primary_url is defined
 
     - name: Assert Nebula Sync replicated the temporary entry to secondary
       ansible.builtin.assert:
         that:
-          - "'https://example.invalid/nebula-sync-test.txt' in nebula_sync_replica_lookup.stdout"
+          - nebula_sync_test_list_url in nebula_sync_replica_lookup.stdout
         fail_msg: "Nebula Sync did not replicate temporary gravity entry to secondary node."
       when: inventory_hostname == node2 and nebula_sync_primary_url is defined
 
     - name: Remove temporary gravity list entry from primary
-      ansible.builtin.command: >
-        docker exec {{ pihole_container_name | default('pihole') }}
-        sh -lc "sqlite3 /etc/pihole/gravity.db
-        \\\"DELETE FROM adlist WHERE address='https://example.invalid/nebula-sync-test.txt';\\\""
+      ansible.builtin.command:
+        argv:
+          - sqlite3
+          - "{{ pihole_gravity_db }}"
+          - >-
+            DELETE FROM adlist
+            WHERE address='{{ nebula_sync_test_list_url }}';
       changed_when: true
       when: inventory_hostname == node1 and nebula_sync_primary_url is defined
 
-    - name: Run nebula-sync to propagate cleanup
-      ansible.builtin.command: docker exec {{ nebula_sync_container_name | default('nebula') }} /app/nebula-sync
+    - name: Restart Nebula Sync container to propagate cleanup
+      ansible.builtin.command:
+        argv:
+          - docker
+          - restart
+          - "{{ nebula_sync_container_name | default('nebula') }}"
       changed_when: true
       when: inventory_hostname == node1 and nebula_sync_primary_url is defined
 

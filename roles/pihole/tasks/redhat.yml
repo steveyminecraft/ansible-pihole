@@ -13,4 +13,4 @@
   ansible.builtin.dnf:
     name: firewalld
     state: present
-  when: firewall_deploy | lower == 'true'
+  when: pihole_firewall_deploy | bool

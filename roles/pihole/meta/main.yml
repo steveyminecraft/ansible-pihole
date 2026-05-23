@@ -18,7 +18,6 @@ galaxy_info:
     - name: Debian
       versions:
         - bookworm
-        - trixie
     - name: EL
       versions:
         - "9"
