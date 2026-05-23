@@ -42,7 +42,7 @@ The Pi-hole Docker role lives in this collection as [`roles/pihole`](roles/pihol
 
 ## Base setup (targets)
 
-- Targets can be **Raspberry Pi OS** (as originally documented) or other Linux distros supported by the roles (Molecule uses Debian 13/Trixie, Ubuntu 24.04, Ubuntu 26.04, and Rocky-style images).
+- Targets can be **Raspberry Pi OS** (as originally documented) or other Linux distros supported by the roles (Molecule uses Ubuntu 24.04, Ubuntu 26.04, and Rocky-style images).
 - The [openssh_keypair](https://docs.ansible.com/ansible/latest/collections/community/crypto/openssh_keypair_module.html) collection module is pulled in via `collections/requirements.yml`.
 - **Headless Pi** (if applicable): enable SSH, configure user and networking, set static IPs (DHCP reservation is enough).
 - **Inventory:** define hosts and group vars (see examples in [`inventory/vagrant.yml`](inventory/vagrant.yml) for lab-style vars such as `pihole_*`, `nebula_sync_*`, VIPs). There is no single checked-in “production” inventory filename; use `-i` pointing at your file.
@@ -196,7 +196,6 @@ services during each converge.
 
 | Scenario | Path | Platforms |
 |----------|------|-----------|
-| `debian-trixie` | [`molecule/debian-trixie/`](molecule/debian-trixie/) | Debian 13/Trixie — VirtualBox: `bento/debian-13`; libvirt: `debian/trixie64` |
 | `ubuntu` | [`molecule/ubuntu/`](molecule/ubuntu/) | Ubuntu 24.04 (`bento/ubuntu-24.04`) |
 | `ubuntu-26.04` | [`molecule/ubuntu-26.04/`](molecule/ubuntu-26.04/) | Ubuntu 26.04 — VirtualBox: `konstruktoid/ubuntu-26.04` (Bento); libvirt: `cloud-image/ubuntu-26.04` |
 | `default` | [`molecule/default/`](molecule/default/) | Rocky-style box (see `molecule.yml`) |
@@ -204,7 +203,6 @@ services during each converge.
 Examples:
 
 ```bash
-molecule test -s debian-trixie
 molecule test -s ubuntu
 molecule test -s ubuntu-26.04
 molecule converge -s ubuntu    # iterate without full test sequence
@@ -212,7 +210,7 @@ molecule converge -s ubuntu    # iterate without full test sequence
 
 ### VirtualBox vs libvirt and inventory
 
-Private guest IPs depend on the provider (see scenario `Vagrantfile`s such as [`molecule/debian-trixie/Vagrantfile`](molecule/debian-trixie/Vagrantfile), [`molecule/ubuntu/Vagrantfile`](molecule/ubuntu/Vagrantfile), and [`molecule/ubuntu-26.04/Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile)):
+Private guest IPs depend on the provider (see scenario `Vagrantfile`s such as [`molecule/ubuntu/Vagrantfile`](molecule/ubuntu/Vagrantfile) and [`molecule/ubuntu-26.04/Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile)):
 
 - **VirtualBox** — typically `192.168.56.0/24` → [`inventory/vagrant.yml`](inventory/vagrant.yml)
 - **libvirt** — typically `192.168.121.0/24` → [`inventory/vagrant_libvirt.yml`](inventory/vagrant_libvirt.yml)
@@ -226,8 +224,6 @@ molecule test -s ubuntu
 ```
 
 **`ubuntu-26.04`:** do not use `cloud-image/ubuntu-26.04` on VirtualBox (vmwgfx DRM errors). The scenario [`Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile) selects **`konstruktoid/ubuntu-26.04`** (Bento build) for VirtualBox and **`cloud-image/ubuntu-26.04`** only for libvirt. After changing boxes, run `molecule destroy -s ubuntu-26.04` then `molecule test -s ubuntu-26.04`.
-
-**`debian-trixie`:** `debian/trixie64` on Vagrant Cloud is **libvirt-only**. The [`Vagrantfile`](molecule/debian-trixie/Vagrantfile) uses **`bento/debian-13`** for VirtualBox and **`debian/trixie64`** for libvirt/kvm.
 
 ### ARM64 local testing
 
@@ -253,7 +249,6 @@ Run all discovered Molecule scenarios in `molecule/*` (or pass a subset):
 
 ```bash
 ./scripts/molecule-test-all
-./scripts/molecule-test-all debian-trixie
 ./scripts/molecule-test-all ubuntu ubuntu-26.04
 ./scripts/molecule-test-all --ubuntu-only
 VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-test-all
