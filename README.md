@@ -72,6 +72,19 @@ On RedHat/Rocky hosts the Docker role installs `kernel-modules-extra` by default
 docker_install_kernel_modules_extra: false
 ```
 
+`docker_disable_ipv6` now defaults to `false` for production safety. Set it explicitly in
+lab inventories where guest networking requires the workaround (for example Vagrant/Rocky).
+
+On Debian/Ubuntu, Docker IPv6 is now opt-in:
+
+```yaml
+docker_ipv6_enabled: true
+docker_ipv6_fixed_cidr: "fd12:3456:789a::/64"
+```
+
+When `docker_ipv6_enabled` is true, `docker_ipv6_fixed_cidr` must be set to a real
+environment subnet (documentation ranges such as `2001:db8::/32` are rejected).
+
 Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`, `pihole_vip_ipv4` / `pihole_vip_ipv6`) are typically set in inventory; see the [docker-pi-hole environment docs](https://github.com/pi-hole/docker-pi-hole#environment-variables) for image variables.
 
 Security defaults:
@@ -114,6 +127,16 @@ unbound_publish_host_ip: "127.0.0.1"
 unbound_publish_host_port: 5335
 ```
 
+Container resolver override is now explicit. By default Pi-hole does not override the
+container resolver list. Enable only when needed for lab troubleshooting:
+
+```yaml
+pihole_override_container_resolver: true
+pihole_startup_dns:
+  - 8.8.8.8
+  - 8.8.4.4
+```
+
 ### `playbooks/update-pihole.yaml`
 
 Faster follow-up runs (updates + Pi-hole-focused changes).
@@ -151,6 +174,9 @@ Two Vagrant VMs run the real playbooks (see [`molecule/ubuntu/converge.yml`](mol
 **`molecule test`** sequence: **dependency** (same [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh) as above), **syntax**, **create** (`vagrant up` in the scenario directory), **prepare**, **converge**, **verify**, **destroy**. Localhost lifecycle playbooks use `chdir: "{{ playbook_dir }}"` so Vagrant runs in the right folder.
 
 For **idempotence** tuning (second converge should report no changes), run `molecule converge` twice after `molecule create`, or add an `idempotence` step in the scenario `molecule.yml` once the stack is idempotent enough.
+
+The `ubuntu` Molecule scenario now includes an explicit `idempotence` step in
+`test_sequence`.
 
 ### Requirements
 
@@ -213,6 +239,17 @@ echo 'some text' | ./scripts/word_analysis.py
 ## CI
 
 GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint (ansible-lint, yamllint), installs dependencies via [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh), and syntax-checks / check-modes selected playbooks against [`inventory/ci/`](inventory/ci/).
+
+CI also runs a lightweight Molecule `ubuntu` syntax job on pull requests.
+
+## Operational docs
+
+- [Architecture](docs/architecture.md)
+- [Production deployment](docs/production-deployment.md)
+- [Upgrade runbook](docs/upgrade-runbook.md)
+- [Failover testing](docs/failover-testing.md)
+- [Backup and restore](docs/backup-and-restore.md)
+- [Secrets management](docs/secrets-management.md)
 
 ### Releases and Ansible Galaxy
 

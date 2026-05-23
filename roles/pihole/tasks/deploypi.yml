@@ -36,6 +36,7 @@
         path: /etc/systemd/resolved.conf
         regexp: '^#?DNSStubListener=.*'
         replace: 'DNSStubListener=no'
+      notify: Restart resolver
 
     - name: Disable DNSStubListener in systemd-resolved configuration
       ansible.builtin.lineinfile:
@@ -43,6 +44,7 @@
         regexp: '^#?DNSStubListener='
         line: 'DNSStubListener=no'
         backup: true
+      notify: Restart resolver
 
     - name: Remove /etc/resolv.conf if it exists
       ansible.builtin.file:
@@ -54,40 +56,22 @@
         src: /run/systemd/resolve/resolv.conf
         dest: /etc/resolv.conf
         state: link
+      notify: Restart resolver
 
-    - name: Restart systemd-resolved
-      ansible.builtin.service:
-        name: systemd-resolved
-        state: restarted
-      failed_when: false
-
-# Bounce Docker so daemon picks up /etc/docker/daemon.json (e.g. iptables: false) before we bring up
-# project networks. EL bridge egress still needs the nft MASQ block after `compose up` (redhat_nat_fallback).
-- name: Restart docker
-  ansible.builtin.service:
-    name: docker
-    state: restarted
-
-- name: Start Pi-hole service (docker compose)
+- name: Start Pi-hole service (docker compose v2)
   vars:
     _pihole_compose_needs_recreate: >-
       {{
         (not (docker_manage_iptables | default(true) | bool))
         or (pihole_compose_template.changed | default(false) | bool)
       }}
-    _pihole_compose_recreate_flag: "{{ ' --force-recreate' if _pihole_compose_needs_recreate else '' }}"
-  ansible.builtin.command:
-    cmd: >-
-      docker compose
-      -f {{ pihole_compose_file | default(pihole_compose_dir ~ '/docker-compose.yml') }}
-      up -d{{ _pihole_compose_recreate_flag }}
-  args:
-    chdir: "{{ pihole_compose_dir }}"
-  register: pihole_compose_up
-  changed_when: >-
-    pihole_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
-    or pihole_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
-  failed_when: pihole_compose_up.rc != 0
+  community.docker.docker_compose_v2:
+    project_src: "{{ pihole_compose_dir }}"
+    files:
+      - "{{ pihole_compose_file | default(pihole_compose_dir ~ '/docker-compose.yml') }}"
+    state: present
+    pull: missing
+    recreate: "{{ 'always' if _pihole_compose_needs_recreate else 'auto' }}"
 
 # Compose creates project networks (e.g. pihole_default); NAT must match real IPAM subnets.
 - name: Refresh EL Docker NAT rules after compose networks exist

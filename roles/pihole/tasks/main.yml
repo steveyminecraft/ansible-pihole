@@ -27,6 +27,14 @@
       Define a non-default Pi-hole Web/API password (minimum 16 chars) in inventory/vault
       before deploying Pi-hole.
 
+- name: Validate explicit container resolver configuration when override is enabled
+  ansible.builtin.assert:
+    that:
+      - (pihole_startup_dns | default([]) | length) > 0
+    fail_msg: >-
+      Set pihole_startup_dns when pihole_override_container_resolver=true.
+  when: pihole_override_container_resolver | default(false) | bool
+
 - name: Debian setup tasks
   ansible.builtin.include_tasks: debian.yml
   when: ansible_facts['distribution'] in ['Debian', 'Ubuntu']

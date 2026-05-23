@@ -1,3 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-[ "$(docker inspect -f "{{.State.Health.Status}}" pihole)" = "healthy" ]
+PIHOLE_CONTAINER="${PIHOLE_CONTAINER:-pihole}"
+PIHOLE_HEALTH_DOMAIN="${PIHOLE_HA_HEALTH_DOMAIN:-pi.hole}"
+PIHOLE_HEALTH_SERVER="${PIHOLE_HA_HEALTH_SERVER:-127.0.0.1}"
+PIHOLE_HEALTH_PORT="${PIHOLE_HA_HEALTH_PORT:-53}"
+
+# Prefer functional DNS checks over container metadata.
+if command -v dig >/dev/null 2>&1; then
+  dig +time=2 +tries=1 +short "@${PIHOLE_HEALTH_SERVER}" -p "${PIHOLE_HEALTH_PORT}" "${PIHOLE_HEALTH_DOMAIN}" \
+    | grep -q .
+else
+  docker exec "${PIHOLE_CONTAINER}" sh -lc \
+    "dig +time=2 +tries=1 +short @127.0.0.1 -p 53 ${PIHOLE_HEALTH_DOMAIN}" \
+    | grep -q .
+fi

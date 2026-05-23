@@ -28,12 +28,9 @@
   notify: Restart unbound stack
 
 - name: Bring up unbound with Docker Compose v2
-  ansible.builtin.command:
-    cmd: docker compose -f "{{ unbound_compose_file }}" up -d
-  args:
-    chdir: "{{ unbound_compose_dir }}"
-  register: unbound_compose_up
-  changed_when: >
-    unbound_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
-    or unbound_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
-  failed_when: unbound_compose_up.rc != 0
+  community.docker.docker_compose_v2:
+    project_src: "{{ unbound_compose_dir }}"
+    files:
+      - "{{ unbound_compose_file }}"
+    state: present
+    pull: missing

@@ -5,7 +5,7 @@ nebula_sync_compose_name: nebula-sync
 
 # Image (GHCR)
 nebula_sync_image: "ghcr.io/lovelaze/nebula-sync"
-nebula_sync_image_tag: "latest"   # or e.g. v0.11.1
+nebula_sync_image_tag: "v0.11.1"
 
 # Core settings
 nebula_sync_tz: "Europe/London"
