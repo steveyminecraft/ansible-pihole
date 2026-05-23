@@ -133,5 +133,10 @@ jobs:
       - name: Install collections
         run: ./scripts/install-ansible-collections.sh
 
+      - name: Install Vagrant
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y vagrant
+
       - name: Molecule syntax-only (ubuntu scenario)
         run: molecule syntax -s ubuntu
