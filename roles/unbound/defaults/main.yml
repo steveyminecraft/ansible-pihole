@@ -28,7 +28,7 @@ unbound_interface: "0.0.0.0"
 unbound_port: 5335
 
 # Expose to host? (not required for Pi-hole integration, but you had it enabled)
-unbound_publish_to_host: true
+unbound_publish_to_host: false
 unbound_publish_host_ip: "127.0.0.1"
 unbound_publish_host_port: 5335
 

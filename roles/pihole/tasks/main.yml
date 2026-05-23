@@ -16,6 +16,17 @@
     firewall_deploy: "{{ pihole_firewall_deploy | bool }}"
   when: pihole_firewall_deploy is defined
 
+- name: Validate Pi-hole Web/API password is configured securely
+  no_log: true
+  ansible.builtin.assert:
+    that:
+      - pihole_environment_variables.FTLCONF_webserver_api_password is defined
+      - (pihole_environment_variables.FTLCONF_webserver_api_password | string | length) >= 16
+      - (pihole_environment_variables.FTLCONF_webserver_api_password | string) not in ['Testing 101', 'Intranet', 'CHANGE_ME', '']
+    fail_msg: >-
+      Define a non-default Pi-hole Web/API password (minimum 16 chars) in inventory/vault
+      before deploying Pi-hole.
+
 - name: Debian setup tasks
   ansible.builtin.include_tasks: debian.yml
   when: ansible_facts['distribution'] in ['Debian', 'Ubuntu']

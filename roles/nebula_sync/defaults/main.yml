@@ -50,7 +50,7 @@ nebula_sync_env_filename: ".env"
 
 # Store PRIMARY/REPLICAS credentials in read-only files mounted into the container.
 # Nebula Sync runs as UID/GID 1001 by default, so the files must be readable by 1001.
-nebula_sync_use_secret_files: false
+nebula_sync_use_secret_files: true
 nebula_sync_secret_dir: "{{ nebula_sync_dir }}/secrets"
 nebula_sync_secret_container_dir: "/run/secrets"
 nebula_sync_secret_file_owner: "1001"

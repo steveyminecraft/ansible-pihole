@@ -15,8 +15,8 @@ services:
       - "{{ unbound_port | default(5335) }}/udp"
 {% if (unbound_publish_to_host | default(false) | bool) %}
     ports:
-      - "{{ unbound_publish_host_port | default(unbound_port | default(5335)) }}:{{ unbound_port | default(5335) }}/tcp"
-      - "{{ unbound_publish_host_port | default(unbound_port | default(5335)) }}:{{ unbound_port | default(5335) }}/udp"
+      - "{{ unbound_publish_host_ip | default('127.0.0.1') }}:{{ unbound_publish_host_port | default(unbound_port | default(5335)) }}:{{ unbound_port | default(5335) }}/tcp"
+      - "{{ unbound_publish_host_ip | default('127.0.0.1') }}:{{ unbound_publish_host_port | default(unbound_port | default(5335)) }}:{{ unbound_port | default(5335) }}/udp"
 {% endif %}
     volumes:
       - {{ unbound_compose_dir }}/unbound/unbound.conf:{{ unbound_directory }}/unbound.conf:ro
