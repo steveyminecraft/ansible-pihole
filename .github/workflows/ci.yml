@@ -22,11 +22,12 @@ permissions:
 
 jobs:
   lint:
-    name: Ansible & YAML lint (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Ansible & YAML lint (${{ matrix.runner }} / Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
         python-version: ["3.13", "3.14"]
 
     steps:
@@ -65,12 +66,13 @@ jobs:
         run: yamllint roles playbooks molecule inventory
 
   ansible-tests-ubuntu:
-    name: Ansible syntax & dry-run (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Ansible syntax & dry-run (${{ matrix.runner }} / Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.runner }}
     needs: lint
     strategy:
       fail-fast: false
       matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
         python-version: ["3.13", "3.14"]
 
     steps:
@@ -111,7 +113,7 @@ jobs:
 
   ci-safety-checks:
     name: Hosted CI safety checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: ansible-tests-ubuntu
     if: github.event_name == 'pull_request'
     steps:

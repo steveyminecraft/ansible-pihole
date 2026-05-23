@@ -275,7 +275,11 @@ echo 'some text' | ./scripts/word_analysis.py
 
 ## CI
 
-GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs lint (ansible-lint, yamllint), installs dependencies via [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh), and syntax-checks / check-modes selected playbooks against [`inventory/ci/`](inventory/ci/).
+GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+runs lint (ansible-lint, yamllint), installs dependencies via
+[`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh),
+and syntax-checks / check-modes selected playbooks against [`inventory/ci/`](inventory/ci/)
+on GitHub-hosted Ubuntu 24.04 x64 and ARM64 runners.
 
 Hosted CI also runs lightweight safety checks for Molecule configuration files (YAML/schema
 sanity) that do not require Vagrant or a VM provider. Full Molecule Vagrant scenarios remain
