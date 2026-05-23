@@ -6,7 +6,7 @@ global_defs {
     checker_no_swap
 }
 
-vrrp_script check_pihole {
+vrrp_script check_pihole_dns {
     script "/etc/keepalived/check_pihole.sh"
     interval 5
     timeout 4
@@ -23,7 +23,7 @@ vrrp_sync_group PIHOLE {
     }
 
     track_script {
-        check_pihole
+        check_pihole_dns
     }
 }
 
@@ -40,7 +40,7 @@ vrrp_instance PIHOLE-IPv4 {
     }
 
     track_script {
-        check_docker
+        check_pihole_dns
     }
 
     virtual_ipaddress {
@@ -56,7 +56,7 @@ vrrp_instance PIHOLE-IPv6 {
     preempt_delay 30
 
     track_script {
-        check_docker
+        check_pihole_dns
     }
 
     virtual_ipaddress {

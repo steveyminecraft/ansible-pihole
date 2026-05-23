@@ -59,6 +59,7 @@
     pihole_docker_dns: "{{ pihole_startup_dns | default(['8.8.8.8', '8.8.4.4']) }}"
   when:
     - pihole_unbound_present
+    - pihole_override_container_resolver | default(false) | bool
     - pihole_unbound_container_ipv4 | default('') | length > 0
 
 - name: Ensure shared external docker network exists (dns_net)
@@ -104,18 +105,17 @@
     owner: "root"
     group: "root"
     mode: "0600"
+  register: pihole_unbound_compose_template
   when: pihole_unbound_present
 
 - name: Apply compose changes (Pi-hole)
-  ansible.builtin.command:
-    cmd: docker compose -f "{{ pihole_compose_file }}" up -d --force-recreate
-  args:
-    chdir: "{{ pihole_compose_dir }}"
-  register: pihole_compose_up
-  changed_when: >
-    pihole_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
-    or pihole_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\\b')
-  failed_when: pihole_compose_up.rc != 0
+  community.docker.docker_compose_v2:
+    project_src: "{{ pihole_compose_dir }}"
+    files:
+      - "{{ pihole_compose_file }}"
+    state: present
+    pull: missing
+    recreate: "{{ 'always' if (pihole_unbound_compose_template.changed | default(false) | bool) else 'auto' }}"
   when: pihole_unbound_present
 
 - name: Override Pi-hole container resolv.conf when Docker DNS redirect is unavailable

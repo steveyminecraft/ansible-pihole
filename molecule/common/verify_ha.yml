@@ -186,6 +186,54 @@
         fail_msg: "Nebula Sync PRIMARY/REPLICAS environment does not match inventory."
       when: nebula_sync_primary_url is defined
 
+    - name: Create temporary gravity list entry on primary (Nebula Sync replication check)
+      ansible.builtin.command: >
+        docker exec {{ pihole_container_name | default('pihole') }}
+        sh -lc "sqlite3 /etc/pihole/gravity.db
+        \\\"INSERT OR IGNORE INTO adlist(address,enabled,comment)
+        VALUES ('https://example.invalid/nebula-sync-test.txt',1,'molecule-nebula-sync-test');\\\""
+      register: nebula_sync_test_insert
+      changed_when: true
+      when: inventory_hostname == node1 and nebula_sync_primary_url is defined
+
+    - name: Run nebula-sync container once on primary
+      ansible.builtin.command: docker exec {{ nebula_sync_container_name | default('nebula') }} /app/nebula-sync
+      register: nebula_sync_test_run
+      changed_when: true
+      when: inventory_hostname == node1 and nebula_sync_primary_url is defined
+
+    - name: Wait for replicated gravity list entry on secondary
+      ansible.builtin.command: >
+        docker exec {{ pihole_container_name | default('pihole') }}
+        sh -lc "sqlite3 /etc/pihole/gravity.db
+        \\\"SELECT address FROM adlist WHERE address='https://example.invalid/nebula-sync-test.txt';\\\""
+      register: nebula_sync_replica_lookup
+      changed_when: false
+      retries: 20
+      delay: 3
+      until: "'https://example.invalid/nebula-sync-test.txt' in nebula_sync_replica_lookup.stdout"
+      when: inventory_hostname == node2 and nebula_sync_primary_url is defined
+
+    - name: Assert Nebula Sync replicated the temporary entry to secondary
+      ansible.builtin.assert:
+        that:
+          - "'https://example.invalid/nebula-sync-test.txt' in nebula_sync_replica_lookup.stdout"
+        fail_msg: "Nebula Sync did not replicate temporary gravity entry to secondary node."
+      when: inventory_hostname == node2 and nebula_sync_primary_url is defined
+
+    - name: Remove temporary gravity list entry from primary
+      ansible.builtin.command: >
+        docker exec {{ pihole_container_name | default('pihole') }}
+        sh -lc "sqlite3 /etc/pihole/gravity.db
+        \\\"DELETE FROM adlist WHERE address='https://example.invalid/nebula-sync-test.txt';\\\""
+      changed_when: true
+      when: inventory_hostname == node1 and nebula_sync_primary_url is defined
+
+    - name: Run nebula-sync to propagate cleanup
+      ansible.builtin.command: docker exec {{ nebula_sync_container_name | default('nebula') }} /app/nebula-sync
+      changed_when: true
+      when: inventory_hostname == node1 and nebula_sync_primary_url is defined
+
     # --- Docker container stop triggers VIP move ---
     - name: Check HA container on primary before docker failover test
       community.docker.docker_container_info:
@@ -244,4 +292,52 @@
       community.docker.docker_container:
         name: "{{ ha_container_name }}"
         state: started
+      when: inventory_hostname == node1
+
+    - name: Disable local DNS service on primary (functional failover test)
+      ansible.builtin.command: docker exec {{ ha_container_name }} sh -lc "pkill -f pihole-FTL || true"
+      register: pihole_dns_stop_primary
+      changed_when: true
+      when: inventory_hostname == node1
+
+    - name: Wait for VIP on backup after functional DNS failure
+      ansible.builtin.command: ip -4 addr show
+      register: ip_node2_dns_failover
+      changed_when: false
+      when: inventory_hostname == node2
+      retries: 20
+      delay: 3
+      until: vip_address in ip_node2_dns_failover.stdout
+
+    - name: Assert VIP moved to backup after DNS failure on primary
+      ansible.builtin.assert:
+        that:
+          - vip_address in ip_node2_dns_failover.stdout
+        fail_msg: >-
+          DNS FAILOVER FAILED: VIP {{ vip_address }} not found on {{ node2 }}
+          after stopping local DNS service on {{ node1 }}.
+      when: inventory_hostname == node2
+
+    - name: Restore Pi-hole container on primary after DNS failure test
+      ansible.builtin.command: docker restart {{ ha_container_name }}
+      register: pihole_restart_primary_after_dns_fail
+      changed_when: "'Restarted' in (pihole_restart_primary_after_dns_fail.stdout | default(''))"
+      when: inventory_hostname == node1
+
+    - name: Wait for VIP return to primary after DNS recovery
+      ansible.builtin.command: ip -4 addr show
+      register: ip_node1_dns_recovery
+      changed_when: false
+      when: inventory_hostname == node1
+      retries: 20
+      delay: 3
+      until: vip_address in ip_node1_dns_recovery.stdout
+
+    - name: Assert VIP returned to primary after DNS recovery
+      ansible.builtin.assert:
+        that:
+          - vip_address in ip_node1_dns_recovery.stdout
+        fail_msg: >-
+          DNS RECOVERY FAILED: VIP {{ vip_address }} did not return to {{ node1 }}
+          after restoring Pi-hole DNS service.
       when: inventory_hostname == node1
