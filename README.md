@@ -263,16 +263,6 @@ For Vagrant/Molecule inventories (`vagrant_env: true`), the bootstrap role now
 skips rebooting after hostname file updates to avoid long guest-network waits
 during test runs.
 
-### `scripts/word_analysis.py`
-
-Small utility to count **total words**, **unique word types**, type–token ratio, and per-word frequencies from a text file or stdin:
-
-```bash
-./scripts/word_analysis.py path/to/file.txt
-echo 'some text' | ./scripts/word_analysis.py
-./scripts/word_analysis.py --json --sort alpha notes.md
-```
-
 ## CI
 
 GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
