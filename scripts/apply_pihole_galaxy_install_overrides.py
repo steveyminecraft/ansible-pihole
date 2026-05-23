@@ -186,7 +186,7 @@ RESOLV_INSERT_NEW = """  failed_when: pihole_compose_up.rc != 0
   changed_when: true
   when:
     - pihole_unbound_present
-    - not (docker_manage_iptables | default(true) | bool)
+    - not (pihole_docker_manage_iptables | default(true) | bool)
     - pihole_docker_dns | default([]) | length > 0
 
 - name: Inspect Docker DNS network for attached containers"""

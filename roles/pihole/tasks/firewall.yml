@@ -7,8 +7,8 @@
     immediate: true
     zone: public
   loop:
-    - "{{ webport_http }}/tcp"
-    - "{{ webport_https }}/tcp"
+    - "{{ pihole_webport_http }}/tcp"
+    - "{{ pihole_webport_https }}/tcp"
     - "53/tcp"
     - "53/udp"
 

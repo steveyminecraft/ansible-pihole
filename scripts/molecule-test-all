@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+# Run molecule test for every scenario (or a selected subset).
+#
+# Examples:
+#   ./scripts/molecule-test-all
+#   VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-test-all
+#   ./scripts/molecule-test-all ubuntu ubuntu-26.04
+#   ./scripts/molecule-test-all --ubuntu-only
+#   ./scripts/molecule-test-all --list
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+sync_inventory_from_provider() {
+  case "${VAGRANT_DEFAULT_PROVIDER:-virtualbox}" in
+    libvirt|kvm)
+      export MOLECULE_VAGRANT_INVENTORY="${MOLECULE_VAGRANT_INVENTORY:-vagrant_libvirt.yml}"
+      ;;
+    *)
+      export MOLECULE_VAGRANT_INVENTORY="${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}"
+      ;;
+  esac
+}
+
+collect_scenarios() {
+  local scenario_dir scenario_name
+  local -a found=()
+
+  for scenario_dir in molecule/*; do
+    [[ -d "$scenario_dir" ]] || continue
+    [[ -f "$scenario_dir/molecule.yml" ]] || continue
+    scenario_name="$(basename "$scenario_dir")"
+    found+=("$scenario_name")
+  done
+
+  if [[ ${#found[@]} -eq 0 ]]; then
+    echo "No Molecule scenarios found under $repo_root/molecule" >&2
+    exit 1
+  fi
+
+  printf '%s\n' "${found[@]}" | sort
+}
+
+collect_ubuntu_scenarios() {
+  local scenario
+  local -a ubuntu=()
+
+  for scenario in "$@"; do
+    if [[ "$scenario" == ubuntu* ]]; then
+      ubuntu+=("$scenario")
+    fi
+  done
+
+  if [[ ${#ubuntu[@]} -eq 0 ]]; then
+    return 1
+  fi
+
+  printf '%s\n' "${ubuntu[@]}"
+}
+
+print_usage() {
+  cat <<'EOF'
+Usage:
+  ./scripts/molecule-test-all [--list] [--ubuntu-only] [scenario ...]
+
+Options:
+  --list         Print discovered scenarios and exit.
+  --ubuntu-only  Run all scenarios whose names start with "ubuntu".
+  -h, --help     Show help.
+
+If no scenarios are passed, all scenarios in molecule/* are tested.
+EOF
+}
+
+declare -a selected=()
+list_only=false
+ubuntu_only=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --list)
+      list_only=true
+      shift
+      ;;
+    --ubuntu-only)
+      ubuntu_only=true
+      shift
+      ;;
+    -h|--help)
+      print_usage
+      exit 0
+      ;;
+    --)
+      shift
+      while [[ $# -gt 0 ]]; do
+        selected+=("$1")
+        shift
+      done
+      ;;
+    -*)
+      echo "Unknown option: $1" >&2
+      print_usage >&2
+      exit 2
+      ;;
+    *)
+      selected+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if $ubuntu_only && [[ ${#selected[@]} -gt 0 ]]; then
+  echo "Do not combine --ubuntu-only with explicit scenario names." >&2
+  print_usage >&2
+  exit 2
+fi
+
+mapfile -t all_scenarios < <(collect_scenarios)
+
+if $list_only; then
+  if $ubuntu_only; then
+    collect_ubuntu_scenarios "${all_scenarios[@]}" || true
+  else
+    printf '%s\n' "${all_scenarios[@]}"
+  fi
+  exit 0
+fi
+
+if [[ ${#selected[@]} -eq 0 ]]; then
+  selected=("${all_scenarios[@]}")
+fi
+
+if $ubuntu_only; then
+  if ! mapfile -t selected < <(collect_ubuntu_scenarios "${all_scenarios[@]}"); then
+    echo "No Ubuntu scenarios found (expected names starting with 'ubuntu')." >&2
+    exit 1
+  fi
+fi
+
+sync_inventory_from_provider
+
+echo "Repo: $repo_root"
+echo "Provider: ${VAGRANT_DEFAULT_PROVIDER:-virtualbox}"
+echo "Inventory: ${MOLECULE_VAGRANT_INVENTORY}"
+echo "Scenarios: ${selected[*]}"
+echo ""
+
+declare -a failed=()
+for scenario in "${selected[@]}"; do
+  if [[ ! -f "molecule/$scenario/molecule.yml" ]]; then
+    echo "Skipping unknown scenario: $scenario" >&2
+    failed+=("$scenario (missing)")
+    continue
+  fi
+
+  echo "=== molecule test -s $scenario ==="
+  if molecule test -s "$scenario"; then
+    echo "PASS: $scenario"
+  else
+    echo "FAIL: $scenario" >&2
+    failed+=("$scenario")
+  fi
+  echo ""
+done
+
+if [[ ${#failed[@]} -gt 0 ]]; then
+  echo "One or more scenarios failed: ${failed[*]}" >&2
+  exit 1
+fi
+
+echo "All requested Molecule scenarios passed."

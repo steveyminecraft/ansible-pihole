@@ -20,8 +20,8 @@ services:
       - {{ var }}={{ value }}
 {% endfor %}
     volumes:
-      - {{ dir_loc }}/etc/pihole:/etc/pihole
-      - {{ dir_loc }}/etc/dnsmasq.d:/etc/dnsmasq.d
+      - {{ pihole_dir_loc }}/etc/pihole:/etc/pihole
+      - {{ pihole_dir_loc }}/etc/dnsmasq.d:/etc/dnsmasq.d
     cap_add:
       - NET_ADMIN
       - SYS_TIME
@@ -49,8 +49,8 @@ services:
     ports:
       - "53:53/tcp"
       - "53:53/udp"
-      - "{{ webport_http }}:80/tcp"
-      - "{{ webport_https }}:443/tcp"{% if pihole_environment_variables.DHCP_ACTIVE | lower == 'true' %}
+      - "{{ pihole_webport_http }}:80/tcp"
+      - "{{ pihole_webport_https }}:443/tcp"{% if pihole_environment_variables.DHCP_ACTIVE | lower == 'true' %}
       - "67:67/udp"  # DHCP port
       {% endif %}
 {% endif %}

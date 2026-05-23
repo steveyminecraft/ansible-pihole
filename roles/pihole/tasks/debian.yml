@@ -9,4 +9,4 @@
     name: firewalld
     state: present
   become: true
-  when: firewall_deploy | lower == 'true'
+  when: pihole_firewall_deploy | bool
