@@ -97,10 +97,13 @@
   when: pihole_unbound_present
 
 - name: Re-render docker-compose.yml for Pi-hole (with Unbound integration)
+  no_log: true
   ansible.builtin.template:
     src: docker-compose.yml.j2
     dest: "{{ pihole_compose_file }}"
-    mode: "0644"
+    owner: "root"
+    group: "root"
+    mode: "0600"
   when: pihole_unbound_present
 
 - name: Apply compose changes (Pi-hole)

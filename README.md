@@ -74,6 +74,12 @@ docker_install_kernel_modules_extra: false
 
 Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`, `pihole_vip_ipv4` / `pihole_vip_ipv6`) are typically set in inventory; see the [docker-pi-hole environment docs](https://github.com/pi-hole/docker-pi-hole#environment-variables) for image variables.
 
+Security defaults:
+
+- `FTLCONF_webserver_api_password` must be provided from inventory/vault and should be at least 16 characters.
+- Known placeholders/defaults (`Testing 101`, `Intranet`, `CHANGE_ME`, empty value) are rejected by role assertions.
+- Pi-hole compose files are rendered with root-only permissions (`0600`) in both normal and Unbound integration paths.
+
 Unbound is deployed before Pi-hole and can be used as Pi-hole's upstream resolver over a shared Docker network. By default the Unbound role now chooses an image from `unbound_image_arch_map` using the target host architecture:
 
 ```yaml
@@ -100,7 +106,13 @@ pihole_environment_variables:
   FTLCONF_dns_listeningMode: "all"
 ```
 
-When Pi-hole talks to Unbound on the shared Docker network, `unbound_publish_to_host` can usually be `false`; publish Unbound only if you also want to query it directly from the host.
+When Pi-hole talks to Unbound on the shared Docker network, `unbound_publish_to_host` now defaults to `false`; publish Unbound only if you also want to query it directly from the host. If enabled, bind it explicitly (default loopback):
+
+```yaml
+unbound_publish_to_host: true
+unbound_publish_host_ip: "127.0.0.1"
+unbound_publish_host_port: 5335
+```
 
 ### `playbooks/update-pihole.yaml`
 
@@ -114,7 +126,7 @@ Deploy or adjust keepalived HA between Pi-hole instances. Priorities and VIPs ar
 
 Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) via [`roles/nebula_sync`](roles/nebula_sync/tasks/main.yml). Override `nebula_sync_image_tag` in inventory if you do not want `latest`.
 
-Set `nebula_sync_use_secret_files: true` to write the Nebula Sync `PRIMARY` and `REPLICAS` values to rootless-readable files and mount them into the container as `PRIMARY_FILE` / `REPLICAS_FILE`. The role defaults ownership to UID/GID `1001`, matching the upstream container user.
+Nebula Sync now defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPLICAS` credentials are written to mounted secret files (`PRIMARY_FILE` / `REPLICAS_FILE`) instead of plain env values where possible. The role defaults ownership to UID/GID `1001`, matching the upstream container user, and rejects placeholder credentials by default.
 
 ### Playbook tags
 
