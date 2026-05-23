@@ -1,4 +1,28 @@
 ---
+- name: Validate Nebula Sync primary endpoint and credentials
+  no_log: true
+  ansible.builtin.assert:
+    that:
+      - (nebula_sync_primary_url | string | length) > 0
+      - (nebula_sync_primary_password | string | length) > 0
+      - (nebula_sync_primary_password | string) not in ['CHANGE_ME', 'Intranet', 'Testing 101', '']
+    fail_msg: >-
+      Define non-placeholder Nebula Sync PRIMARY values in inventory/vault before deployment.
+
+- name: Validate Nebula Sync replicas endpoint and credentials
+  no_log: true
+  ansible.builtin.assert:
+    that:
+      - (nebula_sync_replicas | default([]) | length) > 0
+      - (nebula_sync_replicas | map(attribute='url') | map('string') | map('length') | min) > 0
+      - (nebula_sync_replicas | map(attribute='password') | map('string') | map('length') | min) > 0
+      - "'CHANGE_ME' not in (nebula_sync_replicas | map(attribute='password') | list)"
+      - "'' not in (nebula_sync_replicas | map(attribute='password') | list)"
+      - "'Intranet' not in (nebula_sync_replicas | map(attribute='password') | list)"
+      - "'Testing 101' not in (nebula_sync_replicas | map(attribute='password') | list)"
+    fail_msg: >-
+      Define non-placeholder Nebula Sync REPLICAS values in inventory/vault before deployment.
+
 - name: Ensure nebula-sync directory exists
   ansible.builtin.file:
     path: "{{ nebula_sync_dir }}"

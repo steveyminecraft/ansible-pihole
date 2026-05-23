@@ -33,8 +33,8 @@ pihole_configure_systemd_resolved: true
 pihole_environment_variables:
   # Set the appropriate timezone for your location (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones), e.g:
   TZ: 'Europe/London'
-  # Set a password to access the web interface. Not setting one will result in a random password being assigned
-  FTLCONF_webserver_api_password: 'Testing 101'
+  # Define in inventory/vault; role tasks assert minimum strength before deploy.
+  FTLCONF_webserver_api_password: ''
   # If using Docker's default `bridge` network setting the dns listening mode should be set to 'ALL'
   FTLCONF_dns_listeningMode: 'ALL'
   # controls if required port is opened

@@ -37,7 +37,8 @@ all:
     pihole_environment_variables:
       TZ: "{{ timezone }}"
       FTLCONF_MAXDBDAYS: "180"
-      FTLCONF_webserver_api_password: 'Intranet'  # example value, change it and better use ansible-vault
+      # LAB-ONLY fixture for local Vagrant/Molecule runs. Never reuse in production.
+      FTLCONF_webserver_api_password: 'LabOnly-Molecule-Pihole-Password!'
       FTLCONF_dns_listeningMode: "all"
       DHCP_ACTIVE: false
       REV_SERVER: false
