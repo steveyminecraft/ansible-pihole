@@ -93,6 +93,7 @@
     pkg:
       - firewalld
       - python3-pip
+      - dnsutils
     update_cache: true
   when: ansible_facts['os_family'] == 'Debian'
 

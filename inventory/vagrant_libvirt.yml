@@ -22,7 +22,7 @@ all:
     ansible_user_home_dir: /home/{{ ansible_user }}
     ansible_python_interpreter: /usr/bin/python3
     github_user_for_ssh_key: steveyminecraft  # Change me to required value
-    pihole_image: "pihole/pihole:latest"
+    pihole_image: "pihole/pihole:latest"  # lab-only floating tag for disposable Vagrant/Molecule runs
     timezone: "Europe/London"
     pihole_webport_http: '80'  # Port for HTTP-Requests to Webinterface.
     pihole_webport_https: '443'  # Port for HTTPS-DoH Requests.
@@ -44,6 +44,7 @@ all:
     dnsmasq_listening: single
     pihole_container_name: pihole
     vagrant_env: true
+    docker_disable_ipv6: true  # lab-only workaround for Rocky/Vagrant guest networking
     docker_users: vagrant
     nebula_sync_container_name: nebula
     nebula_sync_primary_url: "http://192.168.121.4"

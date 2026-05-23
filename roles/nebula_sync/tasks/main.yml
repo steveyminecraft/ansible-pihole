@@ -98,30 +98,11 @@
         or (nebula_sync_replicas_secret.changed | default(false) | bool)
       }}
 
-- name: Build nebula-sync compose up command
-  ansible.builtin.set_fact:
-    nebula_sync_compose_up_argv: >-
-      {{
-        [
-          'docker',
-          'compose',
-          '-f',
-          (nebula_compose_file | default(nebula_sync_dir ~ '/docker-compose.yml')),
-          'up',
-          '-d'
-        ]
-        + (['--force-recreate'] if nebula_sync_force_recreate | bool else [])
-      }}
-
 - name: Bring up nebula-sync with Docker Compose v2
-  ansible.builtin.command:
-    argv: "{{ nebula_sync_compose_up_argv }}"
-  args:
-    chdir: "{{ nebula_sync_dir }}"
-  register: nebula_sync_compose_up
-  changed_when: >
-    nebula_sync_force_recreate | bool
-    or
-    nebula_sync_compose_up.stdout is search('(?im)^(creating|recreating|starting|pulling|building)\b')
-    or nebula_sync_compose_up.stderr is search('(?im)^(creating|recreating|starting|pulling|building)\b')
-  failed_when: nebula_sync_compose_up.rc != 0
+  community.docker.docker_compose_v2:
+    project_src: "{{ nebula_sync_dir }}"
+    files:
+      - "{{ nebula_compose_file | default(nebula_sync_dir ~ '/docker-compose.yml') }}"
+    state: present
+    pull: missing
+    recreate: "{{ 'always' if (nebula_sync_force_recreate | bool) else 'auto' }}"

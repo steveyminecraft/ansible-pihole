@@ -104,29 +104,12 @@
 
 - name: Configure keepalived
   template:
-    dest: /tmp/keepalived.conf
-    src: keepalived.j2
-    mode: "0644"
-  notify: Restart keepalived service
-
-- name: Read generated keepalived config from /tmp
-  ansible.builtin.slurp:
-    src: /tmp/keepalived.conf
-  register: keepalived_tmp_conf
-
-- name: Write sanitized keepalived config
-  ansible.builtin.copy:
     dest: /etc/keepalived/keepalived.conf
-    content: >-
-      {{
-        keepalived_tmp_conf.content
-        | b64decode
-        | regex_replace('\\[|\\]', '')
-        | regex_replace("['\\\\]", '')
-      }}
+    src: keepalived.j2
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
+  notify: Restart keepalived service
 
 ### Add in firewall rules for vrrp protocol
 - name: Add VRRP protocol to firewall

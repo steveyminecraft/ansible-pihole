@@ -108,3 +108,30 @@ jobs:
       - name: Check-mode converge (ci-bootstrap)
         run: |
           ansible-playbook -i inventory/ci/ci.yml playbooks/ci-bootstrap.yaml --check
+
+  molecule-ubuntu:
+    name: Molecule ubuntu integration
+    runs-on: ubuntu-latest
+    needs: ansible-tests-ubuntu
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Molecule toolchain
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Install collections
+        run: ./scripts/install-ansible-collections.sh
+
+      - name: Molecule syntax-only (ubuntu scenario)
+        run: molecule syntax -s ubuntu

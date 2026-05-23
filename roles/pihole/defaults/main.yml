@@ -55,5 +55,10 @@ pihole_container_name: "pihole"
 # embedded resolver can resolve shared-network service names such as `unbound`.
 pihole_docker_dns: []
 
+# Optional explicit resolver override for Pi-hole container startup. Keep disabled by
+# default so production Unbound deployments do not silently use public resolvers.
+pihole_override_container_resolver: false
+pihole_startup_dns: []
+
 # QNAME used in Unbound integration checks (from host / from Pi-hole container)
 pihole_unbound_verify_qname: "cloudflare.com"

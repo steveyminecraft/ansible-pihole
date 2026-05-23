@@ -329,17 +329,37 @@
   notify: Restart Docker
   when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Enable Docker IPv6 (Debian family)
+- name: Validate explicit Docker IPv6 CIDR when IPv6 is enabled (Debian family)
+  ansible.builtin.assert:
+    that:
+      - (docker_ipv6_fixed_cidr | default('') | string | length) > 0
+      - not ((docker_ipv6_fixed_cidr | string).startswith('2001:db8:'))
+    fail_msg: >-
+      Set docker_ipv6_fixed_cidr to a real, environment-specific IPv6 subnet when docker_ipv6_enabled=true.
+      Documentation ranges (2001:db8::/32) are not allowed.
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - docker_ipv6_enabled | default(false) | bool
+
+- name: Configure Docker IPv6 (Debian family)
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json
     mode: "0600"
-    content: |
-      {
-        "ipv6": true,
-        "fixed-cidr-v6": "2001:db8:1::/64"
-      }
+    content: "{{ {'ipv6': true, 'fixed-cidr-v6': docker_ipv6_fixed_cidr} | to_nice_json }}"
   notify: Restart Docker
-  when: ansible_facts['os_family'] == 'Debian'
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - docker_ipv6_enabled | default(false) | bool
+
+- name: Configure Docker without explicit IPv6 (Debian family)
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    mode: "0600"
+    content: "{{ {'ipv6': false} | to_nice_json }}"
+  notify: Restart Docker
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - not (docker_ipv6_enabled | default(false) | bool)
 
 - name: Flush handlers
   meta: flush_handlers
