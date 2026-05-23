@@ -1,7 +1,11 @@
 ---
 - name: Reboot after hostname change
   reboot:
-  when: not ansible_check_mode
+  # In Vagrant/Molecule labs, reboot-on-hostname can stall for a long time while
+  # guest networking re-initializes. Keep reboot behavior for real hosts.
+  when:
+    - not ansible_check_mode
+    - not (vagrant_env | default(false) | bool)
 
 - name: Restart dhcpcd
   service:

@@ -42,7 +42,7 @@ The Pi-hole Docker role lives in this collection as [`roles/pihole`](roles/pihol
 
 ## Base setup (targets)
 
-- Targets can be **Raspberry Pi OS** (as originally documented) or other Linux distros supported by the roles (Molecule uses Ubuntu 24.04, Ubuntu 26.04, and Rocky-style images).
+- Targets can be **Raspberry Pi OS** (as originally documented) or other Linux distros supported by the roles (Molecule uses Debian 13/Trixie, Ubuntu 24.04, Ubuntu 26.04, and Rocky-style images).
 - The [openssh_keypair](https://docs.ansible.com/ansible/latest/collections/community/crypto/openssh_keypair_module.html) collection module is pulled in via `collections/requirements.yml`.
 - **Headless Pi** (if applicable): enable SSH, configure user and networking, set static IPs (DHCP reservation is enough).
 - **Inventory:** define hosts and group vars (see examples in [`inventory/vagrant.yml`](inventory/vagrant.yml) for lab-style vars such as `pihole_*`, `nebula_sync_*`, VIPs). There is no single checked-in “production” inventory filename; use `-i` pointing at your file.
@@ -143,6 +143,11 @@ pihole_startup_dns:
 
 Faster follow-up runs (updates + Pi-hole-focused changes).
 
+Both `bootstrap-pihole.yaml` and `update-pihole.yaml` include post-task DNS checks.
+When Unbound integration is enabled, the Unbound probe now runs from inside the
+Pi-hole container (`docker exec`) so Docker-network upstream names (for example
+`unbound`) are resolved in the same network context Pi-hole uses.
+
 ### `playbooks/keepalived.yaml`
 
 Deploy or adjust keepalived HA between Pi-hole instances. Priorities and VIPs are inventory-driven (see comments in [`inventory/vagrant.yml`](inventory/vagrant.yml) for examples).
@@ -175,10 +180,9 @@ Two Vagrant VMs run the real playbooks (see [`molecule/ubuntu/converge.yml`](mol
 
 **`molecule test`** sequence: **dependency** (same [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh) as above), **syntax**, **create** (`vagrant up` in the scenario directory), **prepare**, **converge**, **verify**, **destroy**. Localhost lifecycle playbooks use `chdir: "{{ playbook_dir }}"` so Vagrant runs in the right folder.
 
-For **idempotence** tuning (second converge should report no changes), run `molecule converge` twice after `molecule create`, or add an `idempotence` step in the scenario `molecule.yml` once the stack is idempotent enough.
-
-The `ubuntu` Molecule scenario now includes an explicit `idempotence` step in
-`test_sequence`.
+The bundled scenarios intentionally omit Molecule's `idempotence` step because
+the HA flow drains/resumes keepalived and can restart resolver/container
+services during each converge.
 
 ### Requirements
 
@@ -192,6 +196,7 @@ The `ubuntu` Molecule scenario now includes an explicit `idempotence` step in
 
 | Scenario | Path | Platforms |
 |----------|------|-----------|
+| `debian-trixie` | [`molecule/debian-trixie/`](molecule/debian-trixie/) | Debian 13/Trixie — VirtualBox: `bento/debian-13`; libvirt: `debian/trixie64` |
 | `ubuntu` | [`molecule/ubuntu/`](molecule/ubuntu/) | Ubuntu 24.04 (`bento/ubuntu-24.04`) |
 | `ubuntu-26.04` | [`molecule/ubuntu-26.04/`](molecule/ubuntu-26.04/) | Ubuntu 26.04 — VirtualBox: `konstruktoid/ubuntu-26.04` (Bento); libvirt: `cloud-image/ubuntu-26.04` |
 | `default` | [`molecule/default/`](molecule/default/) | Rocky-style box (see `molecule.yml`) |
@@ -199,6 +204,7 @@ The `ubuntu` Molecule scenario now includes an explicit `idempotence` step in
 Examples:
 
 ```bash
+molecule test -s debian-trixie
 molecule test -s ubuntu
 molecule test -s ubuntu-26.04
 molecule converge -s ubuntu    # iterate without full test sequence
@@ -206,7 +212,7 @@ molecule converge -s ubuntu    # iterate without full test sequence
 
 ### VirtualBox vs libvirt and inventory
 
-Private guest IPs depend on the provider (see [`molecule/ubuntu/Vagrantfile`](molecule/ubuntu/Vagrantfile) and [`molecule/ubuntu-26.04/Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile)):
+Private guest IPs depend on the provider (see scenario `Vagrantfile`s such as [`molecule/debian-trixie/Vagrantfile`](molecule/debian-trixie/Vagrantfile), [`molecule/ubuntu/Vagrantfile`](molecule/ubuntu/Vagrantfile), and [`molecule/ubuntu-26.04/Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile)):
 
 - **VirtualBox** — typically `192.168.56.0/24` → [`inventory/vagrant.yml`](inventory/vagrant.yml)
 - **libvirt** — typically `192.168.121.0/24` → [`inventory/vagrant_libvirt.yml`](inventory/vagrant_libvirt.yml)
@@ -221,6 +227,17 @@ molecule test -s ubuntu
 
 **`ubuntu-26.04`:** do not use `cloud-image/ubuntu-26.04` on VirtualBox (vmwgfx DRM errors). The scenario [`Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile) selects **`konstruktoid/ubuntu-26.04`** (Bento build) for VirtualBox and **`cloud-image/ubuntu-26.04`** only for libvirt. After changing boxes, run `molecule destroy -s ubuntu-26.04` then `molecule test -s ubuntu-26.04`.
 
+**`debian-trixie`:** `debian/trixie64` on Vagrant Cloud is **libvirt-only**. The [`Vagrantfile`](molecule/debian-trixie/Vagrantfile) uses **`bento/debian-13`** for VirtualBox and **`debian/trixie64`** for libvirt/kvm.
+
+### ARM64 local testing
+
+VirtualBox on an x86_64 Linux host does not emulate ARM64 guests. For full-system
+ARM64 validation, prefer real ARM64 hardware (for example a Raspberry Pi), an
+ARM64 cloud VM, or a custom QEMU/libvirt aarch64 VM. Docker `buildx`/QEMU
+binfmt can emulate ARM64 containers locally, but it is not equivalent to these
+Vagrant scenarios because systemd, firewall, keepalived, Docker daemon, and
+networking behavior are part of the test surface.
+
 ### Helper: `scripts/molecule-vagrant`
 
 - **Interactive:** `./scripts/molecule-vagrant` — choose VirtualBox or libvirt, copy the printed exports/commands, or confirm to run `molecule test -s ubuntu`.
@@ -229,6 +246,27 @@ molecule test -s ubuntu
 ```bash
 VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s ubuntu
 ```
+
+### Helper: `scripts/molecule-test-all`
+
+Run all discovered Molecule scenarios in `molecule/*` (or pass a subset):
+
+```bash
+./scripts/molecule-test-all
+./scripts/molecule-test-all debian-trixie
+./scripts/molecule-test-all ubuntu ubuntu-26.04
+./scripts/molecule-test-all --ubuntu-only
+VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-test-all
+./scripts/molecule-test-all --list
+```
+
+Like `scripts/molecule-vagrant`, this helper auto-selects
+`MOLECULE_VAGRANT_INVENTORY` from `VAGRANT_DEFAULT_PROVIDER` when unset
+(`vagrant.yml` for VirtualBox, `vagrant_libvirt.yml` for libvirt/kvm).
+
+For Vagrant/Molecule inventories (`vagrant_env: true`), the bootstrap role now
+skips rebooting after hostname file updates to avoid long guest-network waits
+during test runs.
 
 ### `scripts/word_analysis.py`
 

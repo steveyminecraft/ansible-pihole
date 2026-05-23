@@ -13,6 +13,7 @@
           - python3-packaging
           - dnsutils
           - iproute2
+          - sqlite3
         update_cache: true
         state: present
       when: ansible_facts['os_family'] == 'Debian'
@@ -25,6 +26,7 @@
           - python3-packaging
           - bind-utils
           - iproute
+          - sqlite
         state: present
       when: ansible_facts['os_family'] == 'RedHat'
 
