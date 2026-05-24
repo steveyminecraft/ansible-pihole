@@ -62,7 +62,7 @@
   vars:
     _pihole_compose_needs_recreate: >-
       {{
-        (not (pihole_docker_manage_iptables | default(true) | bool))
+        (pihole_force_recreate | default(false) | bool)
         or (pihole_compose_template.changed | default(false) | bool)
       }}
   community.docker.docker_compose_v2:

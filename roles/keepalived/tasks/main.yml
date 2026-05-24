@@ -15,6 +15,7 @@
 
 - name: Flush handlers
   meta: flush_handlers
+  when: not (keepalived_defer_service_restart | default(false) | bool)
 
 - name: Install keepalived Debian
   ansible.builtin.apt:
@@ -47,6 +48,13 @@
     state: stopped
     enabled: true
   when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Keep keepalived drained while service restart is deferred
+  ansible.builtin.service:
+    name: keepalived
+    state: stopped
+    enabled: true
+  when: keepalived_defer_service_restart | default(false) | bool
 
 - name: Copy check_pihole.sh
   copy:
@@ -121,3 +129,4 @@
 
 - name: Flush handlers
   meta: flush_handlers
+  when: not (keepalived_defer_service_restart | default(false) | bool)

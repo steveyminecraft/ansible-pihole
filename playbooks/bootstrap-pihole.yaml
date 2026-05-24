@@ -3,8 +3,10 @@
   hosts: all
   become: true
   serial: 1
+  any_errors_fatal: true
   vars:
     pihole_bootstrap_health_qname: "{{ pihole_unbound_verify_qname | default('google.com') }}"
+    keepalived_defer_service_restart: true
   roles:
     - role: steveyminecraft.pihole.stop_keepalived
       tags: [stopkeepalived, drain, ha]
@@ -22,48 +24,82 @@
       tags: [unbound, dns]
     - role: steveyminecraft.pihole.pihole
       tags: [pihole, dns]
-    - role: steveyminecraft.pihole.start_keepalived
-      tags: [startkeepalived, resume, ha]
   post_tasks:
-    - name: Wait for local Pi-hole DNS listener
-      ansible.builtin.wait_for:
-        host: 127.0.0.1
-        port: 53
-        timeout: 180
-        delay: 2
+    - name: Validate node DNS before resuming keepalived
       tags: [pihole, dns, ha]
+      block:
+        - name: Wait for local Pi-hole DNS listener
+          ansible.builtin.wait_for:
+            host: 127.0.0.1
+            port: 53
+            timeout: 180
+            delay: 2
 
-    - name: Verify local Pi-hole DNS resolves health qname
+        - name: Verify local Pi-hole DNS resolves health qname
+          ansible.builtin.command:
+            argv:
+              - dig
+              - +short
+              - "@127.0.0.1"
+              - "{{ pihole_bootstrap_health_qname }}"
+          register: pihole_bootstrap_local_dns
+          changed_when: false
+          failed_when: >
+            (pihole_bootstrap_local_dns.stdout_lines
+             | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+             | list | length) == 0
+
+        - name: Verify local Unbound DNS when deployed
+          ansible.builtin.command:
+            argv:
+              - docker
+              - exec
+              - "{{ pihole_container_name | default('pihole') }}"
+              - sh
+              - -lc
+              - >-
+                dig +short @{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}
+                -p {{ unbound_port | default(5335) | string }} {{ pihole_bootstrap_health_qname }}
+          register: pihole_bootstrap_unbound_dns
+          changed_when: false
+          failed_when: >
+            (pihole_bootstrap_unbound_dns.stdout_lines
+             | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+             | list | length) == 0
+          when: pihole_unbound_present | default(false) | bool
+
+        - name: Resume keepalived after local DNS validation
+          ansible.builtin.include_role:
+            name: steveyminecraft.pihole.start_keepalived
+
+      rescue:
+        - name: Stop bootstrap because node failed DNS validation while drained
+          ansible.builtin.fail:
+            msg: >-
+              {{ inventory_hostname }} failed post-bootstrap DNS validation.
+              Keepalived has not been resumed on this node. Repair the node
+              and verify DNS before returning it to VIP service.
+
+- name: Verify HA DNS after bootstrap
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Verify VIP DNS resolves health qname after bootstrap
       ansible.builtin.command:
         argv:
           - dig
           - +short
-          - "@127.0.0.1"
-          - "{{ pihole_bootstrap_health_qname }}"
-      register: pihole_bootstrap_local_dns
+          - "@{{ (pihole_vip_ipv4 | split('/'))[0] }}"
+          - "{{ pihole_bootstrap_health_qname | default(pihole_unbound_verify_qname | default('google.com')) }}"
+      register: pihole_bootstrap_vip_dns
       changed_when: false
       failed_when: >
-        (pihole_bootstrap_local_dns.stdout_lines
+        (pihole_bootstrap_vip_dns.stdout_lines
          | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
          | list | length) == 0
-      tags: [pihole, dns, ha]
-
-    - name: Verify local Unbound DNS when enabled
-      ansible.builtin.command:
-        argv:
-          - docker
-          - exec
-          - "{{ pihole_container_name | default('pihole') }}"
-          - sh
-          - -lc
-          - >-
-            dig +short @{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}
-            -p {{ unbound_port | default(5335) | string }} {{ pihole_bootstrap_health_qname }}
-      register: pihole_bootstrap_unbound_dns
-      changed_when: false
-      failed_when: >
-        (pihole_bootstrap_unbound_dns.stdout_lines
-         | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
-         | list | length) == 0
-      when: not (pihole_use_host_network | default(false) | bool)
+      run_once: true
+      when:
+        - pihole_ha_mode | default(false) | bool
+        - pihole_vip_ipv4 is defined
       tags: [pihole, dns, ha]

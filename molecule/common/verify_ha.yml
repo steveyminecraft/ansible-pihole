@@ -10,6 +10,14 @@
     ha_container_name: "{{ pihole_container_name | default('pihole') }}"
     pihole_gravity_db: "{{ pihole_compose_dir | default('/opt/pihole') }}/etc/pihole/gravity.db"
     nebula_sync_test_list_url: "https://example.invalid/nebula-sync-test.txt"
+    nebula_sync_secret_host_dir: "{{ nebula_sync_secret_dir | default((nebula_sync_dir | default('/opt/nebula-sync')) ~ '/secrets') }}"
+    nebula_sync_env_host_path: >-
+      {{ (nebula_sync_dir | default('/opt/nebula-sync')) ~ '/' ~ (nebula_sync_env_filename | default('.env')) }}
+    nebula_sync_primary_secret_container_path: >-
+      {{ (nebula_sync_secret_container_dir | default('/run/secrets')) ~ '/' ~ (nebula_sync_primary_secret_filename | default('primary')) }}
+    nebula_sync_replicas_secret_container_path: >-
+      {{ (nebula_sync_secret_container_dir | default('/run/secrets')) ~ '/' ~ (nebula_sync_replicas_secret_filename | default('replicas')) }}
+    nebula_sync_mounts_fmt: "{{ '{{json .Mounts}}' }}"
   tasks:
     - name: Ensure node is reachable
       ansible.builtin.ping:
@@ -168,6 +176,7 @@
       when: nebula_sync_primary_url is defined
 
     - name: Read Nebula Sync container environment
+      no_log: true
       ansible.builtin.command:
         argv:
           - docker
@@ -179,78 +188,373 @@
       changed_when: false
       when: nebula_sync_primary_url is defined
 
-    - name: Assert Nebula Sync points at expected Pi-hole instances
-      ansible.builtin.assert:
-        that:
-          - ('PRIMARY=' ~ nebula_sync_primary_url ~ '|' ~ nebula_sync_primary_password) in nebula_sync_env.stdout_lines
-          - nebula_sync_replicas | length > 0
-          - nebula_sync_env.stdout_lines | select('search', '^REPLICAS=.*' ~ nebula_sync_replicas[0].url) | list | length > 0
-        fail_msg: "Nebula Sync PRIMARY/REPLICAS environment does not match inventory."
+    - name: Stat Nebula Sync env file
+      ansible.builtin.stat:
+        path: "{{ nebula_sync_env_host_path }}"
+      register: nebula_sync_env_file_stat
+      when:
+        - nebula_sync_primary_url is defined
+        - nebula_sync_use_env_file | default(true) | bool
+
+    - name: Read Nebula Sync env file
+      no_log: true
+      ansible.builtin.slurp:
+        src: "{{ nebula_sync_env_host_path }}"
+      register: nebula_sync_env_file
+      when:
+        - nebula_sync_primary_url is defined
+        - nebula_sync_use_env_file | default(true) | bool
+        - nebula_sync_env_file_stat.stat.exists | default(false)
+
+    - name: Set Nebula Sync effective environment lines
+      no_log: true
+      ansible.builtin.set_fact:
+        nebula_sync_effective_env_lines: >-
+          {{
+            (
+              (nebula_sync_env_file.content | b64decode).splitlines()
+              if (
+                (nebula_sync_use_env_file | default(true) | bool)
+                and (nebula_sync_env_file.content is defined)
+              )
+              else nebula_sync_env.stdout_lines
+            )
+          }}
       when: nebula_sync_primary_url is defined
 
-    - name: Create temporary gravity list entry on primary (Nebula Sync replication check)
-      ansible.builtin.command:
-        argv:
-          - sqlite3
-          - "{{ pihole_gravity_db }}"
-          - >-
-            INSERT OR IGNORE INTO adlist(address,enabled,comment)
-            VALUES ('{{ nebula_sync_test_list_url }}',1,'molecule-nebula-sync-test');
-      register: nebula_sync_test_insert
-      changed_when: true
-      when: inventory_hostname == node1 and nebula_sync_primary_url is defined
-
-    - name: Restart Nebula Sync container to trigger sync on primary
+    - name: Read Nebula Sync container mounts
+      no_log: true
       ansible.builtin.command:
         argv:
           - docker
-          - restart
+          - inspect
+          - --format
+          - "{{ nebula_sync_mounts_fmt }}"
           - "{{ nebula_sync_container_name | default('nebula') }}"
-      register: nebula_sync_test_run
-      changed_when: true
-      when: inventory_hostname == node1 and nebula_sync_primary_url is defined
-
-    - name: Wait for replicated gravity list entry on secondary
-      ansible.builtin.command:
-        argv:
-          - sqlite3
-          - "{{ pihole_gravity_db }}"
-          - >-
-            SELECT address FROM adlist
-            WHERE address='{{ nebula_sync_test_list_url }}';
-      register: nebula_sync_replica_lookup
+      register: nebula_sync_mounts
       changed_when: false
-      retries: 20
-      delay: 3
-      until: nebula_sync_test_list_url in nebula_sync_replica_lookup.stdout
-      when: inventory_hostname == node2 and nebula_sync_primary_url is defined
+      when: nebula_sync_primary_url is defined
 
-    - name: Assert Nebula Sync replicated the temporary entry to secondary
+    - name: Set Nebula Sync secret-file verification facts
+      no_log: true
+      ansible.builtin.set_fact:
+        nebula_sync_primary_file_configured: >-
+          {{
+            (('PRIMARY_FILE=' ~ nebula_sync_primary_secret_container_path) in nebula_sync_effective_env_lines)
+            or (('PRIMARY_FILE=' ~ nebula_sync_primary_secret_container_path) in nebula_sync_env.stdout_lines)
+          }}
+        nebula_sync_replicas_file_configured: >-
+          {{
+            (('REPLICAS_FILE=' ~ nebula_sync_replicas_secret_container_path) in nebula_sync_effective_env_lines)
+            or (('REPLICAS_FILE=' ~ nebula_sync_replicas_secret_container_path) in nebula_sync_env.stdout_lines)
+          }}
+        nebula_sync_plaintext_primary_present: >-
+          {{
+            ((nebula_sync_effective_env_lines | select('search', '^PRIMARY=.*\\|') | list | length) > 0)
+            or ((nebula_sync_env.stdout_lines | select('search', '^PRIMARY=.*\\|') | list | length) > 0)
+          }}
+        nebula_sync_plaintext_replicas_present: >-
+          {{
+            ((nebula_sync_effective_env_lines | select('search', '^REPLICAS=.*\\|') | list | length) > 0)
+            or ((nebula_sync_env.stdout_lines | select('search', '^REPLICAS=.*\\|') | list | length) > 0)
+          }}
+        nebula_sync_mounted_secret_destinations: >-
+          {{
+            (nebula_sync_mounts.stdout | from_json)
+            | map(attribute='Destination')
+            | list
+          }}
+      when: nebula_sync_primary_url is defined
+
+    - name: Determine whether Nebula Sync secure-mode remediation is needed
+      ansible.builtin.set_fact:
+        nebula_sync_secret_mode_remediation_needed: >-
+          {{
+            (nebula_sync_use_secret_files | default(true) | bool)
+            and (
+              not (nebula_sync_primary_file_configured | bool)
+              or not (nebula_sync_replicas_file_configured | bool)
+              or (nebula_sync_plaintext_primary_present | bool)
+              or (nebula_sync_plaintext_replicas_present | bool)
+              or nebula_sync_primary_secret_container_path not in nebula_sync_mounted_secret_destinations
+              or nebula_sync_replicas_secret_container_path not in nebula_sync_mounted_secret_destinations
+            )
+          }}
+      when: nebula_sync_primary_url is defined
+
+    - name: Remediate legacy Nebula Sync plaintext container
+      when:
+        - nebula_sync_primary_url is defined
+        - nebula_sync_secret_mode_remediation_needed | default(false) | bool
+      block:
+        - name: Stop legacy Nebula Sync compose project before secure-mode remediation
+          ansible.builtin.command:
+            argv:
+              - docker
+              - compose
+              - -f
+              - "{{ nebula_compose_file | default(nebula_sync_dir | default('/opt/nebula-sync') ~ '/docker-compose.yml') }}"
+              - down
+              - --remove-orphans
+          args:
+            chdir: "{{ nebula_sync_dir | default('/opt/nebula-sync') }}"
+          register: nebula_sync_verify_compose_down
+          changed_when: true
+          failed_when: nebula_sync_verify_compose_down.rc != 0
+          when:
+            - (nebula_sync_plaintext_primary_present | bool)
+              or (nebula_sync_plaintext_replicas_present | bool)
+
+        - name: Remove legacy Nebula Sync container before secure-mode remediation
+          community.docker.docker_container:
+            name: "{{ nebula_sync_container_name | default('nebula') }}"
+            state: absent
+          when:
+            - (nebula_sync_plaintext_primary_present | bool)
+              or (nebula_sync_plaintext_replicas_present | bool)
+
+        - name: Gather minimal facts for Nebula Sync role remediation
+          ansible.builtin.setup:
+            gather_subset:
+              - min
+
+        - name: Re-apply local Nebula Sync role in secret-file mode
+          ansible.builtin.include_role:
+            name: nebula_sync
+
+        - name: Re-read Nebula Sync container environment after remediation
+          no_log: true
+          ansible.builtin.command:
+            argv:
+              - docker
+              - inspect
+              - --format
+              - "{{ docker_inspect_env_fmt }}"
+              - "{{ nebula_sync_container_name | default('nebula') }}"
+          register: nebula_sync_env
+          changed_when: false
+
+        - name: Re-stat Nebula Sync env file after remediation
+          ansible.builtin.stat:
+            path: "{{ nebula_sync_env_host_path }}"
+          register: nebula_sync_env_file_stat
+          when: nebula_sync_use_env_file | default(true) | bool
+
+        - name: Re-read Nebula Sync env file after remediation
+          no_log: true
+          ansible.builtin.slurp:
+            src: "{{ nebula_sync_env_host_path }}"
+          register: nebula_sync_env_file
+          when:
+            - nebula_sync_use_env_file | default(true) | bool
+            - nebula_sync_env_file_stat.stat.exists | default(false)
+
+        - name: Rebuild Nebula Sync effective environment lines after remediation
+          no_log: true
+          ansible.builtin.set_fact:
+            nebula_sync_effective_env_lines: >-
+              {{
+                (
+                  (nebula_sync_env_file.content | b64decode).splitlines()
+                  if (
+                    (nebula_sync_use_env_file | default(true) | bool)
+                    and (nebula_sync_env_file.content is defined)
+                  )
+                  else nebula_sync_env.stdout_lines
+                )
+              }}
+
+        - name: Re-read Nebula Sync container mounts after remediation
+          no_log: true
+          ansible.builtin.command:
+            argv:
+              - docker
+              - inspect
+              - --format
+              - "{{ nebula_sync_mounts_fmt }}"
+              - "{{ nebula_sync_container_name | default('nebula') }}"
+          register: nebula_sync_mounts
+          changed_when: false
+
+        - name: Recompute Nebula Sync secret-file verification facts after remediation
+          no_log: true
+          ansible.builtin.set_fact:
+            nebula_sync_primary_file_configured: >-
+              {{
+                (('PRIMARY_FILE=' ~ nebula_sync_primary_secret_container_path) in nebula_sync_effective_env_lines)
+                or (('PRIMARY_FILE=' ~ nebula_sync_primary_secret_container_path) in nebula_sync_env.stdout_lines)
+              }}
+            nebula_sync_replicas_file_configured: >-
+              {{
+                (('REPLICAS_FILE=' ~ nebula_sync_replicas_secret_container_path) in nebula_sync_effective_env_lines)
+                or (('REPLICAS_FILE=' ~ nebula_sync_replicas_secret_container_path) in nebula_sync_env.stdout_lines)
+              }}
+            nebula_sync_plaintext_primary_present: >-
+              {{
+                ((nebula_sync_effective_env_lines | select('search', '^PRIMARY=.*\\|') | list | length) > 0)
+                or ((nebula_sync_env.stdout_lines | select('search', '^PRIMARY=.*\\|') | list | length) > 0)
+              }}
+            nebula_sync_plaintext_replicas_present: >-
+              {{
+                ((nebula_sync_effective_env_lines | select('search', '^REPLICAS=.*\\|') | list | length) > 0)
+                or ((nebula_sync_env.stdout_lines | select('search', '^REPLICAS=.*\\|') | list | length) > 0)
+              }}
+            nebula_sync_mounted_secret_destinations: >-
+              {{
+                (nebula_sync_mounts.stdout | from_json)
+                | map(attribute='Destination')
+                | list
+              }}
+
+    - name: Assert Nebula Sync uses secret-file credential configuration
       ansible.builtin.assert:
         that:
-          - nebula_sync_test_list_url in nebula_sync_replica_lookup.stdout
-        fail_msg: "Nebula Sync did not replicate temporary gravity entry to secondary node."
-      when: inventory_hostname == node2 and nebula_sync_primary_url is defined
+          - nebula_sync_use_secret_files | default(true) | bool
+          - nebula_sync_primary_file_configured | bool
+          - nebula_sync_replicas_file_configured | bool
+          - nebula_sync_primary_secret_container_path in nebula_sync_mounted_secret_destinations
+          - nebula_sync_replicas_secret_container_path in nebula_sync_mounted_secret_destinations
+        fail_msg: >-
+          Nebula Sync is not using secret-file mode as expected.
+          primary_file_configured={{ nebula_sync_primary_file_configured | default(false) }},
+          replicas_file_configured={{ nebula_sync_replicas_file_configured | default(false) }},
+          plaintext_primary_present={{ nebula_sync_plaintext_primary_present | default(false) }},
+          plaintext_replicas_present={{ nebula_sync_plaintext_replicas_present | default(false) }},
+          expected_primary_mount={{ nebula_sync_primary_secret_container_path }},
+          expected_replicas_mount={{ nebula_sync_replicas_secret_container_path }},
+          mounted_destinations={{ nebula_sync_mounted_secret_destinations | default([]) }}.
+      when: nebula_sync_primary_url is defined
 
-    - name: Remove temporary gravity list entry from primary
-      ansible.builtin.command:
-        argv:
-          - sqlite3
-          - "{{ pihole_gravity_db }}"
-          - >-
-            DELETE FROM adlist
-            WHERE address='{{ nebula_sync_test_list_url }}';
-      changed_when: true
-      when: inventory_hostname == node1 and nebula_sync_primary_url is defined
+    - name: Report legacy Nebula Sync plaintext environment if still present
+      ansible.builtin.debug:
+        msg: >-
+          Nebula Sync secret-file wiring is active, but Docker still reports
+          legacy plaintext PRIMARY/REPLICAS variables. This verifier does not
+          use those values; rerun converge or recreate the Nebula Sync compose
+          project to remove stale container environment metadata.
+      when:
+        - nebula_sync_primary_url is defined
+        - (nebula_sync_plaintext_primary_present | bool)
+          or (nebula_sync_plaintext_replicas_present | bool)
 
-    - name: Restart Nebula Sync container to propagate cleanup
-      ansible.builtin.command:
-        argv:
-          - docker
-          - restart
-          - "{{ nebula_sync_container_name | default('nebula') }}"
-      changed_when: true
-      when: inventory_hostname == node1 and nebula_sync_primary_url is defined
+    - name: Stat Nebula Sync primary secret file
+      ansible.builtin.stat:
+        path: "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_primary_secret_filename | default('primary') }}"
+      register: nebula_sync_primary_secret_stat
+      when: nebula_sync_primary_url is defined
+
+    - name: Stat Nebula Sync replicas secret file
+      ansible.builtin.stat:
+        path: "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_replicas_secret_filename | default('replicas') }}"
+      register: nebula_sync_replicas_secret_stat
+      when: nebula_sync_primary_url is defined
+
+    - name: Assert Nebula Sync secret files are restrictive
+      ansible.builtin.assert:
+        that:
+          - nebula_sync_primary_secret_stat.stat.exists | default(false)
+          - nebula_sync_replicas_secret_stat.stat.exists | default(false)
+          - nebula_sync_primary_secret_stat.stat.mode == '0400'
+          - nebula_sync_replicas_secret_stat.stat.mode == '0400'
+        fail_msg: "Nebula Sync secret files are missing or not mode 0400."
+      when: nebula_sync_primary_url is defined
+
+    - name: Verify Nebula Sync replicates Pi-hole configuration
+      when: nebula_sync_primary_url is defined
+      block:
+        - name: Create temporary gravity list entry on primary
+          ansible.builtin.command:
+            argv:
+              - sqlite3
+              - "{{ pihole_gravity_db }}"
+              - >-
+                INSERT OR IGNORE INTO adlist(address,enabled,comment)
+                VALUES ('{{ nebula_sync_test_list_url }}',1,'molecule-nebula-sync-test');
+          register: nebula_sync_test_insert
+          changed_when: true
+          when: inventory_hostname == node1
+
+        - name: Restart Nebula Sync container to trigger sync on primary
+          ansible.builtin.command:
+            argv:
+              - docker
+              - restart
+              - "{{ nebula_sync_container_name | default('nebula') }}"
+          register: nebula_sync_test_run
+          changed_when: true
+          when: inventory_hostname == node1
+
+        - name: Wait for replicated gravity list entry on secondary
+          ansible.builtin.command:
+            argv:
+              - sqlite3
+              - "{{ pihole_gravity_db }}"
+              - >-
+                SELECT address FROM adlist
+                WHERE address='{{ nebula_sync_test_list_url }}';
+          register: nebula_sync_replica_lookup
+          changed_when: false
+          retries: 20
+          delay: 3
+          until: nebula_sync_test_list_url in nebula_sync_replica_lookup.stdout
+          when: inventory_hostname == node2
+
+        - name: Assert Nebula Sync replicated the temporary entry to secondary
+          ansible.builtin.assert:
+            that:
+              - nebula_sync_test_list_url in nebula_sync_replica_lookup.stdout
+            fail_msg: "Nebula Sync did not replicate temporary gravity entry to secondary node."
+          when: inventory_hostname == node2
+
+      always:
+        - name: Remove temporary gravity list entry from primary
+          ansible.builtin.command:
+            argv:
+              - sqlite3
+              - "{{ pihole_gravity_db }}"
+              - >-
+                DELETE FROM adlist
+                WHERE address='{{ nebula_sync_test_list_url }}';
+          changed_when: true
+          when: inventory_hostname == node1
+
+        - name: Restart Nebula Sync container to propagate cleanup
+          ansible.builtin.command:
+            argv:
+              - docker
+              - restart
+              - "{{ nebula_sync_container_name | default('nebula') }}"
+          changed_when: true
+          when: inventory_hostname == node1
+
+        - name: Wait for temporary gravity list entry removal on secondary
+          ansible.builtin.command:
+            argv:
+              - sqlite3
+              - "{{ pihole_gravity_db }}"
+              - >-
+                SELECT address FROM adlist
+                WHERE address='{{ nebula_sync_test_list_url }}';
+          register: nebula_sync_replica_cleanup_lookup
+          changed_when: false
+          failed_when: false
+          retries: 20
+          delay: 3
+          until: nebula_sync_test_list_url not in nebula_sync_replica_cleanup_lookup.stdout
+          when: inventory_hostname == node2
+
+        - name: Remove temporary gravity list entry from secondary as last-resort cleanup
+          ansible.builtin.command:
+            argv:
+              - sqlite3
+              - "{{ pihole_gravity_db }}"
+              - >-
+                DELETE FROM adlist
+                WHERE address='{{ nebula_sync_test_list_url }}';
+          changed_when: true
+          when:
+            - inventory_hostname == node2
+            - nebula_sync_test_list_url in (nebula_sync_replica_cleanup_lookup.stdout | default(''))
 
     # --- Docker container stop triggers VIP move ---
     - name: Check HA container on primary before docker failover test
@@ -316,6 +620,7 @@
       ansible.builtin.command: docker exec {{ ha_container_name }} sh -lc "pkill -f pihole-FTL || true"
       register: pihole_dns_stop_primary
       changed_when: true
+      failed_when: pihole_dns_stop_primary.rc not in [0, 137, 143]
       when: inventory_hostname == node1
 
     - name: Wait for VIP on backup after functional DNS failure
