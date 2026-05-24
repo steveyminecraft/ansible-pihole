@@ -167,9 +167,9 @@ Deploy or adjust keepalived HA between Pi-hole instances. Priorities and VIPs ar
 
 ### `playbooks/sync.yaml`
 
-Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) via [`roles/nebula_sync`](roles/nebula_sync/tasks/main.yml). Override `nebula_sync_image_tag` in inventory if you do not want `latest`.
+Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) on the **`nebula_sync_controller`** inventory group only (one orchestrator per primary→replica topology). Lab inventories define that group in [`inventory/vagrant.yml`](inventory/vagrant.yml) with `vagrant-pihole-01` as controller. Override `nebula_sync_image_tag` in inventory if you do not want `latest`.
 
-Nebula Sync now defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPLICAS` credentials are written to mounted secret files (`PRIMARY_FILE` / `REPLICAS_FILE`) instead of plain env values where possible. The role defaults ownership to UID/GID `1001`, matching the upstream container user, and rejects placeholder credentials by default.
+Nebula Sync defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPLICAS` credentials are written to mounted secret files (`PRIMARY_FILE` / `REPLICAS_FILE`) instead of plain env values where possible. The role defaults ownership to UID/GID `1001`, matching the upstream container user, and rejects placeholder credentials by default.
 
 ### Playbook tags
 
@@ -292,6 +292,7 @@ local/self-hosted validation steps.
 
 - [Architecture](docs/architecture.md)
 - [Production deployment](docs/production-deployment.md)
+- [Git branch workflow](docs/git-branch-workflow.md)
 - [Upgrade runbook](docs/upgrade-runbook.md)
 - [Failover testing](docs/failover-testing.md)
 - [Backup and restore](docs/backup-and-restore.md)

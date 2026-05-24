@@ -11,8 +11,14 @@ COL="${ANSIBLE_COLLECTIONS_INSTALL_PATH:-$ROOT/.ansible/collections}"
 mkdir -p "$COL"
 
 # Install steveyminecraft.pihole from a local build of this repository.
+version="$(awk '/^version:/{print $2; exit}' "$ROOT/galaxy.yml")"
+rm -f steveyminecraft-pihole-*.tar.gz
 ansible-galaxy collection build --force
-artifact="$(ls -1 steveyminecraft-pihole-*.tar.gz | head -1)"
+artifact="steveyminecraft-pihole-${version}.tar.gz"
+if [[ ! -f "$artifact" ]]; then
+  echo "Expected collection artifact not found: ${artifact}" >&2
+  exit 1
+fi
 ansible-galaxy collection install "${artifact}" -p "$COL" --force
 
 # Pinned merge commit from https://github.com/ansible-collections/ansible.posix/pull/690

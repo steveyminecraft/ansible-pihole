@@ -1,8 +1,7 @@
 ---
-- name: Install Sync
-  hosts: all
+- name: Install Nebula Sync controller
+  hosts: nebula_sync_controller
   become: true
-  serial: 1
   roles:
     - role: steveyminecraft.pihole.nebula_sync
       tags: [nebulasync, nebula, sync]

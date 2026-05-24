@@ -17,6 +17,7 @@ Define production inventory with explicit values for:
 - `pihole_vip_ipv4` (and optional `pihole_vip_ipv6`)
 - `unbound_*` values when Unbound is enabled
 - `nebula_sync_*` values
+- a `nebula_sync_controller` group with exactly one host that runs the Nebula Sync container
 
 Do not reuse any lab-only fixture credentials from Vagrant examples.
 
