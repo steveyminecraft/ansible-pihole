@@ -143,10 +143,23 @@ pihole_startup_dns:
 
 Faster follow-up runs (updates + Pi-hole-focused changes).
 
-Both `bootstrap-pihole.yaml` and `update-pihole.yaml` include post-task DNS checks.
-When Unbound integration is enabled, the Unbound probe now runs from inside the
-Pi-hole container (`docker exec`) so Docker-network upstream names (for example
-`unbound`) are resolved in the same network context Pi-hole uses.
+Both `bootstrap-pihole.yaml` and `update-pihole.yaml` use `serial: 1` for HA
+nodes and keep the current node drained from keepalived VIP ownership until local
+Pi-hole DNS passes. When Unbound is actually deployed for the node, the Unbound
+probe runs from inside the Pi-hole container (`docker exec`) so Docker-network
+upstream names (for example `unbound`) are resolved in the same network context
+Pi-hole uses. After all nodes pass and rejoin, the playbooks verify DNS through
+the VIP.
+
+Pi-hole container recreation is driven by Compose/configuration changes or an
+explicit maintenance override:
+
+```yaml
+pihole_force_recreate: true
+```
+
+Docker NAT/firewall reconciliation for lab modes does not by itself force a
+Pi-hole application-container recreate.
 
 ### `playbooks/keepalived.yaml`
 

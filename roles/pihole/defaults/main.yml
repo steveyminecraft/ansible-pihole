@@ -32,6 +32,10 @@ pihole_rocky_network_debug_flush_nft: false
 # Helpful for Rocky/Vagrant debugging when published 53/udp or bridge DNS is unreliable.
 pihole_use_host_network: false
 
+# Explicit maintenance/debug escape hatch. NAT/firewall reconciliation must not force
+# a Pi-hole app-container recreation on otherwise unchanged runs.
+pihole_force_recreate: false
+
 # When true on Debian/Ubuntu, disable systemd-resolved stub DNS so host port 53 can be used
 # by Docker (Pi-hole publish). Independent of firewalld — do not tie this to pihole_firewall_deploy.
 pihole_configure_systemd_resolved: true

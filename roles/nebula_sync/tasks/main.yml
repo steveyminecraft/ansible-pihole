@@ -88,6 +88,77 @@
     name: "{{ nebula_sync_image }}:{{ nebula_sync_image_tag }}"
     platform: "{{ ansible_facts['architecture'] }}"
 
+- name: Set Nebula Sync Docker inspect formats
+  ansible.builtin.set_fact:
+    nebula_sync_inspect_env_fmt: "{{ '{{range .Config.Env}}{{println .}}{{end}}' }}"
+    nebula_sync_inspect_mounts_fmt: "{{ '{{json .Mounts}}' }}"
+  when: nebula_sync_use_secret_files | bool
+
+- name: Inspect existing nebula-sync environment
+  when: nebula_sync_use_secret_files | bool
+  no_log: true
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - --format
+      - "{{ nebula_sync_inspect_env_fmt }}"
+      - "{{ nebula_sync_container_name }}"
+  register: nebula_sync_existing_env
+  changed_when: false
+  failed_when: false
+
+- name: Inspect existing nebula-sync mounts
+  when: nebula_sync_use_secret_files | bool
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - --format
+      - "{{ nebula_sync_inspect_mounts_fmt }}"
+      - "{{ nebula_sync_container_name }}"
+  register: nebula_sync_existing_mounts
+  changed_when: false
+  failed_when: false
+
+- name: Detect legacy plaintext nebula-sync container state
+  no_log: true
+  ansible.builtin.set_fact:
+    nebula_sync_existing_mount_destinations: >-
+      {{
+        (nebula_sync_existing_mounts.stdout | default('[]') | from_json)
+        | map(attribute='Destination')
+        | list
+      }}
+    nebula_sync_existing_plaintext_env: >-
+      {{
+        (nebula_sync_existing_env.stdout_lines | default([]) | select('search', '^PRIMARY=.*\\|') | list | length > 0)
+        or
+        (nebula_sync_existing_env.stdout_lines | default([]) | select('search', '^REPLICAS=.*\\|') | list | length > 0)
+      }}
+    nebula_sync_existing_missing_secret_mounts: >-
+      {{
+        (nebula_sync_secret_container_dir ~ '/' ~ nebula_sync_primary_secret_filename)
+        not in
+        (
+          (nebula_sync_existing_mounts.stdout | default('[]') | from_json)
+          | map(attribute='Destination')
+          | list
+        )
+        or
+        (nebula_sync_secret_container_dir ~ '/' ~ nebula_sync_replicas_secret_filename)
+        not in
+        (
+          (nebula_sync_existing_mounts.stdout | default('[]') | from_json)
+          | map(attribute='Destination')
+          | list
+        )
+      }}
+  when:
+    - nebula_sync_use_secret_files | bool
+    - nebula_sync_existing_env.rc == 0
+    - nebula_sync_existing_mounts.rc == 0
+
 - name: Determine whether nebula-sync must be recreated
   ansible.builtin.set_fact:
     nebula_sync_force_recreate: >-
@@ -96,7 +167,35 @@
         or (nebula_sync_env_template.changed | default(false) | bool)
         or (nebula_sync_primary_secret.changed | default(false) | bool)
         or (nebula_sync_replicas_secret.changed | default(false) | bool)
+        or (nebula_sync_existing_plaintext_env | default(false) | bool)
+        or (nebula_sync_existing_missing_secret_mounts | default(false) | bool)
       }}
+
+- name: Remove legacy plaintext nebula-sync container before secure-mode recreate
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - -f
+      - "{{ nebula_compose_file | default(nebula_sync_dir ~ '/docker-compose.yml') }}"
+      - down
+      - --remove-orphans
+  args:
+    chdir: "{{ nebula_sync_dir }}"
+  register: nebula_sync_compose_down
+  changed_when: true
+  failed_when: nebula_sync_compose_down.rc != 0
+  when:
+    - nebula_sync_use_secret_files | bool
+    - nebula_sync_existing_plaintext_env | default(false) | bool
+
+- name: Remove legacy plaintext nebula-sync container by name before secure-mode recreate
+  community.docker.docker_container:
+    name: "{{ nebula_sync_container_name }}"
+    state: absent
+  when:
+    - nebula_sync_use_secret_files | bool
+    - nebula_sync_existing_plaintext_env | default(false) | bool
 
 - name: Bring up nebula-sync with Docker Compose v2
   community.docker.docker_compose_v2:
