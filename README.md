@@ -161,10 +161,11 @@ pihole_force_recreate: true
 Docker NAT/firewall reconciliation for lab modes does not by itself force a
 Pi-hole application-container recreate.
 
-The Vagrant inventories set `docker_daemon_dns` to public resolvers so Docker
-Hub image pulls do not depend on the guest's `127.0.0.53` systemd-resolved stub
-before Pi-hole/Unbound are healthy. Leave `docker_daemon_dns: []` in production
-unless the host's Docker daemon needs an explicit resolver list.
+The Vagrant inventories set `docker_daemon_dns` and `pihole_docker_dns` to
+public resolvers so Docker Hub image pulls and fresh Pi-hole gravity bootstrap
+do not depend on guest-local stub or embedded Docker DNS before Pi-hole/Unbound
+are healthy. Leave these unset or empty in production unless the host or
+container needs an explicit resolver list.
 
 ### `playbooks/keepalived.yaml`
 

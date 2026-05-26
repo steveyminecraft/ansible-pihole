@@ -11,6 +11,7 @@
     nebula_sync_replica_host: "{{ node2 }}"
     ha_container_name: "{{ pihole_container_name | default('pihole') }}"
     nebula_sync_test_list_url: "https://example.invalid/nebula-sync-test.txt"
+    nebula_sync_test_list_url_legacy: "https://example.invalid/nebula-sync-test.txt"
     nebula_sync_test_list_comment: molecule-nebula-sync-test
     pihole_api_password: "{{ pihole_environment_variables.FTLCONF_webserver_api_password }}"
     nebula_sync_replica_api_url: "{{ nebula_sync_replicas[0].url }}"
@@ -524,6 +525,13 @@
         - nebula_sync_primary_url is defined
         - inventory_hostname == nebula_sync_controller_host
       block:
+        - name: Wait for primary Pi-hole HTTP before Nebula replication test
+          ansible.builtin.wait_for:
+            host: "{{ hostvars[node1].ansible_host }}"
+            port: 80
+            timeout: 120
+            delay: 3
+
         - name: Authenticate to primary Pi-hole API
           no_log: true
           ansible.builtin.uri:
@@ -535,12 +543,62 @@
             validate_certs: false
             status_code: [200]
           register: pihole_primary_auth
+          until: >-
+            pihole_primary_auth is succeeded
+            and (pihole_primary_auth.json.session.sid | default('') | length > 0)
+          retries: 30
+          delay: 3
 
         - name: Set primary Pi-hole API session facts
           no_log: true
           ansible.builtin.set_fact:
             pihole_primary_sid: "{{ pihole_primary_auth.json.session.sid }}"
             pihole_primary_csrf: "{{ pihole_primary_auth.json.session.csrf | default('') }}"
+
+        - name: Query primary blocklists before Nebula replication test
+          ansible.builtin.uri:
+            url: "{{ nebula_sync_primary_url }}/api/lists?type=block"
+            method: GET
+            headers:
+              X-FTL-SID: "{{ pihole_primary_sid }}"
+              X-FTL-CSRF: "{{ pihole_primary_csrf }}"
+            validate_certs: false
+            status_code: [200]
+          register: pihole_primary_lists_pretest
+
+        - name: Set stale temporary blocklist id on primary (pre-test cleanup)
+          ansible.builtin.set_fact:
+            nebula_sync_test_list_id_pretest: >-
+              {{
+                (
+                  pihole_primary_lists_pretest.json.lists
+                  | default(pihole_primary_lists_pretest.json.list | default([]))
+                  | selectattr('address', 'defined')
+                  | selectattr('address', 'equalto', nebula_sync_test_list_url_legacy)
+                  | map(attribute='id')
+                  | list
+                  | first
+                  | default(none)
+                )
+              }}
+          when: pihole_primary_lists_pretest is succeeded
+
+        - name: Remove stale temporary blocklist on primary before test
+          ansible.builtin.uri:
+            url: "{{ nebula_sync_primary_url }}/api/lists/{{ nebula_sync_test_list_id_pretest }}?type=block"
+            method: DELETE
+            headers:
+              X-FTL-SID: "{{ pihole_primary_sid }}"
+              X-FTL-CSRF: "{{ pihole_primary_csrf }}"
+            validate_certs: false
+            status_code: [200, 204, 404]
+          when:
+            - nebula_sync_test_list_id_pretest is not none
+            - nebula_sync_test_list_id_pretest | string | length > 0
+
+        - name: Set unique Nebula Sync test blocklist URL for this verify run
+          ansible.builtin.set_fact:
+            nebula_sync_test_list_url: "https://example.invalid/nebula-sync-test-{{ lookup('pipe', 'date +%s') }}.txt"
 
         - name: Create temporary blocklist on primary via Pi-hole API
           ansible.builtin.uri:
@@ -555,17 +613,31 @@
               enabled: true
               comment: "{{ nebula_sync_test_list_comment }}"
             validate_certs: false
-            status_code: [200, 201, 409]
+            status_code: [200, 201, 409, 400]
           register: nebula_sync_test_list_create
+          failed_when: >-
+            nebula_sync_test_list_create.status not in [200, 201, 409]
+            and not (
+              nebula_sync_test_list_create.status == 400
+              and nebula_sync_test_list_create.json.error.key | default('') == 'database_error'
+              and 'UNIQUE constraint' in (nebula_sync_test_list_create.json.error.hint | default(''))
+            )
 
         - name: Run Nebula Sync once for replication verification
-          ansible.builtin.command:
-            argv:
-              - docker
-              - exec
-              - "{{ nebula_sync_container_name | default('nebula') }}"
-              - nebula-sync
-              - run
+          ansible.builtin.shell: |
+            set -euo pipefail
+            tmp_env="$(mktemp)"
+            grep -v '^CRON=' "{{ nebula_sync_env_host_path }}" > "${tmp_env}"
+            image="$(docker inspect -f '{% raw %}{{.Config.Image}}{% endraw %}' "{{ nebula_sync_container_name | default('nebula') }}")"
+            trap 'rm -f "${tmp_env}"' EXIT
+            timeout 180 docker run --rm \
+              --env-file "${tmp_env}" \
+              -e API_ENABLED=false \
+              -v "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_primary_secret_filename | default('primary') }}:{{ nebula_sync_primary_secret_container_path }}:ro" \
+              -v "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_replicas_secret_filename | default('replicas') }}:{{ nebula_sync_replicas_secret_container_path }}:ro" \
+              "${image}" run
+          args:
+            executable: /bin/bash
           register: nebula_sync_run
           changed_when: true
 
@@ -576,6 +648,13 @@
               {{ nebula_sync_controller_host }}; inspect with
               docker logs {{ nebula_sync_container_name | default('nebula') }} --tail 100
           when: nebula_sync_run.rc != 0
+
+        - name: Wait for replica Pi-hole HTTP after Nebula sync
+          ansible.builtin.wait_for:
+            host: "{{ hostvars[nebula_sync_replica_host].ansible_host }}"
+            port: 80
+            timeout: 120
+            delay: 3
 
         - name: Authenticate to replica Pi-hole API
           no_log: true
@@ -588,6 +667,11 @@
             validate_certs: false
             status_code: [200]
           register: pihole_replica_auth
+          until: >-
+            pihole_replica_auth is succeeded
+            and (pihole_replica_auth.json.session.sid | default('') | length > 0)
+          retries: 30
+          delay: 3
 
         - name: Set replica Pi-hole API session facts
           no_log: true
@@ -646,18 +730,46 @@
             status_code: [200]
           register: pihole_primary_auth_cleanup
           failed_when: false
+          when: inventory_hostname == nebula_sync_controller_host
+
+        - name: Set primary Pi-hole API cleanup session facts
+          no_log: true
+          ansible.builtin.set_fact:
+            pihole_primary_auth_cleanup_sid: >-
+              {{
+                pihole_primary_auth_cleanup.json.session.sid
+                if (
+                  pihole_primary_auth_cleanup is succeeded
+                  and (pihole_primary_auth_cleanup.json is defined)
+                  and (pihole_primary_auth_cleanup.json.session is defined)
+                )
+                else (pihole_primary_sid | default(''))
+              }}
+            pihole_primary_auth_cleanup_csrf: >-
+              {{
+                pihole_primary_auth_cleanup.json.session.csrf | default('')
+                if (
+                  pihole_primary_auth_cleanup is succeeded
+                  and (pihole_primary_auth_cleanup.json is defined)
+                  and (pihole_primary_auth_cleanup.json.session is defined)
+                )
+                else (pihole_primary_csrf | default(''))
+              }}
+          when: inventory_hostname == nebula_sync_controller_host
 
         - name: Query primary blocklists for cleanup
           ansible.builtin.uri:
             url: "{{ nebula_sync_primary_url }}/api/lists?type=block"
             method: GET
             headers:
-              X-FTL-SID: "{{ pihole_primary_auth_cleanup.json.session.sid }}"
-              X-FTL-CSRF: "{{ pihole_primary_auth_cleanup.json.session.csrf | default('') }}"
+              X-FTL-SID: "{{ pihole_primary_auth_cleanup_sid }}"
+              X-FTL-CSRF: "{{ pihole_primary_auth_cleanup_csrf }}"
             validate_certs: false
             status_code: [200]
           register: pihole_primary_lists_cleanup
-          when: pihole_primary_auth_cleanup is succeeded
+          when:
+            - inventory_hostname == nebula_sync_controller_host
+            - pihole_primary_auth_cleanup_sid | default('') | length > 0
           failed_when: false
 
         - name: Set temporary blocklist id on primary for cleanup
@@ -675,31 +787,41 @@
                   | default(none)
                 )
               }}
-          when: pihole_primary_lists_cleanup is succeeded
+          when:
+            - inventory_hostname == nebula_sync_controller_host
+            - pihole_primary_lists_cleanup is succeeded
 
         - name: Remove temporary blocklist from primary via Pi-hole API
           ansible.builtin.uri:
             url: "{{ nebula_sync_primary_url }}/api/lists/{{ nebula_sync_test_list_id_primary }}?type=block"
             method: DELETE
             headers:
-              X-FTL-SID: "{{ pihole_primary_auth_cleanup.json.session.sid }}"
-              X-FTL-CSRF: "{{ pihole_primary_auth_cleanup.json.session.csrf | default('') }}"
+              X-FTL-SID: "{{ pihole_primary_auth_cleanup_sid }}"
+              X-FTL-CSRF: "{{ pihole_primary_auth_cleanup_csrf }}"
             validate_certs: false
             status_code: [200, 204, 404]
           when:
-            - pihole_primary_auth_cleanup is succeeded
+            - inventory_hostname == nebula_sync_controller_host
+            - pihole_primary_auth_cleanup_sid | default('') | length > 0
             - nebula_sync_test_list_id_primary is not none
             - nebula_sync_test_list_id_primary | string | length > 0
           failed_when: false
 
         - name: Run Nebula Sync to propagate cleanup
-          ansible.builtin.command:
-            argv:
-              - docker
-              - exec
-              - "{{ nebula_sync_container_name | default('nebula') }}"
-              - nebula-sync
-              - run
+          ansible.builtin.shell: |
+            set -euo pipefail
+            tmp_env="$(mktemp)"
+            grep -v '^CRON=' "{{ nebula_sync_env_host_path }}" > "${tmp_env}"
+            image="$(docker inspect -f '{% raw %}{{.Config.Image}}{% endraw %}' "{{ nebula_sync_container_name | default('nebula') }}")"
+            trap 'rm -f "${tmp_env}"' EXIT
+            timeout 180 docker run --rm \
+              --env-file "${tmp_env}" \
+              -e API_ENABLED=false \
+              -v "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_primary_secret_filename | default('primary') }}:{{ nebula_sync_primary_secret_container_path }}:ro" \
+              -v "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_replicas_secret_filename | default('replicas') }}:{{ nebula_sync_replicas_secret_container_path }}:ro" \
+              "${image}" run
+          args:
+            executable: /bin/bash
           changed_when: true
           failed_when: false
           when: inventory_hostname == nebula_sync_controller_host
@@ -715,19 +837,52 @@
             validate_certs: false
             status_code: [200]
           register: pihole_replica_auth_cleanup
+          until: >-
+            pihole_replica_auth_cleanup is succeeded
+            and (pihole_replica_auth_cleanup.json.session.sid | default('') | length > 0)
+          retries: 15
+          delay: 2
           failed_when: false
+          when: inventory_hostname == nebula_sync_controller_host
+
+        - name: Set replica Pi-hole API cleanup session facts
+          no_log: true
+          ansible.builtin.set_fact:
+            pihole_replica_auth_cleanup_sid: >-
+              {{
+                pihole_replica_auth_cleanup.json.session.sid
+                if (
+                  pihole_replica_auth_cleanup is succeeded
+                  and (pihole_replica_auth_cleanup.json is defined)
+                  and (pihole_replica_auth_cleanup.json.session is defined)
+                )
+                else (pihole_replica_sid | default(''))
+              }}
+            pihole_replica_auth_cleanup_csrf: >-
+              {{
+                pihole_replica_auth_cleanup.json.session.csrf | default('')
+                if (
+                  pihole_replica_auth_cleanup is succeeded
+                  and (pihole_replica_auth_cleanup.json is defined)
+                  and (pihole_replica_auth_cleanup.json.session is defined)
+                )
+                else (pihole_replica_csrf | default(''))
+              }}
+          when: inventory_hostname == nebula_sync_controller_host
 
         - name: Query replica blocklists for cleanup
           ansible.builtin.uri:
             url: "{{ nebula_sync_replica_api_url }}/api/lists?type=block"
             method: GET
             headers:
-              X-FTL-SID: "{{ pihole_replica_auth_cleanup.json.session.sid }}"
-              X-FTL-CSRF: "{{ pihole_replica_auth_cleanup.json.session.csrf | default('') }}"
+              X-FTL-SID: "{{ pihole_replica_auth_cleanup_sid }}"
+              X-FTL-CSRF: "{{ pihole_replica_auth_cleanup_csrf }}"
             validate_certs: false
             status_code: [200]
           register: pihole_replica_lists_cleanup
-          when: pihole_replica_auth_cleanup is succeeded
+          when:
+            - inventory_hostname == nebula_sync_controller_host
+            - pihole_replica_auth_cleanup_sid | default('') | length > 0
           failed_when: false
 
         - name: Set temporary blocklist id on replica for cleanup
@@ -745,19 +900,22 @@
                   | default(none)
                 )
               }}
-          when: pihole_replica_lists_cleanup is succeeded
+          when:
+            - inventory_hostname == nebula_sync_controller_host
+            - pihole_replica_lists_cleanup is succeeded
 
         - name: Remove temporary blocklist from replica via Pi-hole API (fallback)
           ansible.builtin.uri:
             url: "{{ nebula_sync_replica_api_url }}/api/lists/{{ nebula_sync_test_list_id_replica }}?type=block"
             method: DELETE
             headers:
-              X-FTL-SID: "{{ pihole_replica_auth_cleanup.json.session.sid }}"
-              X-FTL-CSRF: "{{ pihole_replica_auth_cleanup.json.session.csrf | default('') }}"
+              X-FTL-SID: "{{ pihole_replica_auth_cleanup_sid }}"
+              X-FTL-CSRF: "{{ pihole_replica_auth_cleanup_csrf }}"
             validate_certs: false
             status_code: [200, 204, 404]
           when:
-            - pihole_replica_auth_cleanup is succeeded
+            - inventory_hostname == nebula_sync_controller_host
+            - pihole_replica_auth_cleanup_sid | default('') | length > 0
             - nebula_sync_test_list_id_replica is not none
             - nebula_sync_test_list_id_replica | string | length > 0
           failed_when: false
@@ -767,10 +925,12 @@
             url: "{{ nebula_sync_primary_url }}/api/auth"
             method: DELETE
             headers:
-              X-FTL-SID: "{{ pihole_primary_auth_cleanup.json.session.sid }}"
+              X-FTL-SID: "{{ pihole_primary_auth_cleanup_sid }}"
             validate_certs: false
             status_code: [200, 204, 404]
-          when: pihole_primary_auth_cleanup is succeeded
+          when:
+            - inventory_hostname == nebula_sync_controller_host
+            - pihole_primary_auth_cleanup_sid | default('') | length > 0
           failed_when: false
 
         - name: Log out replica Pi-hole API session
@@ -778,10 +938,12 @@
             url: "{{ nebula_sync_replica_api_url }}/api/auth"
             method: DELETE
             headers:
-              X-FTL-SID: "{{ pihole_replica_auth_cleanup.json.session.sid }}"
+              X-FTL-SID: "{{ pihole_replica_auth_cleanup_sid }}"
             validate_certs: false
             status_code: [200, 204, 404]
-          when: pihole_replica_auth_cleanup is succeeded
+          when:
+            - inventory_hostname == nebula_sync_controller_host
+            - pihole_replica_auth_cleanup_sid | default('') | length > 0
           failed_when: false
 
     # --- Docker container stop triggers VIP move ---
@@ -845,9 +1007,10 @@
       when: inventory_hostname == node1
 
     - name: Disable local DNS service on primary (functional failover test)
-      ansible.builtin.command: docker exec {{ ha_container_name }} sh -lc "pkill -f pihole-FTL || true"
+      ansible.builtin.command: docker exec {{ ha_container_name }} sh -lc "pkill -TERM pihole-FTL || true; exit 0"
       register: pihole_dns_stop_primary
       changed_when: true
+      failed_when: false
       when: inventory_hostname == node1
 
     - name: Wait for VIP on backup after functional DNS failure
