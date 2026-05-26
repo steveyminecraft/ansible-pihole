@@ -34,7 +34,7 @@ ansible-galaxy collection install steveyminecraft.pihole
 ./scripts/install-ansible-collections.sh
 ```
 
-That script builds and installs this collection locally, installs **`ansible.posix` from git** (merged [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) until a Galaxy release includes it), then installs dependencies in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for the `ansible.posix` step.
+That script builds and installs this collection locally, installs **`ansible.posix` from git** (merged [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) until a Galaxy release includes it), then installs dependencies in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for the `ansible.posix` step. Local build output and development-only directories such as `.ansible/`, virtualenvs, Vagrant state, and generated collection tarballs are excluded from the collection artifact.
 
 [`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables top-level fact injection so roles use `ansible_facts[...]` with ansible-core 2.20+. Playbooks reference roles by FQCN (for example `steveyminecraft.pihole.pihole`). Re-run the install script after changing [`galaxy.yml`](galaxy.yml) or [`collections/requirements.yml`](collections/requirements.yml).
 
@@ -161,15 +161,21 @@ pihole_force_recreate: true
 Docker NAT/firewall reconciliation for lab modes does not by itself force a
 Pi-hole application-container recreate.
 
+The Vagrant inventories set `docker_daemon_dns` and `pihole_docker_dns` to
+public resolvers so Docker Hub image pulls and fresh Pi-hole gravity bootstrap
+do not depend on guest-local stub or embedded Docker DNS before Pi-hole/Unbound
+are healthy. Leave these unset or empty in production unless the host or
+container needs an explicit resolver list.
+
 ### `playbooks/keepalived.yaml`
 
 Deploy or adjust keepalived HA between Pi-hole instances. Priorities and VIPs are inventory-driven (see comments in [`inventory/vagrant.yml`](inventory/vagrant.yml) for examples).
 
 ### `playbooks/sync.yaml`
 
-Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) via [`roles/nebula_sync`](roles/nebula_sync/tasks/main.yml). Override `nebula_sync_image_tag` in inventory if you do not want `latest`.
+Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) on the **`nebula_sync_controller`** inventory group only (one orchestrator per primary→replica topology). Lab inventories define that group in [`inventory/vagrant.yml`](inventory/vagrant.yml) with `vagrant-pihole-01` as controller. Override `nebula_sync_image_tag` in inventory if you do not want `latest`.
 
-Nebula Sync now defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPLICAS` credentials are written to mounted secret files (`PRIMARY_FILE` / `REPLICAS_FILE`) instead of plain env values where possible. The role defaults ownership to UID/GID `1001`, matching the upstream container user, and rejects placeholder credentials by default.
+Nebula Sync defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPLICAS` credentials are written to mounted secret files (`PRIMARY_FILE` / `REPLICAS_FILE`) instead of plain env values where possible. The role defaults ownership to UID/GID `1001`, matching the upstream container user, and rejects placeholder credentials by default.
 
 ### Playbook tags
 
@@ -272,9 +278,9 @@ Like `scripts/molecule-vagrant`, this helper auto-selects
 `MOLECULE_VAGRANT_INVENTORY` from `VAGRANT_DEFAULT_PROVIDER` when unset
 (`vagrant.yml` for VirtualBox, `vagrant_libvirt.yml` for libvirt/kvm).
 
-For Vagrant/Molecule inventories (`vagrant_env: true`), the bootstrap role now
-skips rebooting after hostname file updates to avoid long guest-network waits
-during test runs.
+For Vagrant/Molecule inventories (`vagrant_env: true`), roles skip disruptive
+reboots after hostname and package-update changes to avoid long guest-network
+waits during test runs.
 
 ## CI
 
@@ -292,6 +298,7 @@ local/self-hosted validation steps.
 
 - [Architecture](docs/architecture.md)
 - [Production deployment](docs/production-deployment.md)
+- [Git branch workflow](docs/git-branch-workflow.md)
 - [Upgrade runbook](docs/upgrade-runbook.md)
 - [Failover testing](docs/failover-testing.md)
 - [Backup and restore](docs/backup-and-restore.md)

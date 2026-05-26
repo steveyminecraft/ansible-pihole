@@ -67,13 +67,12 @@
   set_fact:
     keepalived_local_ips: "{{ ansible_facts['all_ipv4_addresses'] + ansible_facts['all_ipv6_addresses'] }}"
 
-- name: Create a list of peer IPs excluding local IPs and ensure /24 suffix
+- name: Create a list of peer IPs excluding local IPs
   set_fact:
     keepalived_peer_list: >-
       {{ groups['all']
          | map('extract', hostvars, 'ansible_host')
          | difference(keepalived_local_ips)
-         | map('regex_replace', '^(.*?)(/\\d+)?$', '\g<1>/24')
          | list }}
 
 # Step 3: Debug the keepalived_peer_list

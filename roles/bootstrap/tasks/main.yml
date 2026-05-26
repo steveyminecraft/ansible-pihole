@@ -40,25 +40,39 @@
         fi
       fi
 
-- name: Set timezone
-  lineinfile:
+- name: Stat legacy Debian timezone file
+  ansible.builtin.stat:
+    path: /etc/timezone
+  register: bootstrap_etc_timezone_stat
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Set timezone in /etc/timezone
+  ansible.builtin.lineinfile:
     path: /etc/timezone
     regexp: "^"
     line: "{{ timezone }}"
-  when: ansible_facts['os_family'] == 'Debian'
+    create: false
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - bootstrap_etc_timezone_stat.stat.exists | default(false)
 
-- name: Set localtime
-  file:
+- name: Set /etc/localtime symlink
+  ansible.builtin.file:
     src: /usr/share/zoneinfo/{{ timezone }}
     dest: /etc/localtime
     state: link
-  when: ansible_facts['os_family'] == 'Debian'
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - bootstrap_etc_timezone_stat.stat.exists | default(false)
 
 - name: "Set timezone to {{ timezone }}"
   community.general.timezone:
     name: "{{ timezone }}"
-  # Uses hwclock; skip in check mode so CI and slim images do not need that binary.
-  when: not ansible_check_mode
+  # Preferred on modern Ubuntu (24.04+) where /etc/timezone may be absent.
+  # Uses hwclock on some targets; skip in check mode so CI and slim images do not need that binary.
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - not ansible_check_mode
 
 - name: Set a hostname
   ansible.builtin.hostname:

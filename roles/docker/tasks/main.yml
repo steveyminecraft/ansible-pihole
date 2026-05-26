@@ -324,7 +324,13 @@
         {
           'iptables': (docker_manage_iptables | bool),
           'ip6tables': (docker_manage_iptables | bool) and (not docker_disable_ipv6 | default(false) | bool)
-        } | to_nice_json
+        }
+        | combine(
+          {'dns': docker_daemon_dns}
+          if (docker_daemon_dns | default([]) | length > 0)
+          else {}
+        )
+        | to_nice_json
       }}
   notify: Restart Docker
   when: ansible_facts['os_family'] == 'RedHat'
@@ -345,7 +351,16 @@
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json
     mode: "0600"
-    content: "{{ {'ipv6': true, 'fixed-cidr-v6': docker_ipv6_fixed_cidr} | to_nice_json }}"
+    content: >-
+      {{
+        {'ipv6': true, 'fixed-cidr-v6': docker_ipv6_fixed_cidr}
+        | combine(
+          {'dns': docker_daemon_dns}
+          if (docker_daemon_dns | default([]) | length > 0)
+          else {}
+        )
+        | to_nice_json
+      }}
   notify: Restart Docker
   when:
     - ansible_facts['os_family'] == 'Debian'
@@ -355,7 +370,16 @@
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json
     mode: "0600"
-    content: "{{ {'ipv6': false} | to_nice_json }}"
+    content: >-
+      {{
+        {'ipv6': false}
+        | combine(
+          {'dns': docker_daemon_dns}
+          if (docker_daemon_dns | default([]) | length > 0)
+          else {}
+        )
+        | to_nice_json
+      }}
   notify: Restart Docker
   when:
     - ansible_facts['os_family'] == 'Debian'

@@ -19,6 +19,11 @@ docker_manage_iptables: "{{ not (vagrant_env | default(false) | bool) }}"
 docker_ipv6_enabled: false
 docker_ipv6_fixed_cidr: ""
 
+# Optional Docker daemon resolver list. Keep empty by default so production hosts
+# use their normal resolver, but lab inventories can avoid flaky systemd-resolved
+# stub DNS during Docker Hub image pulls.
+docker_daemon_dns: []
+
 # When Docker iptables is off on EL, discover IPv4 subnets (docker network inspect) and add
 # nftables masquerade per subnet (iptables MASQUERADE is unreliable on EL9+ nf_tables); re-run
 # after compose so project networks exist. Falls back to 172.16.0.0/12 if discovery is empty.
