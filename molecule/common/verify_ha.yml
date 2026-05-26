@@ -22,6 +22,14 @@
       {{ (nebula_sync_secret_container_dir | default('/run/secrets')) ~ '/' ~ (nebula_sync_primary_secret_filename | default('primary')) }}
     nebula_sync_replicas_secret_container_path: >-
       {{ (nebula_sync_secret_container_dir | default('/run/secrets')) ~ '/' ~ (nebula_sync_replicas_secret_filename | default('replicas')) }}
+    nebula_sync_primary_secret_host_path: >-
+      {{ nebula_sync_secret_host_dir }}/{{ nebula_sync_primary_secret_filename | default('primary') }}
+    nebula_sync_replicas_secret_host_path: >-
+      {{ nebula_sync_secret_host_dir }}/{{ nebula_sync_replicas_secret_filename | default('replicas') }}
+    nebula_sync_primary_secret_bind_mount: >-
+      {{ nebula_sync_primary_secret_host_path }}:{{ nebula_sync_primary_secret_container_path }}:ro
+    nebula_sync_replicas_secret_bind_mount: >-
+      {{ nebula_sync_replicas_secret_host_path }}:{{ nebula_sync_replicas_secret_container_path }}:ro
     nebula_sync_mounts_fmt: "{{ '{{json .Mounts}}' }}"
     docker_inspect_env_fmt: "{{ '{{range .Config.Env}}{{println .}}{{end}}' }}"
   tasks:
@@ -633,8 +641,8 @@
             timeout 180 docker run --rm \
               --env-file "${tmp_env}" \
               -e API_ENABLED=false \
-              -v "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_primary_secret_filename | default('primary') }}:{{ nebula_sync_primary_secret_container_path }}:ro" \
-              -v "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_replicas_secret_filename | default('replicas') }}:{{ nebula_sync_replicas_secret_container_path }}:ro" \
+              -v "{{ nebula_sync_primary_secret_bind_mount }}" \
+              -v "{{ nebula_sync_replicas_secret_bind_mount }}" \
               "${image}" run
           args:
             executable: /bin/bash
@@ -817,8 +825,8 @@
             timeout 180 docker run --rm \
               --env-file "${tmp_env}" \
               -e API_ENABLED=false \
-              -v "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_primary_secret_filename | default('primary') }}:{{ nebula_sync_primary_secret_container_path }}:ro" \
-              -v "{{ nebula_sync_secret_host_dir }}/{{ nebula_sync_replicas_secret_filename | default('replicas') }}:{{ nebula_sync_replicas_secret_container_path }}:ro" \
+              -v "{{ nebula_sync_primary_secret_bind_mount }}" \
+              -v "{{ nebula_sync_replicas_secret_bind_mount }}" \
               "${image}" run
           args:
             executable: /bin/bash
