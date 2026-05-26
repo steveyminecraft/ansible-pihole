@@ -22,10 +22,12 @@
   when: ansible_facts['os_family'] == 'RedHat'
 
 - name: Updates Reboot
-  stat:
+  ansible.builtin.stat:
     path: /var/run/reboot-required
   register: updates_reboot_required
 
 - name: Reboot
-  reboot:
-  when: updates_reboot_required.stat.exists
+  ansible.builtin.reboot:
+  when:
+    - updates_reboot_required.stat.exists
+    - not (vagrant_env | default(false) | bool)

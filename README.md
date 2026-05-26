@@ -277,9 +277,9 @@ Like `scripts/molecule-vagrant`, this helper auto-selects
 `MOLECULE_VAGRANT_INVENTORY` from `VAGRANT_DEFAULT_PROVIDER` when unset
 (`vagrant.yml` for VirtualBox, `vagrant_libvirt.yml` for libvirt/kvm).
 
-For Vagrant/Molecule inventories (`vagrant_env: true`), the bootstrap role now
-skips rebooting after hostname file updates to avoid long guest-network waits
-during test runs.
+For Vagrant/Molecule inventories (`vagrant_env: true`), roles skip disruptive
+reboots after hostname and package-update changes to avoid long guest-network
+waits during test runs.
 
 ## CI
 
