@@ -56,6 +56,15 @@ all:
     pihole_container_name: pihole
     vagrant_env: true
     docker_users: vagrant
+    # Lab-only: avoid Docker image pulls depending on the guest's systemd-resolved stub.
+    docker_daemon_dns:
+      - "1.1.1.1"
+      - "8.8.8.8"
+    # Lab-only: Rocky/Vagrant can expose Docker's embedded 127.0.0.11 DNS before
+    # it is usable inside fresh Pi-hole containers; use explicit startup DNS.
+    pihole_docker_dns:
+      - "1.1.1.1"
+      - "8.8.8.8"
     nebula_sync_container_name: nebula
     nebula_sync_primary_url: "http://192.168.56.4"
     nebula_sync_primary_password: "{{ pihole_environment_variables.FTLCONF_webserver_api_password }}"

@@ -21,6 +21,36 @@ repository: https://github.com/steveyminecraft/ansible-pihole
 documentation: https://github.com/steveyminecraft/ansible-pihole#readme
 homepage: https://github.com/steveyminecraft/ansible-pihole
 issues: https://github.com/steveyminecraft/ansible-pihole/issues
+build_ignore:
+  - .ansible
+  - .ansible/**
+  - .cache
+  - .cache/**
+  - .cursor
+  - .cursor/**
+  - .git
+  - .git/**
+  - .github
+  - .github/**
+  - .mypy_cache
+  - .mypy_cache/**
+  - .pytest_cache
+  - .pytest_cache/**
+  - .venv
+  - .venv/**
+  - .venv-*
+  - .vagrant
+  - .vagrant/**
+  - '**/.vagrant'
+  - '**/.vagrant/**'
+  - .cursor_automerge_watch.sh
+  - .env
+  - .env.*
+  - env
+  - env/**
+  - importer_result.json
+  - scripts/setup-env.sh
+  - steveyminecraft-pihole-*.tar.gz
 dependencies:
   community.docker: '>=3.10.0'
   community.crypto: '>=2.20.0'

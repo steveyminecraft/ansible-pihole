@@ -19,6 +19,7 @@ if [[ ! -f "$artifact" ]]; then
   echo "Expected collection artifact not found: ${artifact}" >&2
   exit 1
 fi
+rm -rf "$COL/ansible_collections/steveyminecraft/pihole"
 ansible-galaxy collection install "${artifact}" -p "$COL" --force
 
 # Pinned merge commit from https://github.com/ansible-collections/ansible.posix/pull/690
