@@ -16,6 +16,10 @@ all:
       ansible_port: 22
       priority: 100
       keepalive_role: BACKUP
+  children:
+    nebula_sync_controller:
+      hosts:
+        vagrant-pihole-01:
   vars:
     # Required by roles/pihole (docker-pihole): compose dir is not defaulted; align with role pihole_dir_loc
     pihole_compose_dir: "/opt/pihole"
