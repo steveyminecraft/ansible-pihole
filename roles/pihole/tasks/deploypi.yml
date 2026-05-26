@@ -66,18 +66,72 @@
 - name: Apply resolver handlers before publishing Pi-hole DNS ports
   ansible.builtin.meta: flush_handlers
 
+- name: Check existing Pi-hole container before publishing host DNS ports
+  community.docker.docker_container_info:
+    name: "{{ pihole_container_name | default('pihole') }}"
+  register: pihole_pre_deploy_container_info
+  when:
+    - not (pihole_use_host_network | default(false) | bool)
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+    - pihole_configure_systemd_resolved | default(true) | bool
+
+- name: Stop stale Pi-hole compose when reclaiming host port 53
+  community.docker.docker_compose_v2:
+    project_src: "{{ pihole_compose_dir }}"
+    files:
+      - "{{ pihole_compose_file | default(pihole_compose_dir ~ '/docker-compose.yml') }}"
+    state: stopped
+  failed_when: false
+  when:
+    - not (pihole_use_host_network | default(false) | bool)
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+    - pihole_configure_systemd_resolved | default(true) | bool
+    - not (pihole_pre_deploy_container_info.exists | default(false) and pihole_pre_deploy_container_info.container.State.Running | default(false))
+
 - name: Wait until host TCP port 53 is free for Pi-hole publish
   ansible.builtin.wait_for:
     host: 0.0.0.0
     port: 53
     state: stopped
-    timeout: 120
+    timeout: 60
     delay: 2
   when:
     - not (pihole_use_host_network | default(false) | bool)
     - ansible_facts['os_family'] == 'Debian'
     - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
     - pihole_configure_systemd_resolved | default(true) | bool
+    - not (pihole_pre_deploy_container_info.exists | default(false) and pihole_pre_deploy_container_info.container.State.Running | default(false))
+
+- name: Detect non-Pi-hole listeners on host port 53
+  ansible.builtin.shell: |
+    set -euo pipefail
+    ss -Htanup 'sport = :53' | grep -Ev 'docker-proxy|pihole' || true
+  args:
+    executable: /bin/bash
+  register: pihole_port53_blockers
+  changed_when: false
+  when:
+    - not (pihole_use_host_network | default(false) | bool)
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+    - pihole_configure_systemd_resolved | default(true) | bool
+    - not (pihole_pre_deploy_container_info.exists | default(false) and pihole_pre_deploy_container_info.container.State.Running | default(false))
+
+- name: Assert non-Pi-hole processes are not holding host port 53
+  ansible.builtin.assert:
+    that:
+      - pihole_port53_blockers.stdout | trim | length == 0
+    fail_msg: >-
+      Host port 53 is still in use by a non-Pi-hole process:
+      {{ pihole_port53_blockers.stdout | default('') }}
+  when:
+    - not (pihole_use_host_network | default(false) | bool)
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+    - pihole_configure_systemd_resolved | default(true) | bool
+    - not (pihole_pre_deploy_container_info.exists | default(false) and pihole_pre_deploy_container_info.container.State.Running | default(false))
 
 - name: Start Pi-hole service (docker compose v2)
   vars:
