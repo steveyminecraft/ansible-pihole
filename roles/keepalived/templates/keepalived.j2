@@ -17,7 +17,7 @@ vrrp_script check_pihole_dns {
 vrrp_sync_group PIHOLE {
     group {
         PIHOLE-IPv4 
-        {% if vagrant_env == false %}
+        {% if not (vagrant_env | default(false) | bool) %}
         PIHOLE-IPv6
         {% endif %}
     }
@@ -34,13 +34,11 @@ vrrp_instance PIHOLE-IPv4 {
     priority {{ priority }}
     advert_int 1
     preempt_delay 30
-    unicast_src {{ keepalived_vrrp_src_address | default(ansible_facts['default_ipv4']['address']) }}
+    unicast_src_ip {{ keepalived_vrrp_src_address | default(ansible_facts['default_ipv4']['address']) }}
     unicast_peer {
-        {{ keepalived_peer_list }}
-    }
-
-    track_script {
-        check_pihole_dns
+{% for peer in keepalived_peer_list %}
+        {{ peer }}
+{% endfor %}
     }
 
     virtual_ipaddress {
@@ -48,6 +46,7 @@ vrrp_instance PIHOLE-IPv4 {
     }
 }
 
+{% if not (vagrant_env | default(false) | bool) %}
 vrrp_instance PIHOLE-IPv6 {
     interface {{ keepalived_vrrp_interface | default((ansible_facts['default_ipv6'] | default({}))['interface'] | default(ansible_facts['default_ipv4']['interface'])) }}
     virtual_router_id 1
@@ -63,3 +62,4 @@ vrrp_instance PIHOLE-IPv6 {
         {{ pihole_vip_ipv6 }}
     }
 }
+{% endif %}

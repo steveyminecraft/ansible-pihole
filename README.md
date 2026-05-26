@@ -34,7 +34,7 @@ ansible-galaxy collection install steveyminecraft.pihole
 ./scripts/install-ansible-collections.sh
 ```
 
-That script builds and installs this collection locally, installs **`ansible.posix` from git** (merged [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) until a Galaxy release includes it), then installs dependencies in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for the `ansible.posix` step.
+That script builds and installs this collection locally, installs **`ansible.posix` from git** (merged [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) until a Galaxy release includes it), then installs dependencies in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for the `ansible.posix` step. Local build output and development-only directories such as `.ansible/`, virtualenvs, Vagrant state, and generated collection tarballs are excluded from the collection artifact.
 
 [`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables top-level fact injection so roles use `ansible_facts[...]` with ansible-core 2.20+. Playbooks reference roles by FQCN (for example `steveyminecraft.pihole.pihole`). Re-run the install script after changing [`galaxy.yml`](galaxy.yml) or [`collections/requirements.yml`](collections/requirements.yml).
 
@@ -160,6 +160,11 @@ pihole_force_recreate: true
 
 Docker NAT/firewall reconciliation for lab modes does not by itself force a
 Pi-hole application-container recreate.
+
+The Vagrant inventories set `docker_daemon_dns` to public resolvers so Docker
+Hub image pulls do not depend on the guest's `127.0.0.53` systemd-resolved stub
+before Pi-hole/Unbound are healthy. Leave `docker_daemon_dns: []` in production
+unless the host's Docker daemon needs an explicit resolver list.
 
 ### `playbooks/keepalived.yaml`
 

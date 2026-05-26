@@ -56,6 +56,10 @@ all:
     pihole_container_name: pihole
     vagrant_env: true
     docker_users: vagrant
+    # Lab-only: avoid Docker image pulls depending on the guest's systemd-resolved stub.
+    docker_daemon_dns:
+      - "1.1.1.1"
+      - "8.8.8.8"
     nebula_sync_container_name: nebula
     nebula_sync_primary_url: "http://192.168.56.4"
     nebula_sync_primary_password: "{{ pihole_environment_variables.FTLCONF_webserver_api_password }}"

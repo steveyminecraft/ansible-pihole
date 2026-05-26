@@ -58,6 +58,27 @@
         state: link
       notify: Restart resolver
 
+    - name: Restart systemd-resolved after stub listener disabled
+      ansible.builtin.service:
+        name: systemd-resolved
+        state: restarted
+
+- name: Apply resolver handlers before publishing Pi-hole DNS ports
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait until host TCP port 53 is free for Pi-hole publish
+  ansible.builtin.wait_for:
+    host: 0.0.0.0
+    port: 53
+    state: stopped
+    timeout: 120
+    delay: 2
+  when:
+    - not (pihole_use_host_network | default(false) | bool)
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+    - pihole_configure_systemd_resolved | default(true) | bool
+
 - name: Start Pi-hole service (docker compose v2)
   vars:
     _pihole_compose_needs_recreate: >-
