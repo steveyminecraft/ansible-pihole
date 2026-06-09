@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Controller:
-  - Python 3.13+ and ansible-core 2.20.x
+  - Python 3.13+ and ansible-core 2.20 or 2.21
   - collections installed via `./scripts/install-ansible-collections.sh`
 - Targets:
   - Supported Linux hosts with static/reserved IPs

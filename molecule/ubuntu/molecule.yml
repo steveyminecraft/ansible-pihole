@@ -2,7 +2,7 @@
 # Molecule scenario: Ubuntu 24.04 + full stack (see converge.yml).
 dependency:
   name: shell
-  # Roles + collections (ansible.posix from git via CLI — see script; avoids galaxy semver + git ref bug).
+  # Roles and released collection dependencies are installed by the shared script.
   command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
 driver:
   name: vagrant

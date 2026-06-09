@@ -1,2 +1,3 @@
 ---
+# CI validates this published runtime floor and the normal 2.21 developer line.
 requires_ansible: ">=2.20.0"
