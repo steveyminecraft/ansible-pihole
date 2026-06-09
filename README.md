@@ -8,14 +8,15 @@ For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker
 
 ## Controller setup (your laptop or CI)
 
-- **ansible-core 2.20.x** (see [`requirements.txt`](requirements.txt)).
+- **ansible-core 2.20 or 2.21**. The normal developer environment uses 2.21
+  (see [`requirements.txt`](requirements.txt)); CI also tests the 2.20 runtime floor.
 - **Python 3.13 or 3.14** for the controller (CI tests both; Ubuntu 26.04 ships 3.14—see [`.python-version`](.python-version)).
 
 ```bash
 ./scripts/setup-env.sh
 source env/bin/activate
 ./scripts/install-ansible-collections.sh
-ansible --version   # ansible-core 2.20.x from env/bin/ansible
+ansible --version   # ansible-core 2.21.x from env/bin/ansible
 ```
 
 Manual venv (if you prefer): `python3.13 -m venv env` or `python3.14 -m venv env`, then `pip install -r requirements.txt`.
@@ -34,7 +35,11 @@ ansible-galaxy collection install steveyminecraft.pihole
 ./scripts/install-ansible-collections.sh
 ```
 
-That script builds and installs this collection locally, installs **`ansible.posix` from git** (merged [ansible.posix PR #690](https://github.com/ansible-collections/ansible.posix/pull/690) until a Galaxy release includes it), then installs dependencies in [`collections/requirements.yml`](collections/requirements.yml). **Git** is required for the `ansible.posix` step. Local build output and development-only directories such as `.ansible/`, virtualenvs, Vagrant state, and generated collection tarballs are excluded from the collection artifact.
+That script builds and installs this collection locally, then installs released
+dependencies from [`collections/requirements.yml`](collections/requirements.yml).
+Local build output and development-only directories such as `.ansible/`,
+virtualenvs, Vagrant state, and generated collection tarballs are excluded from
+the collection artifact.
 
 [`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables top-level fact injection so roles use `ansible_facts[...]` with ansible-core 2.20+. Playbooks reference roles by FQCN (for example `steveyminecraft.pihole.pihole`). Re-run the install script after changing [`galaxy.yml`](galaxy.yml) or [`collections/requirements.yml`](collections/requirements.yml).
 
@@ -87,7 +92,7 @@ environment subnet (documentation ranges such as `2001:db8::/32` are rejected).
 
 Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`, `pihole_vip_ipv4` / `pihole_vip_ipv6`) are typically set in inventory; see the [docker-pi-hole environment docs](https://github.com/pi-hole/docker-pi-hole#environment-variables) for image variables.
 
-Role-local variable naming now consistently uses the `pihole_` prefix to satisfy ansible-lint role scoping rules (for example `pihole_dir_loc`, `pihole_webport_http`, `pihole_docker_manage_iptables`). Existing inventories that still define legacy unprefixed names continue to work via compatibility fallbacks, but new configs should use the prefixed names.
+Role-local variable naming now consistently uses the `pihole_` prefix to satisfy ansible-lint role scoping rules (for example `pihole_dir_loc`, `pihole_webport_http`, `pihole_docker_manage_iptables`). Existing inventories that still define legacy unprefixed names continue to work via compatibility lookups, but new configs should use the prefixed names.
 
 Security defaults:
 
@@ -150,6 +155,10 @@ probe runs from inside the Pi-hole container (`docker exec`) so Docker-network
 upstream names (for example `unbound`) are resolved in the same network context
 Pi-hole uses. After all nodes pass and rejoin, the playbooks verify DNS through
 the VIP.
+
+Keepalived health checks require both the configured Pi-hole container to be
+running and Pi-hole DNS to answer functionally. This prevents another local DNS
+listener from masking a stopped Pi-hole container during HA failover.
 
 Pi-hole container recreation is driven by Compose/configuration changes or an
 explicit maintenance override:
@@ -296,6 +305,11 @@ Hosted CI also runs lightweight safety checks for Molecule configuration files (
 sanity) that do not require Vagrant or a VM provider. Full Molecule Vagrant scenarios remain
 local/self-hosted validation steps.
 
+CI tests the advertised ansible-core 2.20 and 2.21 support range. It also builds
+and installs the collection artifact into an empty temporary collections path,
+resolves its Galaxy dependencies, and syntax-checks playbooks from the installed
+artifact rather than the source checkout.
+
 ## Operational docs
 
 - [Architecture](docs/architecture.md)
@@ -327,12 +341,15 @@ Use conventional commits on PRs (`feat:`, `fix:`, etc.) so release-please can ch
 
 Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 
-**Install a specific version:**
+**Install a specific version** (replace `<version>` with a release from the links below):
 
 ```bash
-ansible-galaxy collection install steveyminecraft.pihole:==1.1.0
+ansible-galaxy collection install steveyminecraft.pihole:==<version>
 ```
 
 See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.
+
+The collection is licensed under Apache-2.0. Selected imported files retain
+their original license notices; see [`LICENSES.md`](LICENSES.md).
 
 Legacy Galaxy **roles** `steveyminecraft.ansible-pihole` and `steveyminecraft.docker-pihole` are superseded by this collection; use `ansible-galaxy collection install steveyminecraft.pihole` instead.

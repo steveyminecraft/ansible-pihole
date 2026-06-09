@@ -14,7 +14,7 @@
         pihole_compose_dir
         | default(
             pihole_dir_loc
-            | default(vars['dir_loc'] if ('dir_loc' in vars) else '/opt/pihole')
+            | default(lookup('ansible.builtin.vars', 'dir_loc', default='/opt/pihole'))
           )
       }}
 

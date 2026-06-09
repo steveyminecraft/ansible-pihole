@@ -44,7 +44,7 @@ jobs:
       - name: Install tooling
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade 'ansible-core>=2.20.5,<2.21' ansible-lint yamllint galaxy-importer
+          python -m pip install --upgrade 'ansible-core>=2.21.0,<2.22' ansible-lint yamllint galaxy-importer
 
       - name: Build and validate collection for Ansible Galaxy
         run: |
@@ -66,7 +66,7 @@ jobs:
         run: yamllint roles playbooks molecule inventory
 
   ansible-tests-ubuntu:
-    name: Ansible syntax & dry-run (${{ matrix.runner }} / Python ${{ matrix.python-version }})
+    name: Ansible syntax & dry-run (${{ matrix.runner }} / Python ${{ matrix.python-version }} / Core ${{ matrix.ansible-core }})
     runs-on: ${{ matrix.runner }}
     needs: lint
     strategy:
@@ -74,6 +74,7 @@ jobs:
       matrix:
         runner: [ubuntu-24.04, ubuntu-24.04-arm]
         python-version: ["3.13", "3.14"]
+        ansible-core: [">=2.20.5,<2.21", ">=2.21.0,<2.22"]
 
     steps:
       - name: Checkout
@@ -89,7 +90,7 @@ jobs:
       - name: Install Ansible
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade 'ansible-core>=2.20.5,<2.21'
+          python -m pip install --upgrade "ansible-core${{ matrix.ansible-core }}"
 
       - name: Show Ansible version
         run: ansible --version
@@ -136,6 +137,9 @@ jobs:
         run: |
           yamllint .github/workflows molecule inventory playbooks roles
 
+      - name: Validate Ansible Core support policy
+        run: python scripts/check-ansible-version-policy.py
+
       - name: Validate Molecule scenario file structure
         run: |
           python - <<'PY'
@@ -144,6 +148,7 @@ jobs:
 
           required = {
               "molecule/ubuntu/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/ubuntu-26.04/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/default/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/nebula-sync-migration/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
           }
