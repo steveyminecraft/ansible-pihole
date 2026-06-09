@@ -1,0 +1,65 @@
+---
+- name: Verify Nebula Sync plaintext-to-secret-file migration
+  hosts: nebula_sync_controller
+  become: true
+  gather_facts: false
+  vars:
+    nebula_sync_env_fmt: "{{ '{{range .Config.Env}}{{println .}}{{end}}' }}"
+    nebula_sync_mounts_fmt: "{{ '{{json .Mounts}}' }}"
+    migration_secret_host_dir: "{{ nebula_sync_secret_dir | default((nebula_sync_dir | default('/opt/nebula-sync')) ~ '/secrets') }}"
+    migration_primary_secret_filename: "{{ nebula_sync_primary_secret_filename | default('primary') }}"
+    migration_replicas_secret_filename: "{{ nebula_sync_replicas_secret_filename | default('replicas') }}"
+    migration_secret_container_dir: "{{ nebula_sync_secret_container_dir | default('/run/secrets') }}"
+    migration_primary_secret_path: "{{ migration_secret_container_dir }}/{{ migration_primary_secret_filename }}"
+    migration_replicas_secret_path: "{{ migration_secret_container_dir }}/{{ migration_replicas_secret_filename }}"
+  tasks:
+    - name: Read migrated Nebula Sync container environment
+      no_log: true
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - "{{ nebula_sync_env_fmt }}"
+          - "{{ nebula_sync_container_name }}"
+      register: migrated_nebula_sync_env
+      changed_when: false
+
+    - name: Read migrated Nebula Sync container mounts
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - --format
+          - "{{ nebula_sync_mounts_fmt }}"
+          - "{{ nebula_sync_container_name }}"
+      register: migrated_nebula_sync_mounts
+      changed_when: false
+
+    - name: Stat migrated Nebula Sync secret files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ migration_secret_host_dir }}/{{ migration_primary_secret_filename }}"
+        - "{{ migration_secret_host_dir }}/{{ migration_replicas_secret_filename }}"
+      register: migrated_nebula_sync_secret_files
+
+    - name: Assert legacy plaintext state was migrated
+      ansible.builtin.assert:
+        that:
+          - migrated_nebula_sync_env.stdout_lines | select('search', '^PRIMARY=.*\\|') | list | length == 0
+          - migrated_nebula_sync_env.stdout_lines | select('search', '^REPLICAS=.*\\|') | list | length == 0
+          - ('PRIMARY_FILE=' ~ migration_primary_secret_path) in migrated_nebula_sync_env.stdout_lines
+          - ('REPLICAS_FILE=' ~ migration_replicas_secret_path) in migrated_nebula_sync_env.stdout_lines
+          - migration_primary_secret_path in migrated_nebula_sync_mount_destinations
+          - migration_replicas_secret_path in migrated_nebula_sync_mount_destinations
+          - migrated_nebula_sync_secret_files.results | map(attribute='stat.exists') | min
+          - migrated_nebula_sync_secret_files.results | map(attribute='stat.mode') | unique | list == ['0400']
+        fail_msg: "Nebula Sync legacy plaintext credentials were not migrated to secret files."
+      vars:
+        migrated_nebula_sync_mount_destinations: >-
+          {{
+            (migrated_nebula_sync_mounts.stdout | from_json)
+            | map(attribute='Destination')
+            | list
+          }}

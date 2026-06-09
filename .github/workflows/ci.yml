@@ -145,6 +145,7 @@ jobs:
           required = {
               "molecule/ubuntu/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/default/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/nebula-sync-migration/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
           }
           for relpath, keys in required.items():
               path = Path(relpath)
