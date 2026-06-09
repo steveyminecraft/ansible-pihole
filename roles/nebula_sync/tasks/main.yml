@@ -132,9 +132,9 @@
       }}
     nebula_sync_existing_plaintext_env: >-
       {{
-        (nebula_sync_existing_env.stdout_lines | default([]) | select('search', '^PRIMARY=.*\\|') | list | length > 0)
+        (nebula_sync_existing_env.stdout_lines | default([]) | select('match', '^PRIMARY=') | list | length > 0)
         or
-        (nebula_sync_existing_env.stdout_lines | default([]) | select('search', '^REPLICAS=.*\\|') | list | length > 0)
+        (nebula_sync_existing_env.stdout_lines | default([]) | select('match', '^REPLICAS=') | list | length > 0)
       }}
     nebula_sync_existing_missing_secret_mounts: >-
       {{

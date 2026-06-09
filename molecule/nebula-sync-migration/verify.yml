@@ -47,8 +47,8 @@
     - name: Assert legacy plaintext state was migrated
       ansible.builtin.assert:
         that:
-          - migrated_nebula_sync_env.stdout_lines | select('search', '^PRIMARY=.*\\|') | list | length == 0
-          - migrated_nebula_sync_env.stdout_lines | select('search', '^REPLICAS=.*\\|') | list | length == 0
+          - migrated_nebula_sync_env.stdout_lines | select('match', '^PRIMARY=') | list | length == 0
+          - migrated_nebula_sync_env.stdout_lines | select('match', '^REPLICAS=') | list | length == 0
           - ('PRIMARY_FILE=' ~ migration_primary_secret_path) in migrated_nebula_sync_env.stdout_lines
           - ('REPLICAS_FILE=' ~ migration_replicas_secret_path) in migrated_nebula_sync_env.stdout_lines
           - migration_primary_secret_path in migrated_nebula_sync_mount_destinations

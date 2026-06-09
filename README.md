@@ -156,6 +156,10 @@ upstream names (for example `unbound`) are resolved in the same network context
 Pi-hole uses. After all nodes pass and rejoin, the playbooks verify DNS through
 the VIP.
 
+Keepalived health checks require both the configured Pi-hole container to be
+running and Pi-hole DNS to answer functionally. This prevents another local DNS
+listener from masking a stopped Pi-hole container during HA failover.
+
 Pi-hole container recreation is driven by Compose/configuration changes or an
 explicit maintenance override:
 
