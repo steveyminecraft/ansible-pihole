@@ -1,0 +1,22 @@
+---
+- name: Prepare instances for migration test
+  import_playbook: ../common/prepare.yml
+
+- name: Seed legacy plaintext Nebula Sync state
+  hosts: nebula_sync_controller
+  become: true
+  gather_facts: true
+  roles:
+    - role: steveyminecraft.pihole.docker
+  tasks:
+    - name: Create legacy plaintext Nebula Sync container
+      no_log: true
+      community.docker.docker_container:
+        name: "{{ nebula_sync_container_name }}"
+        image: "{{ nebula_sync_image | default('ghcr.io/lovelaze/nebula-sync') }}:{{ nebula_sync_image_tag | default('v0.11.1') }}"
+        state: started
+        restart_policy: unless-stopped
+        env:
+          PRIMARY: "{{ nebula_sync_primary_url }}|{{ nebula_sync_primary_password }}"
+          REPLICAS: >-
+            {% for replica in nebula_sync_replicas %}{{ replica.url }}|{{ replica.password }}{% if not loop.last %},{% endif %}{% endfor %}

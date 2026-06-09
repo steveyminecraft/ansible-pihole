@@ -1,0 +1,58 @@
+---
+# Molecule scenario: migrate a legacy plaintext Nebula Sync container to secret files.
+dependency:
+  name: shell
+  command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
+driver:
+  name: vagrant
+platforms:
+  - name: vagrant-pihole-01
+    box: "bento/ubuntu-24.04"
+    hostname: vagrant-pihole-01
+    interfaces:
+      - network_name: private_network
+        type: static
+        ip: 192.168.56.4
+    memory: 2048
+    cpus: 2
+  - name: vagrant-pihole-02
+    box: "bento/ubuntu-24.04"
+    hostname: vagrant-pihole-02
+    interfaces:
+      - network_name: private_network
+        type: static
+        ip: 192.168.56.5
+    memory: 1024
+    cpus: 1
+
+provisioner:
+  name: ansible
+  connection_options:
+    ansible_ssh_user: vagrant
+    ansible_password: vagrant
+    ansible_become: true
+  inventory:
+    links:
+      hosts: ../../inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}
+  playbooks:
+    create: create.yml
+    prepare: prepare.yml
+    converge: converge.yml
+    verify: verify.yml
+    destroy: destroy.yml
+  env:
+    ANSIBLE_INJECT_FACTS_AS_VARS: "false"
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
+verifier:
+  name: ansible
+scenario:
+  name: nebula-sync-migration
+  test_sequence:
+    - dependency
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy

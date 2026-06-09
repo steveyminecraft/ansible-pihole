@@ -1,0 +1,11 @@
+---
+- name: Destroy test platforms (Vagrant)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Destroy Vagrant environment for this scenario
+      ansible.builtin.command: vagrant destroy -f
+      args:
+        chdir: "{{ playbook_dir }}"
+      changed_when: true

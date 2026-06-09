@@ -218,12 +218,14 @@ services during each converge.
 | `ubuntu` | [`molecule/ubuntu/`](molecule/ubuntu/) | Ubuntu 24.04 (`bento/ubuntu-24.04`) |
 | `ubuntu-26.04` | [`molecule/ubuntu-26.04/`](molecule/ubuntu-26.04/) | Ubuntu 26.04 — VirtualBox: `konstruktoid/ubuntu-26.04` (Bento); libvirt: `cloud-image/ubuntu-26.04` |
 | `default` | [`molecule/default/`](molecule/default/) | Rocky-style box (see `molecule.yml`) |
+| `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
 
 Examples:
 
 ```bash
 molecule test -s ubuntu
 molecule test -s ubuntu-26.04
+molecule test -s nebula-sync-migration
 molecule converge -s ubuntu    # iterate without full test sequence
 ```
 
