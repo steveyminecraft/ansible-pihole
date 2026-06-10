@@ -108,6 +108,9 @@ jobs:
       security-events: write
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6.0.2
+
       - name: Run Trivy against default image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -118,7 +121,9 @@ jobs:
           output: trivy-${{ matrix.key }}.sarif
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: "1"
+          # Default images are upstream artifacts we do not build here. Upload
+          # findings to code scanning, but keep PR gating on repository content.
+          exit-code: "0"
 
       - name: Upload Trivy image results
         if: always()

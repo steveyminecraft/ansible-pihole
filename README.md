@@ -147,9 +147,9 @@ unbound_image: ""  # empty means auto-select
 unbound_image_arch_map:
   x86_64: "mvance/unbound:1.19.3"
   amd64: "mvance/unbound:1.19.3"
-  aarch64: "vincejv/unbound:1.19.3"
-  arm64: "vincejv/unbound:1.19.3"
-  armv7l: "vincejv/unbound:1.19.3"
+  aarch64: "vincejv/unbound:1.25.1"
+  arm64: "vincejv/unbound:1.25.1"
+  armv7l: "vincejv/unbound:1.25.1"
 ```
 
 Set `unbound_image` explicitly in inventory to override that selection. For Pi-hole v6, use `FTLCONF_dns_upstreams` rather than the older `PIHOLE_DNS_` variable:
@@ -351,8 +351,10 @@ and installs the collection artifact into an empty temporary collections path,
 resolves its Galaxy dependencies, and syntax-checks playbooks from the installed
 artifact rather than the source checkout.
 
-The security workflow scans repository content and every default deployed
-container image for HIGH/CRITICAL vulnerabilities. Image targets are derived
+The security workflow hard-fails on HIGH/CRITICAL findings in repository
+content. It also uploads code-scanning SARIF for every default deployed
+container image; image scans are report-only because those findings belong to
+upstream images we do not build in this repository. Image targets are derived
 from role defaults by `scripts/default-container-images.py`, so changing a
 default pin updates the scan matrix without duplicating image names.
 
