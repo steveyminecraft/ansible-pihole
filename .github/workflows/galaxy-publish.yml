@@ -19,8 +19,12 @@ concurrency:
 
 jobs:
   validate:
-    name: Build and validate steveyminecraft.pihole
+    name: Build and validate steveyminecraft.pihole (${{ matrix.ansible-core }})
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        ansible-core: [">=2.20.5,<2.21", ">=2.21.0,<2.22"]
 
     steps:
       - name: Check out repository
@@ -34,7 +38,7 @@ jobs:
       - name: Install Ansible and galaxy-importer
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade 'ansible-core>=2.20.5,<2.21' galaxy-importer
+          python -m pip install --upgrade "ansible-core${{ matrix.ansible-core }}" galaxy-importer
 
       - name: Build collection artifact
         run: ansible-galaxy collection build
@@ -43,3 +47,20 @@ jobs:
         run: |
           artifact="$(ls -1 steveyminecraft-pihole-*.tar.gz | head -1)"
           python -m galaxy_importer.main "${artifact}"
+
+      - name: Validate clean consumer install
+        run: |
+          artifact="${GITHUB_WORKSPACE}/$(ls -1 steveyminecraft-pihole-*.tar.gz | head -1)"
+          consumer_root="$(mktemp -d)"
+          trap 'rm -rf "${consumer_root}"' EXIT
+          cd "${consumer_root}"
+
+          ansible-galaxy collection install "${artifact}" -p collections --force
+          test -d collections/ansible_collections/ansible/posix
+
+          installed="${consumer_root}/collections/ansible_collections/steveyminecraft/pihole"
+          test -d "${installed}"
+          for playbook in bootstrap-pihole.yaml update-pihole.yaml keepalived.yaml sync.yaml; do
+            ANSIBLE_COLLECTIONS_PATH="${consumer_root}/collections" \
+              ansible-playbook -i localhost, "${installed}/playbooks/${playbook}" --syntax-check
+          done

@@ -9,7 +9,7 @@
 pihole_dir_loc: '/opt/pihole'
 pihole_compose_dir: "{{ pihole_dir_loc }}"
 pihole_image: "pihole/pihole:2026.05.0"
-pihole_firewall_deploy: "{{ (vars['firewall_deploy'] if ('firewall_deploy' in vars) else false) | bool }}"
+pihole_firewall_deploy: "{{ lookup('ansible.builtin.vars', 'firewall_deploy', default=false) | bool }}"
 
 # Deploy and integrate Unbound by default for backwards compatibility. When
 # disabled, configure at least one explicit upstream resolver below or through
@@ -22,11 +22,14 @@ pihole_upstream_resolvers: []
 # EL Docker NAT fallback after compose (see tasks/redhat_nat_fallback.yml).
 pihole_docker_manage_iptables: >-
   {{
-    (vars['docker_manage_iptables'] if ('docker_manage_iptables' in vars)
-     else (not (vagrant_env | default(false) | bool)))
+    lookup(
+      'ansible.builtin.vars',
+      'docker_manage_iptables',
+      default=(not (vagrant_env | default(false) | bool))
+    )
     | bool
   }}
-pihole_docker_el_nat_fallback: "{{ (vars['docker_el_nat_fallback'] if ('docker_el_nat_fallback' in vars) else true) | bool }}"
+pihole_docker_el_nat_fallback: "{{ lookup('ansible.builtin.vars', 'docker_el_nat_fallback', default=true) | bool }}"
 
 # Opt-in Rocky/EL lab mode: stop firewalld, install bind-utils (dig on the host), run Pi-hole
 # container privileged with relaxed seccomp/SELinux labels. Molecule default scenario sets this
@@ -59,8 +62,8 @@ pihole_environment_variables:
   REV_SERVER_CIDR: "192.168.56.0/24"
   REV_SERVER_TARGET: "192.168.56.1"
 
-pihole_webport_http: "{{ vars['webport_http'] if ('webport_http' in vars) else '80' }}"
-pihole_webport_https: "{{ vars['webport_https'] if ('webport_https' in vars) else '443' }}"
+pihole_webport_http: "{{ lookup('ansible.builtin.vars', 'webport_http', default='80') }}"
+pihole_webport_https: "{{ lookup('ansible.builtin.vars', 'webport_https', default='443') }}"
 # Compose paths
 pihole_compose_file: "{{ pihole_compose_dir }}/docker-compose.yml"
 
