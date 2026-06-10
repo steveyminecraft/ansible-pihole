@@ -1,5 +1,5 @@
 ---
-{% if (not (pihole_use_host_network | default(false) | bool)) and (pihole_network_name is defined and pihole_network_name | string | length > 0) %}
+{% if (pihole_enable_unbound | default(true) | bool) and (not (pihole_use_host_network | default(false) | bool)) and (pihole_network_name is defined and pihole_network_name | string | length > 0) %}
 networks:
   {{ pihole_network_name }}:
     external: true
@@ -42,7 +42,7 @@ services:
 {% endfor %}
 {% endif %}
 {% if not (pihole_use_host_network | default(false) | bool) %}
-{% if pihole_network_name is defined and pihole_network_name | string | length > 0 %}
+{% if (pihole_enable_unbound | default(true) | bool) and (pihole_network_name is defined and pihole_network_name | string | length > 0) %}
     networks:
       - {{ pihole_network_name }}
 {% endif %}

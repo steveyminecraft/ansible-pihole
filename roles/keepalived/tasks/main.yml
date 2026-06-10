@@ -12,9 +12,10 @@
     value: '1'
     state: present
     reload: true
+  when: keepalived_enable_ip_forward | default(false) | bool
 
 - name: Flush handlers
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
   when: not (keepalived_defer_service_restart | default(false) | bool)
 
 - name: Install keepalived Debian
@@ -25,7 +26,7 @@
   when: ansible_facts['os_family'] == 'Debian'
 
 - name: Install keepalived Rocky
-  yum:
+  ansible.builtin.dnf:
     name:
       - kernel-headers
       - kernel-devel
@@ -35,10 +36,10 @@
     state: present
   when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Change the keepalived_t domain to permissive
+- name: Configure keepalived_t permissive compatibility mode
   community.general.selinux_permissive:
     name: keepalived_t
-    permissive: true
+    permissive: "{{ keepalived_selinux_permissive | default(false) | bool }}"
   when: ansible_facts['os_family'] == 'RedHat'
 
 # Since yum doesn't like using notify because yum we have to this instead
@@ -57,18 +58,18 @@
   when: keepalived_defer_service_restart | default(false) | bool
 
 - name: Copy check_pihole.sh
-  copy:
+  ansible.builtin.copy:
     dest: /etc/keepalived/check_pihole.sh
     src: check_pihole.sh
     mode: "0755"
 
 # Finds the IP_ADDRS of the group and removes the ansible_host ip's from it's peer list
 - name: Find Local IP Addresses
-  set_fact:
+  ansible.builtin.set_fact:
     keepalived_local_ips: "{{ ansible_facts['all_ipv4_addresses'] + ansible_facts['all_ipv6_addresses'] }}"
 
 - name: Create a list of peer IPs excluding local IPs
-  set_fact:
+  ansible.builtin.set_fact:
     keepalived_peer_list: >-
       {{ groups['all']
          | map('extract', hostvars, 'ansible_host')
@@ -77,7 +78,7 @@
 
 # Step 3: Debug the keepalived_peer_list
 - name: Debug keepalived_peer_list
-  debug:
+  ansible.builtin.debug:
     msg: "Peer IPs with /24 for host {{ inventory_hostname }}: {{ keepalived_peer_list }}"
 
 # Vagrant: default route is often the NAT NIC; VRRP must bind to private_network (names vary: eth1, ens6, enp0s8, …).
@@ -110,7 +111,7 @@
         keepalived_vrrp_src_address: "{{ ansible_host | trim }}"
 
 - name: Configure keepalived
-  template:
+  ansible.builtin.template:
     dest: /etc/keepalived/keepalived.conf
     src: keepalived.j2
     owner: root
@@ -127,5 +128,5 @@
   notify: Restart firewall config
 
 - name: Flush handlers
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
   when: not (keepalived_defer_service_restart | default(false) | bool)

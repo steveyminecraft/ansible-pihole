@@ -55,7 +55,8 @@ all:
     dnsmasq_listening: single
     pihole_container_name: pihole
     vagrant_env: true
-    docker_users: vagrant
+    docker_group_users:
+      - vagrant
     # Lab-only: avoid Docker image pulls depending on the guest's systemd-resolved stub.
     docker_daemon_dns:
       - "1.1.1.1"
@@ -79,3 +80,4 @@ all:
     pihole_network_external: true
     pihole_rocky_network_debug: true
     docker_disable_ipv6: true  # lab-only workaround for Rocky/Vagrant guest networking
+    docker_enable_ip_forward: true  # lab bridge/NAT topology requires forwarding

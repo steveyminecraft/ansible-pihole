@@ -248,7 +248,9 @@
     value: "1"
     sysctl_set: true
     reload: true
-  when: ansible_facts['os_family'] == 'RedHat'
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_enable_ip_forward | default(false) | bool
 
 - name: Configure Docker daemon to not manage iptables (VirtualBox/vagrant workaround)
   ansible.builtin.copy:
@@ -302,18 +304,8 @@
   failed_when: false
   when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Install Docker SDK for python
-  pip:
-    name:
-      - docker
-    extra_args: "--user --timeout 120"
-    break_system_packages: true
-
-- name: Add user to docker group
-  ansible.builtin.user:
-    name: "{{ ansible_user }}"
-    append: true
-    groups: docker
+- name: Configure Docker SDK and explicit group users
+  ansible.builtin.import_tasks: users.yml
 
 - name: Configure Docker daemon (RedHat family)
   ansible.builtin.copy:
@@ -386,7 +378,7 @@
     - not (docker_ipv6_enabled | default(false) | bool)
 
 - name: Flush handlers
-  meta: flush_handlers
+  ansible.builtin.meta: flush_handlers
 
 # After Docker restarts (handler), re-apply NAT — restart can reset netfilter state before rules land.
 - name: EL container egress when Docker does not manage iptables (NAT fallback)

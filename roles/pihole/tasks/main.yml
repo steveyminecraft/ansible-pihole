@@ -43,6 +43,38 @@
       Set pihole_startup_dns when pihole_override_container_resolver=true.
   when: pihole_override_container_resolver | default(false) | bool
 
+- name: Validate explicit Pi-hole upstreams when Unbound is disabled
+  ansible.builtin.assert:
+    that:
+      - >-
+        (pihole_upstream_resolvers | default([]) | length > 0)
+        or
+        (
+          pihole_environment_variables.FTLCONF_dns_upstreams is defined
+          and (pihole_environment_variables.FTLCONF_dns_upstreams | string | length > 0)
+        )
+    fail_msg: >-
+      Set pihole_upstream_resolvers or pihole_environment_variables.FTLCONF_dns_upstreams
+      when pihole_enable_unbound=false.
+  when: not (pihole_enable_unbound | default(true) | bool)
+
+- name: Configure explicit Pi-hole upstream resolvers
+  ansible.builtin.set_fact:
+    pihole_environment_variables: >-
+      {{
+        pihole_environment_variables
+        | combine({'FTLCONF_dns_upstreams': pihole_upstream_resolvers | join(';')}, recursive=True)
+      }}
+  when:
+    - not (pihole_enable_unbound | default(true) | bool)
+    - pihole_upstream_resolvers | default([]) | length > 0
+
+- name: Remove managed Unbound container when disabled
+  community.docker.docker_container:
+    name: "{{ unbound_container_name | default('unbound') }}"
+    state: absent
+  when: not (pihole_enable_unbound | default(true) | bool)
+
 - name: Debian setup tasks
   ansible.builtin.include_tasks: debian.yml
   when: ansible_facts['distribution'] in ['Debian', 'Ubuntu']
@@ -67,7 +99,14 @@
 
 - name: Added Unbound
   ansible.builtin.include_tasks: unbound.yml
-  when: not (pihole_use_host_network | default(false) | bool)
+  when:
+    - pihole_enable_unbound | default(true) | bool
+    - not (pihole_use_host_network | default(false) | bool)
+
+- name: Record that Unbound integration is disabled
+  ansible.builtin.set_fact:
+    pihole_unbound_present: false
+  when: not (pihole_enable_unbound | default(true) | bool)
 
 - name: Verify Pi-hole deployment
   ansible.builtin.include_tasks: verify.yml
