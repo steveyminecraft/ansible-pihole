@@ -1,0 +1,14 @@
+---
+- name: Install Docker SDK for python
+  ansible.builtin.pip:
+    name:
+      - docker
+    extra_args: "--user --timeout 120"
+    break_system_packages: true
+
+- name: Add configured users to Docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    append: true
+    groups: docker
+  loop: "{{ docker_group_users | default([]) }}"

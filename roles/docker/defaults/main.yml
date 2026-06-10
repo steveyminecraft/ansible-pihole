@@ -24,6 +24,14 @@ docker_ipv6_fixed_cidr: ""
 # stub DNS during Docker Hub image pulls.
 docker_daemon_dns: []
 
+# Docker group membership grants root-equivalent host access. Add users only
+# when an inventory explicitly opts them in.
+docker_group_users: []
+
+# Docker may require host forwarding for routed bridge/NAT topologies. Keep the
+# host setting unchanged unless the inventory explicitly requests it.
+docker_enable_ip_forward: false
+
 # When Docker iptables is off on EL, discover IPv4 subnets (docker network inspect) and add
 # nftables masquerade per subnet (iptables MASQUERADE is unreliable on EL9+ nf_tables); re-run
 # after compose so project networks exist. Falls back to 172.16.0.0/12 if discovery is empty.

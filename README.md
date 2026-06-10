@@ -62,7 +62,8 @@ ansible-playbook -i /path/to/your/inventory.yml playbooks/bootstrap-pihole.yaml
 
 ### `playbooks/bootstrap-pihole.yaml`
 
-First-time (and repeatable) full bootstrap: system prep, Docker, Unbound, Pi-hole, keepalived, etc. (see the play for the exact role list).
+First-time (and repeatable) full bootstrap: system prep, Docker, optional Unbound,
+Pi-hole, keepalived, etc. (see the play for the exact role list).
 
 If Docker tasks fail on a first run, reboot the host and re-run.
 
@@ -76,6 +77,28 @@ On RedHat/Rocky hosts the Docker role installs `kernel-modules-extra` by default
 ```yaml
 docker_install_kernel_modules_extra: false
 ```
+
+Docker group membership is root-equivalent and defaults to no users. Lab or
+administrative inventories can grant it explicitly:
+
+```yaml
+docker_group_users:
+  - vagrant
+```
+
+The Docker and keepalived roles leave IPv4 forwarding unchanged by default.
+Enable it only for a topology that routes traffic between interfaces:
+
+```yaml
+docker_enable_ip_forward: true
+# or, for a keepalived-specific routed topology:
+keepalived_enable_ip_forward: true
+```
+
+On RedHat/Rocky, `keepalived_t` remains enforcing by default. The
+`keepalived_selinux_permissive: true` compatibility escape hatch weakens
+SELinux enforcement and should only be used for a known denial while a narrow
+policy fix is prepared.
 
 `docker_disable_ipv6` now defaults to `false` for production safety. Set it explicitly in
 lab inventories where guest networking requires the workaround (for example Vagrant/Rocky).
@@ -100,16 +123,33 @@ Security defaults:
 - Known placeholders/defaults (`Testing 101`, `Intranet`, `CHANGE_ME`, empty value) are rejected by role assertions.
 - Pi-hole compose files are rendered with root-only permissions (`0600`) in both normal and Unbound integration paths.
 
-Unbound is deployed before Pi-hole and can be used as Pi-hole's upstream resolver over a shared Docker network. By default the Unbound role now chooses an image from `unbound_image_arch_map` using the target host architecture:
+Unbound is deployed before Pi-hole by default and can be used as Pi-hole's
+upstream resolver over a shared Docker network. Disable it explicitly and
+provide upstream resolvers for a Pi-hole-only deployment:
+
+```yaml
+pihole_enable_unbound: false
+pihole_upstream_resolvers:
+  - "1.1.1.1"
+  - "1.0.0.1"
+```
+
+When Unbound is disabled, the Pi-hole role removes the managed Unbound
+container, Pi-hole is not attached to the shared Unbound network, and the role
+requires either `pihole_upstream_resolvers` or an explicit
+`pihole_environment_variables.FTLCONF_dns_upstreams` value.
+
+By default the Unbound role chooses a pinned image from
+`unbound_image_arch_map` using the target host architecture:
 
 ```yaml
 unbound_image: ""  # empty means auto-select
 unbound_image_arch_map:
-  x86_64: "mvance/unbound:latest"
-  amd64: "mvance/unbound:latest"
-  aarch64: "vincejv/unbound:latest"
-  arm64: "vincejv/unbound:latest"
-  armv7l: "vincejv/unbound:latest"
+  x86_64: "mvance/unbound:1.19.3"
+  amd64: "mvance/unbound:1.19.3"
+  aarch64: "vincejv/unbound:1.25.1"
+  arm64: "vincejv/unbound:1.25.1"
+  armv7l: "vincejv/unbound:1.25.1"
 ```
 
 Set `unbound_image` explicitly in inventory to override that selection. For Pi-hole v6, use `FTLCONF_dns_upstreams` rather than the older `PIHOLE_DNS_` variable:
@@ -157,8 +197,9 @@ Pi-hole uses. After all nodes pass and rejoin, the playbooks verify DNS through
 the VIP.
 
 Keepalived health checks require both the configured Pi-hole container to be
-running and Pi-hole DNS to answer functionally. This prevents another local DNS
-listener from masking a stopped Pi-hole container during HA failover.
+running and Pi-hole DNS to answer functionally. Container checks use `sg docker`
+so they work under keepalived's script execution context. This prevents another
+local DNS listener from masking a stopped Pi-hole container during HA failover.
 
 Pi-hole container recreation is driven by Compose/configuration changes or an
 explicit maintenance override:
@@ -182,7 +223,7 @@ Deploy or adjust keepalived HA between Pi-hole instances. Priorities and VIPs ar
 
 ### `playbooks/sync.yaml`
 
-Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) on the **`nebula_sync_controller`** inventory group only (one orchestrator per primary→replica topology). Lab inventories define that group in [`inventory/vagrant.yml`](inventory/vagrant.yml) with `vagrant-pihole-01` as controller. Override `nebula_sync_image_tag` in inventory if you do not want `latest`.
+Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) on the **`nebula_sync_controller`** inventory group only (one orchestrator per primary→replica topology). Lab inventories define that group in [`inventory/vagrant.yml`](inventory/vagrant.yml) with `vagrant-pihole-01` as controller. The role defaults to pinned tag `v0.11.1`; override `nebula_sync_image_tag` to test a different version.
 
 Nebula Sync defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPLICAS` credentials are written to mounted secret files (`PRIMARY_FILE` / `REPLICAS_FILE`) instead of plain env values where possible. The role defaults ownership to UID/GID `1001`, matching the upstream container user, and rejects placeholder credentials by default.
 
@@ -310,6 +351,13 @@ and installs the collection artifact into an empty temporary collections path,
 resolves its Galaxy dependencies, and syntax-checks playbooks from the installed
 artifact rather than the source checkout.
 
+The security workflow hard-fails on HIGH/CRITICAL findings in repository
+content. It also uploads code-scanning SARIF for every default deployed
+container image; image scans are report-only because those findings belong to
+upstream images we do not build in this repository. Image targets are derived
+from role defaults by `scripts/default-container-images.py`, so changing a
+default pin updates the scan matrix without duplicating image names.
+
 ## Operational docs
 
 - [Architecture](docs/architecture.md)
@@ -346,6 +394,8 @@ Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 ```bash
 ansible-galaxy collection install steveyminecraft.pihole:==<version>
 ```
+
+Replace `<version>` with a published release such as `1.2.3`.
 
 See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.
 

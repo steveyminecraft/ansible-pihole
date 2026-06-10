@@ -10,6 +10,11 @@ Runs Unbound DNS resolver in Docker via Docker Compose v2.
 - `unbound_publish_host_ip` (default `127.0.0.1`)
 - `unbound_publish_host_port` (default `5335`)
 - `unbound_port` (default `5335`)
+- `unbound_image` (default empty, selects from `unbound_image_arch_map`)
+
+The default image map uses pinned tags by architecture. x86_64/amd64 hosts use
+`mvance/unbound:1.19.3`; ARM hosts use `vincejv/unbound:1.25.1` because the
+`vincejv/unbound` repository does not publish a `1.19.3` tag.
 
 ## Example
 
