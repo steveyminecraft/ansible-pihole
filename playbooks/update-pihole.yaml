@@ -83,10 +83,12 @@
           - "{{ pihole_update_health_qname | default(pihole_unbound_verify_qname | default('google.com')) }}"
       register: pihole_update_vip_dns
       changed_when: false
-      failed_when: >
+      retries: 30
+      delay: 2
+      until: >
         (pihole_update_vip_dns.stdout_lines
          | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
-         | list | length) == 0
+         | list | length) > 0
       run_once: true
       when:
         - pihole_ha_mode | default(false) | bool

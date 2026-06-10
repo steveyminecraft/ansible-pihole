@@ -1,0 +1,7 @@
+---
+# A local service VIP does not normally require packet forwarding.
+keepalived_enable_ip_forward: false
+
+# Compatibility escape hatch for deployments with a known keepalived SELinux
+# denial. Prefer a narrowly scoped policy fix.
+keepalived_selinux_permissive: false

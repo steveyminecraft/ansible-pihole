@@ -22,6 +22,7 @@
       tags: [docker, container]
     - role: steveyminecraft.pihole.unbound
       tags: [unbound, dns]
+      when: pihole_enable_unbound | default(true) | bool
     - role: steveyminecraft.pihole.pihole
       tags: [pihole, dns]
   post_tasks:
@@ -94,10 +95,12 @@
           - "{{ pihole_bootstrap_health_qname | default(pihole_unbound_verify_qname | default('google.com')) }}"
       register: pihole_bootstrap_vip_dns
       changed_when: false
-      failed_when: >
+      retries: 30
+      delay: 2
+      until: >
         (pihole_bootstrap_vip_dns.stdout_lines
          | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
-         | list | length) == 0
+         | list | length) > 0
       run_once: true
       when:
         - pihole_ha_mode | default(false) | bool

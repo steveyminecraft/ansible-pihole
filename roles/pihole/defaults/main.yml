@@ -8,7 +8,14 @@
 # tasks/main.yml aligns pihole_dir_loc so volume paths match the playbook.
 pihole_dir_loc: '/opt/pihole'
 pihole_compose_dir: "{{ pihole_dir_loc }}"
+pihole_image: "pihole/pihole:2026.05.0"
 pihole_firewall_deploy: "{{ (vars['firewall_deploy'] if ('firewall_deploy' in vars) else false) | bool }}"
+
+# Deploy and integrate Unbound by default for backwards compatibility. When
+# disabled, configure at least one explicit upstream resolver below or through
+# pihole_environment_variables.FTLCONF_dns_upstreams.
+pihole_enable_unbound: true
+pihole_upstream_resolvers: []
 
 # Must stay aligned with roles/docker/defaults — same variable is used in both roles; last role used to
 # win in defaults, so a literal `true` here overwrote the docker role and broke EL/Vagrant bridge egress.

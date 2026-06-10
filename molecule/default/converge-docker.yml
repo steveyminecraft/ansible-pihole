@@ -5,5 +5,6 @@
   gather_facts: true
   vars:
     docker_manage_iptables: false
+    docker_enable_ip_forward: true
   roles:
     - role: steveyminecraft.pihole.docker

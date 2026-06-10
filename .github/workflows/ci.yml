@@ -101,6 +101,8 @@ jobs:
       - name: Syntax check playbooks
         run: |
           ansible-playbook -i inventory/ci/ci.yml playbooks/bootstrap-pihole.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.yml playbooks/bootstrap-pihole.yaml --syntax-check \
+            -e pihole_enable_unbound=false -e '{"pihole_upstream_resolvers":["1.1.1.1"]}'
           ansible-playbook -i inventory/ci/ci.yml playbooks/update-pihole.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.yml playbooks/keepalived.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.yml playbooks/sync.yaml --syntax-check
@@ -110,6 +112,9 @@ jobs:
       - name: Check-mode converge (ci-bootstrap)
         run: |
           ansible-playbook -i inventory/ci/ci.yml playbooks/ci-bootstrap.yaml --check
+
+      - name: Validate Pi-hole Compose modes
+        run: ansible-playbook playbooks/ci-validate-pihole-modes.yaml
 
   ci-safety-checks:
     name: Hosted CI safety checks
@@ -155,3 +160,8 @@ jobs:
                   raise SystemExit(f"{relpath} missing keys: {missing}")
           print("Molecule scenario structure checks passed.")
           PY
+
+      - name: Validate default container image matrix
+        run: |
+          python scripts/default-container-images.py --github-matrix
+          python scripts/validate-secure-defaults.py

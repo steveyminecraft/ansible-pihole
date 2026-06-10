@@ -1,0 +1,55 @@
+---
+- name: Validate Pi-hole Compose modes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    pihole_container_name: pihole
+    pihole_image: "pihole/pihole:2026.05.0"
+    pihole_dir_loc: /opt/pihole
+    pihole_network_name: dns_net
+    pihole_use_host_network: false
+    pihole_rocky_network_debug: false
+    pihole_docker_dns: []
+    pihole_webport_http: "80"
+    pihole_webport_https: "443"
+    pihole_environment_variables:
+      DHCP_ACTIVE: false
+      FTLCONF_dns_upstreams: "1.1.1.1;1.0.0.1"
+  tasks:
+    - name: Render Pi-hole-only Compose configuration
+      ansible.builtin.set_fact:
+        pihole_only_compose: >-
+          {{
+            lookup(
+              'ansible.builtin.template',
+              playbook_dir ~ '/../roles/pihole/templates/docker-compose.yml.j2',
+              template_vars={'pihole_enable_unbound': false}
+            )
+            | from_yaml
+          }}
+
+    - name: Assert Pi-hole-only mode has no Unbound network assumptions
+      ansible.builtin.assert:
+        that:
+          - pihole_only_compose.networks is not defined
+          - pihole_only_compose.services.pihole.networks is not defined
+          - "'FTLCONF_dns_upstreams=1.1.1.1;1.0.0.1' in pihole_only_compose.services.pihole.environment"
+
+    - name: Render Pi-hole with Unbound Compose configuration
+      ansible.builtin.set_fact:
+        pihole_unbound_compose: >-
+          {{
+            lookup(
+              'ansible.builtin.template',
+              playbook_dir ~ '/../roles/pihole/templates/docker-compose.yml.j2',
+              template_vars={'pihole_enable_unbound': true}
+            )
+            | from_yaml
+          }}
+
+    - name: Assert Unbound mode uses the shared DNS network
+      ansible.builtin.assert:
+        that:
+          - pihole_network_name in pihole_unbound_compose.networks
+          - pihole_network_name in pihole_unbound_compose.services.pihole.networks
