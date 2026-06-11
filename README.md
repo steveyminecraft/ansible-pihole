@@ -269,6 +269,7 @@ services during each converge.
 | `ubuntu-26.04` | [`molecule/ubuntu-26.04/`](molecule/ubuntu-26.04/) | Ubuntu 26.04 — VirtualBox: `konstruktoid/ubuntu-26.04` (Bento); libvirt: `cloud-image/ubuntu-26.04` |
 | `default` | [`molecule/default/`](molecule/default/) | Rocky-style box (see `molecule.yml`) |
 | `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
+| `pihole-no-unbound` | [`molecule/pihole-no-unbound/`](molecule/pihole-no-unbound/) | Runs bootstrap and update workflows with Pi-hole-only DNS |
 
 Examples:
 
@@ -363,11 +364,12 @@ default pin updates the scan matrix without duplicating image names.
 The scheduled weekly scan keeps upstream findings visible for periodic triage;
 persistent Critical findings should trigger a pinned-image upgrade review.
 
-The dedicated `pihole-no-unbound` Molecule scenario deploys the real Docker and
-Pi-hole roles with public upstream resolvers, then proves Pi-hole resolves DNS
-without an Unbound container or shared Unbound network. Hosted CI also unit
-tests the default-image matrix so malformed, empty, or incomplete scan targets
-fail before Trivy jobs are created.
+The dedicated `pihole-no-unbound` Molecule scenario runs the real bootstrap and
+update playbooks with public upstream resolvers, then proves Pi-hole resolves
+DNS without an Unbound container, shared Unbound network, or Unbound health
+check dependency. Hosted CI also unit tests the default-image matrix so
+malformed, empty, or incomplete scan targets fail before Trivy jobs are
+created.
 
 ## Operational docs
 

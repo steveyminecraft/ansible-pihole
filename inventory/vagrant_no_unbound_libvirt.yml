@@ -4,12 +4,20 @@ all:
     pihole-no-unbound:
       ansible_host: 192.168.121.6
       ansible_port: 22
+      priority: 100
+      keepalive_role: MASTER
   vars:
     ansible_user: vagrant
     ansible_password: vagrant
+    ansible_user_home_dir: /home/vagrant
     ansible_python_interpreter: /usr/bin/python3
     ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    github_user_for_ssh_key: steveyminecraft
+    password_lock: false
+    timezone: Europe/London
     vagrant_env: true
+    pihole_ha_mode: false
+    pihole_vip_ipv4: 192.168.121.7/24
     pihole_enable_unbound: false
     pihole_upstream_resolvers:
       - "1.1.1.1"
