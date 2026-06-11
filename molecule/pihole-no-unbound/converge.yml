@@ -1,0 +1,7 @@
+---
+- name: Converge Pi-hole without Unbound
+  hosts: all
+  become: true
+  roles:
+    - role: steveyminecraft.pihole.docker
+    - role: steveyminecraft.pihole.pihole

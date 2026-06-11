@@ -16,9 +16,11 @@ sync_inventory_from_provider() {
   case "${VAGRANT_DEFAULT_PROVIDER:-virtualbox}" in
     libvirt|kvm)
       export MOLECULE_VAGRANT_INVENTORY="${MOLECULE_VAGRANT_INVENTORY:-vagrant_libvirt.yml}"
+      export MOLECULE_VAGRANT_NO_UNBOUND_INVENTORY="${MOLECULE_VAGRANT_NO_UNBOUND_INVENTORY:-vagrant_no_unbound_libvirt.yml}"
       ;;
     *)
       export MOLECULE_VAGRANT_INVENTORY="${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}"
+      export MOLECULE_VAGRANT_NO_UNBOUND_INVENTORY="${MOLECULE_VAGRANT_NO_UNBOUND_INVENTORY:-vagrant_no_unbound.yml}"
       ;;
   esac
 }
@@ -143,6 +145,7 @@ sync_inventory_from_provider
 echo "Repo: $repo_root"
 echo "Provider: ${VAGRANT_DEFAULT_PROVIDER:-virtualbox}"
 echo "Inventory: ${MOLECULE_VAGRANT_INVENTORY}"
+echo "Pi-hole-only inventory: ${MOLECULE_VAGRANT_NO_UNBOUND_INVENTORY}"
 echo "Scenarios: ${selected[*]}"
 echo ""
 

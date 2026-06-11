@@ -321,6 +321,7 @@ Run all discovered Molecule scenarios in `molecule/*` (or pass a subset):
 ```bash
 ./scripts/molecule-test-all
 ./scripts/molecule-test-all ubuntu ubuntu-26.04
+./scripts/molecule-test-all pihole-no-unbound
 ./scripts/molecule-test-all --ubuntu-only
 VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-test-all
 ./scripts/molecule-test-all --list
@@ -329,6 +330,8 @@ VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-test-all
 Like `scripts/molecule-vagrant`, this helper auto-selects
 `MOLECULE_VAGRANT_INVENTORY` from `VAGRANT_DEFAULT_PROVIDER` when unset
 (`vagrant.yml` for VirtualBox, `vagrant_libvirt.yml` for libvirt/kvm).
+It also selects the corresponding one-host inventory for the
+`pihole-no-unbound` scenario.
 
 For Vagrant/Molecule inventories (`vagrant_env: true`), roles skip disruptive
 reboots after hostname and package-update changes to avoid long guest-network
@@ -357,6 +360,14 @@ container image; image scans are report-only because those findings belong to
 upstream images we do not build in this repository. Image targets are derived
 from role defaults by `scripts/default-container-images.py`, so changing a
 default pin updates the scan matrix without duplicating image names.
+The scheduled weekly scan keeps upstream findings visible for periodic triage;
+persistent Critical findings should trigger a pinned-image upgrade review.
+
+The dedicated `pihole-no-unbound` Molecule scenario deploys the real Docker and
+Pi-hole roles with public upstream resolvers, then proves Pi-hole resolves DNS
+without an Unbound container or shared Unbound network. Hosted CI also unit
+tests the default-image matrix so malformed, empty, or incomplete scan targets
+fail before Trivy jobs are created.
 
 ## Operational docs
 
