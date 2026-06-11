@@ -1,0 +1,43 @@
+---
+dependency:
+  name: shell
+  command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
+driver:
+  name: vagrant
+platforms:
+  - name: pihole-no-unbound
+    box: "bento/ubuntu-24.04"
+    hostname: pihole-no-unbound
+    memory: 2048
+    cpus: 2
+provisioner:
+  name: ansible
+  connection_options:
+    ansible_ssh_user: vagrant
+    ansible_password: vagrant
+    ansible_become: true
+  inventory:
+    links:
+      hosts: ../../inventory/${MOLECULE_VAGRANT_NO_UNBOUND_INVENTORY:-vagrant_no_unbound.yml}
+  playbooks:
+    create: create.yml
+    prepare: prepare.yml
+    converge: converge.yml
+    verify: verify.yml
+    destroy: destroy.yml
+  env:
+    ANSIBLE_INJECT_FACTS_AS_VARS: "false"
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
+verifier:
+  name: ansible
+scenario:
+  name: pihole-no-unbound
+  test_sequence:
+    - dependency
+    - syntax
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy

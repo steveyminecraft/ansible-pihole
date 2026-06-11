@@ -1,0 +1,54 @@
+---
+- name: Verify Pi-hole-only deployment
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Inspect Pi-hole container
+      community.docker.docker_container_info:
+        name: "{{ pihole_container_name | default('pihole') }}"
+      register: pihole_no_unbound_container
+
+    - name: Inspect Unbound container
+      community.docker.docker_container_info:
+        name: "{{ unbound_container_name | default('unbound') }}"
+      register: pihole_no_unbound_unbound
+
+    - name: Inspect Unbound shared network
+      community.docker.docker_network_info:
+        name: "{{ pihole_network_name | default('dns_net') }}"
+      register: pihole_no_unbound_network
+
+    - name: Read rendered Pi-hole Compose configuration
+      ansible.builtin.slurp:
+        src: "{{ pihole_compose_file | default((pihole_compose_dir | default('/opt/pihole')) ~ '/docker-compose.yml') }}"
+      register: pihole_no_unbound_compose_file
+
+    - name: Parse rendered Pi-hole Compose configuration
+      ansible.builtin.set_fact:
+        pihole_no_unbound_compose: >-
+          {{ pihole_no_unbound_compose_file.content | b64decode | from_yaml }}
+
+    - name: Resolve external DNS through Pi-hole
+      ansible.builtin.command:
+        argv:
+          - dig
+          - +short
+          - "@127.0.0.1"
+          - cloudflare.com
+      register: pihole_no_unbound_dns
+      changed_when: false
+
+    - name: Assert Pi-hole-only deployment is healthy
+      ansible.builtin.assert:
+        that:
+          - pihole_no_unbound_container.exists
+          - pihole_no_unbound_container.container.State.Running
+          - not pihole_no_unbound_unbound.exists
+          - not pihole_no_unbound_network.exists
+          - pihole_no_unbound_compose.networks is not defined
+          - pihole_no_unbound_compose.services.pihole.networks is not defined
+          - >-
+            'FTLCONF_dns_upstreams=1.1.1.1;1.0.0.1'
+            in pihole_no_unbound_compose.services.pihole.environment
+          - pihole_no_unbound_dns.stdout | trim | length > 0

@@ -1,0 +1,33 @@
+---
+all:
+  hosts:
+    pihole-no-unbound:
+      ansible_host: 192.168.121.6
+      ansible_port: 22
+  vars:
+    ansible_user: vagrant
+    ansible_password: vagrant
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    vagrant_env: true
+    pihole_enable_unbound: false
+    pihole_upstream_resolvers:
+      - "1.1.1.1"
+      - "1.0.0.1"
+    pihole_environment_variables:
+      TZ: Europe/London
+      FTLCONF_webserver_api_password: "LabOnly-No-Unbound-Password!"
+      FTLCONF_dns_listeningMode: "all"
+      DHCP_ACTIVE: false
+      REV_SERVER: false
+    pihole_compose_dir: /opt/pihole
+    pihole_network_name: dns_net
+    unbound_container_name: unbound
+    docker_group_users:
+      - vagrant
+    docker_daemon_dns:
+      - "1.1.1.1"
+      - "8.8.8.8"
+    pihole_docker_dns:
+      - "1.1.1.1"
+      - "8.8.8.8"

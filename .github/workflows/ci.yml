@@ -156,6 +156,7 @@ jobs:
               "molecule/ubuntu-26.04/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/default/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/nebula-sync-migration/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/pihole-no-unbound/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
           }
           for relpath, keys in required.items():
               path = Path(relpath)
@@ -168,5 +169,5 @@ jobs:
 
       - name: Validate default container image matrix
         run: |
-          python scripts/default-container-images.py --github-matrix
+          python -m unittest discover -s tests -p 'test_*.py'
           python scripts/validate-secure-defaults.py
