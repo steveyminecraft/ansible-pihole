@@ -1,7 +1,3 @@
 ---
-- name: Converge Pi-hole without Unbound
-  hosts: all
-  become: true
-  roles:
-    - role: steveyminecraft.pihole.docker
-    - role: steveyminecraft.pihole.pihole
+- name: Converge Pi-hole without Unbound through bootstrap workflow
+  import_playbook: ../../playbooks/bootstrap-pihole.yaml
