@@ -365,11 +365,11 @@ The scheduled weekly scan keeps upstream findings visible for periodic triage;
 persistent Critical findings should trigger a pinned-image upgrade review.
 
 The dedicated `pihole-no-unbound` Molecule scenario runs the real bootstrap and
-update playbooks with public upstream resolvers, then proves Pi-hole resolves
-DNS without an Unbound container, shared Unbound network, or Unbound health
-check dependency. Hosted CI also unit tests the default-image matrix so
-malformed, empty, or incomplete scan targets fail before Trivy jobs are
-created.
+update playbooks with public upstream resolvers. It verifies after each
+workflow that Pi-hole resolves DNS without an Unbound container, shared Unbound
+network, or Unbound health check dependency. Hosted CI also unit tests the
+default-image matrix so malformed, empty, incomplete, or floating `latest` scan
+targets fail before Trivy jobs are created.
 
 ## Operational docs
 
@@ -402,13 +402,13 @@ Use conventional commits on PRs (`feat:`, `fix:`, etc.) so release-please can ch
 
 Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 
-**Install a specific version** (replace `<version>` with a release from the links below):
+**Install a specific version**:
 
 ```bash
-ansible-galaxy collection install steveyminecraft.pihole:==<version>
+ansible-galaxy collection install steveyminecraft.pihole:==1.2.4
 ```
 
-Replace `<version>` with a published release such as `1.2.3`.
+Replace `1.2.4` with another published release when required.
 
 See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.
 
