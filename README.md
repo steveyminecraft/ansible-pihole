@@ -44,6 +44,9 @@ the collection artifact.
 [`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables top-level fact injection so roles use `ansible_facts[...]` with ansible-core 2.20+. Playbooks reference roles by FQCN (for example `steveyminecraft.pihole.pihole`). Re-run the install script after changing [`galaxy.yml`](galaxy.yml) or [`collections/requirements.yml`](collections/requirements.yml).
 
 The Pi-hole Docker role lives in this collection as [`roles/pihole`](roles/pihole/) (sourced from [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) with ansible-pihole compatibility changes applied in-tree).
+Docker host installation is organized into focused platform repository,
+package, networking, diagnostics, user, daemon, and NAT task files under
+[`roles/docker/tasks/`](roles/docker/tasks/).
 
 ## Base setup (targets)
 

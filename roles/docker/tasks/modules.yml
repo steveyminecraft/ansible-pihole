@@ -1,0 +1,56 @@
+---
+- name: Load required kernel modules for Docker networking (RedHat family)
+  ansible.builtin.command: "modprobe {{ item }}"
+  loop:
+    - overlay
+    - bridge
+    - br_netfilter
+    - xt_addrtype
+    - nf_conntrack
+    - nf_nat
+    - nft_chain_nat
+    - nft_nat
+    - nft_masq
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Enable IPv4 forwarding (RedHat family)
+  ansible.posix.sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    sysctl_set: true
+    reload: true
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_enable_ip_forward | default(false) | bool
+
+- name: Configure Docker daemon to not manage iptables (VirtualBox/vagrant workaround)
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+    content: |
+      {
+        "iptables": false,
+        "ip6tables": false
+      }
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - not docker_manage_iptables | bool
+
+- name: Check if bridge netfilter sysctl exists (RedHat family)
+  ansible.builtin.stat:
+    path: /proc/sys/net/bridge/bridge-nf-call-iptables
+  register: _docker_bridge_nf_sysctl
+  changed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Enable bridge netfilter for iptables (RedHat family)
+  ansible.posix.sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: "1"
+    sysctl_set: true
+    reload: true
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - _docker_bridge_nf_sysctl.stat.exists
