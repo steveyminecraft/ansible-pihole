@@ -1,0 +1,104 @@
+---
+- name: Disable kernel IPv6 (Rocky/EL) — avoids DNF/HTTPS stalls when guest IPv6 is misrouted
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    reload: true
+    sysctl_file: /etc/sysctl.d/50-ansible-docker-disable-ipv6.conf
+  loop:
+    - { name: net.ipv6.conf.all.disable_ipv6, value: "1" }
+    - { name: net.ipv6.conf.default.disable_ipv6, value: "1" }
+    - { name: net.ipv6.conf.lo.disable_ipv6, value: "0" }
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_disable_ipv6 | default(false) | bool
+
+# dnf-plugins-core provides `dnf config-manager` (EL8+). DNF still loads *.repo from /etc/yum.repos.d/.
+- name: "Install dependencies Red Hat (DNF)"
+  ansible.builtin.dnf:
+    name:
+      - dnf-plugins-core
+      - python3-pip
+      - python3-packaging
+      - bind-utils
+      - gnupg2
+    state: present
+    lock_timeout: 300
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Import Docker CE RPM signing key
+  ansible.builtin.rpm_key:
+    key: https://download.docker.com/linux/rhel/gpg
+    state: present
+  when: ansible_facts['os_family'] == 'RedHat'
+
+# Official repo file (same as `dnf config-manager --add-repo https://download.docker.com/linux/rhel/docker-ce.repo`).
+# Ref: https://docs.docker.com/engine/install/rhel/
+- name: Install Docker CE repository for DNF
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/rhel/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: "0644"
+    timeout: 45
+  register: _docker_ce_repo
+  retries: 3
+  delay: 3
+  until: _docker_ce_repo is succeeded
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Download Docker CE repo file (fallback)
+  ansible.builtin.uri:
+    url: https://download.docker.com/linux/rhel/docker-ce.repo
+    method: GET
+    return_content: true
+    status_code: [200]
+    timeout: 45
+  register: _docker_ce_repo_fallback
+  retries: 3
+  delay: 3
+  until: _docker_ce_repo_fallback is succeeded
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - _docker_ce_repo is failed
+
+- name: Write Docker CE repo file (fallback)
+  ansible.builtin.copy:
+    dest: /etc/yum.repos.d/docker-ce.repo
+    mode: "0644"
+    content: "{{ _docker_ce_repo_fallback.content }}"
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - _docker_ce_repo is failed
+
+- name: (docker) Compute repodata URL for preflight
+  ansible.builtin.set_fact:
+    docker_dnf_repodata_url: >-
+      {{ 'https://download.docker.com/linux/rhel/' ~ ansible_facts['distribution_major_version'] ~ '/'
+      ~ ansible_facts['architecture'] ~ '/stable/repodata/repomd.xml' }}
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_repo_diagnostics | default(false) | bool
+
+# HTTPS from the guest; fails fast on DNS / TLS / routing (clearer than a silent hang in dnf).
+- name: (docker) Preflight — reach Docker CE repodata
+  ansible.builtin.uri:
+    url: "{{ docker_dnf_repodata_url }}"
+    method: GET
+    follow_redirects: all
+    status_code: [200]
+    timeout: 45
+  register: _docker_repodata_uri
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_repo_diagnostics | default(false) | bool
+
+- name: (docker) Preflight result
+  ansible.builtin.debug:
+    msg:
+      - "repodata URL: {{ docker_dnf_repodata_url }}"
+      - "http status: {{ _docker_repodata_uri.status | default('?') }} elapsed={{ _docker_repodata_uri.elapsed | default('?') }}s (uri module)"
+  changed_when: false
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_repo_diagnostics | default(false) | bool

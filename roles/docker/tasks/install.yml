@@ -1,0 +1,37 @@
+---
+- name: Install Docker Debian
+  ansible.builtin.apt:
+    force_apt_get: true
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+      - python3-setuptools
+      - python3-pip
+    install_recommends: false
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Install Docker CE packages (Rocky / RHEL via DNF)
+  ansible.builtin.dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+    lock_timeout: 300
+    allowerasing: true
+    install_weak_deps: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Install kernel modules extras for iptables (RedHat family)
+  ansible.builtin.dnf:
+    name:
+      - kernel-modules-extra
+    state: present
+    lock_timeout: 300
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - docker_install_kernel_modules_extra | default(true) | bool

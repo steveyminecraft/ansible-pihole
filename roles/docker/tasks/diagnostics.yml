@@ -1,0 +1,22 @@
+---
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Show Docker service status (on failure)
+  ansible.builtin.systemd:
+    name: docker
+  register: _docker_systemd_status
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
+
+- name: Show Docker journal logs (on failure)
+  ansible.builtin.command: journalctl --no-pager -u docker --since "10 minutes ago"
+  register: _docker_journal
+  changed_when: false
+  failed_when: false
+  when: ansible_facts['os_family'] == 'RedHat'
