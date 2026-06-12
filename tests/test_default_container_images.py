@@ -42,6 +42,13 @@ class DefaultContainerImagesTests(unittest.TestCase):
             images,
         )
 
+    def test_default_images_reject_latest_tag(self) -> None:
+        latest_images = [
+            image for image in self.helper.default_images() if image.endswith(":latest")
+        ]
+
+        self.assertEqual([], latest_images)
+
     def test_github_matrix_is_valid_and_has_unique_keys(self) -> None:
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--github-matrix"],
