@@ -1,0 +1,59 @@
+---
+- name: Stop keepalived on primary (initiate VRRP failover)
+  ansible.builtin.service:
+    name: keepalived
+    state: stopped
+  when: inventory_hostname == node1
+
+- name: Wait for VIP on backup after VRRP failover
+  ansible.builtin.command: ip -4 addr show
+  register: ip_node2_failover
+  changed_when: false
+  until: vip_address in ip_node2_failover.stdout
+  retries: 30
+  delay: 2
+  when: inventory_hostname == node2
+
+- name: Assert VIP moved to backup node
+  ansible.builtin.assert:
+    that:
+      - vip_address in ip_node2_failover.stdout
+    fail_msg: "FAILOVER FAILED: VIP {{ vip_address }} not found on {{ node2 }}."
+  when: inventory_hostname == node2
+
+# --- Failback ---
+- name: Restart keepalived on primary
+  ansible.builtin.service:
+    name: keepalived
+    state: started
+  when: inventory_hostname == node1
+
+- name: Stop keepalived on backup
+  ansible.builtin.service:
+    name: keepalived
+    state: stopped
+  when: inventory_hostname == node2
+
+- name: Wait for VIP back on primary after failback
+  ansible.builtin.command: ip -4 addr show
+  register: ip_node1_failback
+  changed_when: false
+  until: vip_address in ip_node1_failback.stdout
+  retries: 30
+  delay: 2
+  when: inventory_hostname == node1
+
+- name: Assert VIP moved back to primary
+  ansible.builtin.assert:
+    that:
+      - vip_address in ip_node1_failback.stdout
+    fail_msg: "FAILBACK FAILED: VIP {{ vip_address }} not found on {{ node1 }}."
+  when: inventory_hostname == node1
+
+- name: Restart keepalived on backup (restore normal HA)
+  ansible.builtin.service:
+    name: keepalived
+    state: started
+  when: inventory_hostname == node2
+
+# --- Firewall (firewalld; matches bootstrap on Debian/Rocky for this project) ---
