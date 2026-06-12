@@ -44,6 +44,9 @@ the collection artifact.
 [`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables top-level fact injection so roles use `ansible_facts[...]` with ansible-core 2.20+. Playbooks reference roles by FQCN (for example `steveyminecraft.pihole.pihole`). Re-run the install script after changing [`galaxy.yml`](galaxy.yml) or [`collections/requirements.yml`](collections/requirements.yml).
 
 The Pi-hole Docker role lives in this collection as [`roles/pihole`](roles/pihole/) (sourced from [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) with ansible-pihole compatibility changes applied in-tree).
+Docker host installation is organized into focused platform repository,
+package, networking, diagnostics, user, daemon, and NAT task files under
+[`roles/docker/tasks/`](roles/docker/tasks/).
 
 ## Base setup (targets)
 
@@ -244,7 +247,7 @@ Two Vagrant VMs run the real playbooks (see [`molecule/ubuntu/converge.yml`](mol
 | Path | Purpose |
 |------|---------|
 | [`molecule/common/prepare.yml`](molecule/common/prepare.yml) | Shared prepare (Python, `dig`, `ip` — apt vs dnf by OS) |
-| [`molecule/common/verify_ha.yml`](molecule/common/verify_ha.yml) | Shared verify (keepalived, firewalld, DNS, Nebula Sync when inventory sets it, Pi-hole container failover) |
+| [`molecule/common/verify_ha.yml`](molecule/common/verify_ha.yml) | Shared verify orchestrator for focused tasks under `molecule/common/verify/` |
 | `molecule/<scenario>/` | `molecule.yml`, `Vagrantfile`, `create.yml`, `destroy.yml`, thin `prepare.yml` / `verify.yml` |
 
 **`molecule test`** sequence: **dependency** (same [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh) as above), **syntax**, **create** (`vagrant up` in the scenario directory), **prepare**, **converge**, **verify**, **destroy**. Localhost lifecycle playbooks use `chdir: "{{ playbook_dir }}"` so Vagrant runs in the right folder.
@@ -365,11 +368,11 @@ The scheduled weekly scan keeps upstream findings visible for periodic triage;
 persistent Critical findings should trigger a pinned-image upgrade review.
 
 The dedicated `pihole-no-unbound` Molecule scenario runs the real bootstrap and
-update playbooks with public upstream resolvers, then proves Pi-hole resolves
-DNS without an Unbound container, shared Unbound network, or Unbound health
-check dependency. Hosted CI also unit tests the default-image matrix so
-malformed, empty, or incomplete scan targets fail before Trivy jobs are
-created.
+update playbooks with public upstream resolvers. It verifies after each
+workflow that Pi-hole resolves DNS without an Unbound container, shared Unbound
+network, or Unbound health check dependency. Hosted CI also unit tests the
+default-image matrix so malformed, empty, incomplete, or floating `latest` scan
+targets fail before Trivy jobs are created.
 
 ## Operational docs
 
@@ -402,13 +405,13 @@ Use conventional commits on PRs (`feat:`, `fix:`, etc.) so release-please can ch
 
 Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 
-**Install a specific version** (replace `<version>` with a release from the links below):
+**Install a specific version**:
 
 ```bash
-ansible-galaxy collection install steveyminecraft.pihole:==<version>
+ansible-galaxy collection install steveyminecraft.pihole:==1.2.4
 ```
 
-Replace `<version>` with a published release such as `1.2.3`.
+Replace `1.2.4` with another published release when required.
 
 See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.
 

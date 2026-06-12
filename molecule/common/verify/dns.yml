@@ -1,0 +1,34 @@
+---
+- name: Resolve via local Pi-hole on each node
+  ansible.builtin.command: dig +short @127.0.0.1 google.com
+  register: dns_local
+  changed_when: false
+  failed_when: dns_local.stdout == ""
+
+- name: Assert local DNS returned IPv4
+  ansible.builtin.assert:
+    that:
+      - dns_local.stdout_lines
+        | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+        | list
+        | length > 0
+    fail_msg: "Local DNS did not return an IPv4."
+
+- name: Resolve via VIP (run once on first host)
+  ansible.builtin.command: dig +short @{{ vip_address }} google.com
+  register: dns_vip
+  changed_when: false
+  failed_when: dns_vip.stdout == ""
+  run_once: true
+
+- name: Assert VIP DNS returned IPv4
+  ansible.builtin.assert:
+    that:
+      - dns_vip.stdout_lines
+        | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+        | list
+        | length > 0
+    fail_msg: "VIP DNS did not return a valid IPv4."
+  run_once: true
+
+# --- Nebula Sync (controller host only) ---

@@ -10,7 +10,8 @@ Run:
 molecule test -s ubuntu
 ```
 
-`molecule/common/verify_ha.yml` validates:
+`molecule/common/verify_ha.yml` orchestrates focused verifier task files under
+`molecule/common/verify/` and validates:
 
 - VRRP VIP failover and failback
 - Local DNS and VIP DNS responses
