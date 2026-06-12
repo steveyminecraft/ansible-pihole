@@ -1,8 +1,12 @@
 # ansible-pihole
 
-Bootstrap hosts with Ansible, install Docker and Pi-hole (optionally Unbound), and optionally run **high availability** with keepalived plus config sync (Nebula Sync).
+Bootstrap hosts with Ansible, install Docker and Pi-hole (optionally Unbound),
+and optionally run **high availability** with keepalived plus config sync
+(Nebula Sync).
 
-Playbooks live under [`playbooks/`](playbooks/). Example inventories for CI and Molecule are under [`inventory/`](inventory/); for real hardware you maintain your own inventory (YAML or INI) with your hosts and variables.
+Playbooks live under [`playbooks/`](playbooks/). Example inventories for CI and
+Molecule are under [`inventory/`](inventory/); for real hardware you maintain
+your own inventory (YAML or INI) with your hosts and variables.
 
 For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker-pi-hole
 
@@ -21,7 +25,11 @@ ansible --version   # ansible-core 2.21.x from env/bin/ansible
 
 Manual venv (if you prefer): `python3.13 -m venv env` or `python3.14 -m venv env`, then `pip install -r requirements.txt`.
 
-This repository is an **Ansible collection** published as **`steveyminecraft.pihole`** on [Ansible Galaxy](https://galaxy.ansible.com/ui/collections/). Collection metadata is in [`galaxy.yml`](galaxy.yml); runtime requirements are in [`meta/runtime.yml`](meta/runtime.yml).
+This repository is an **Ansible collection** published as
+**`steveyminecraft.pihole`** on
+[Ansible Galaxy](https://galaxy.ansible.com/ui/collections/). Collection
+metadata is in [`galaxy.yml`](galaxy.yml); runtime requirements are in
+[`meta/runtime.yml`](meta/runtime.yml).
 
 **From Galaxy** (consumers):
 
@@ -41,9 +49,17 @@ Local build output and development-only directories such as `.ansible/`,
 virtualenvs, Vagrant state, and generated collection tarballs are excluded from
 the collection artifact.
 
-[`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables top-level fact injection so roles use `ansible_facts[...]` with ansible-core 2.20+. Playbooks reference roles by FQCN (for example `steveyminecraft.pihole.pihole`). Re-run the install script after changing [`galaxy.yml`](galaxy.yml) or [`collections/requirements.yml`](collections/requirements.yml).
+[`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables
+top-level fact injection so roles use `ansible_facts[...]` with ansible-core
+2.20+. Playbooks reference roles by FQCN (for example
+`steveyminecraft.pihole.pihole`). Re-run the install script after changing
+[`galaxy.yml`](galaxy.yml) or
+[`collections/requirements.yml`](collections/requirements.yml).
 
-The Pi-hole Docker role lives in this collection as [`roles/pihole`](roles/pihole/) (sourced from [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) with ansible-pihole compatibility changes applied in-tree).
+The Pi-hole Docker role lives in this collection as
+[`roles/pihole`](roles/pihole/) (sourced from
+[`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) with
+ansible-pihole compatibility changes applied in-tree).
 Docker host installation is organized into focused platform repository,
 package, networking, diagnostics, user, daemon, and NAT task files under
 [`roles/docker/tasks/`](roles/docker/tasks/).
