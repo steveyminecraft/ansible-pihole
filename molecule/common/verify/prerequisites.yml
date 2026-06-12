@@ -1,0 +1,17 @@
+---
+- name: Ensure node is reachable
+  ansible.builtin.ping:
+
+- name: Ensure keepalived is running before tests
+  ansible.builtin.service:
+    name: keepalived
+    state: started
+
+- name: Wait for Pi-hole DNS (TCP 53 on loopback)
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 53
+    timeout: 180
+    delay: 2
+
+# --- Failover: stop MASTER (node1), VIP should appear on node2 ---

@@ -1,0 +1,138 @@
+---
+- name: Check HA container on primary before docker failover test
+  community.docker.docker_container_info:
+    name: "{{ ha_container_name }}"
+  register: ha_container_info_node1
+  when: inventory_hostname == node1
+
+- name: Assert HA container exists on primary
+  ansible.builtin.assert:
+    that:
+      - ha_container_info_node1.exists | default(false)
+    fail_msg: >-
+      Precondition failed: container {{ ha_container_name }} not found on {{ node1 }}.
+  when: inventory_hostname == node1
+
+- name: Verify container-stop health failover and restore primary
+  block:
+    - name: Stop Pi-hole container on primary to trigger failover
+      community.docker.docker_container:
+        name: "{{ ha_container_name }}"
+        state: stopped
+      when: inventory_hostname == node1
+
+    - name: Wait for Keepalived health check to fail on primary
+      ansible.builtin.command: /etc/keepalived/check_pihole.sh
+      register: pihole_health_after_container_stop
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == node1
+      retries: 10
+      delay: 2
+      until: pihole_health_after_container_stop.rc != 0
+
+    - name: Assert Keepalived detects the stopped Pi-hole container
+      ansible.builtin.assert:
+        that:
+          - pihole_health_after_container_stop.rc != 0
+        fail_msg: >-
+          HEALTH CHECK FAILED: /etc/keepalived/check_pihole.sh remained healthy
+          after stopping container {{ ha_container_name }} on {{ node1 }}.
+      when: inventory_hostname == node1
+
+    - name: Wait for VIP on backup after container stop on primary
+      ansible.builtin.command: ip -4 addr show
+      register: ip_node2_docker_failover
+      changed_when: false
+      when: inventory_hostname == node2
+      retries: 30
+      delay: 2
+      until: vip_address in ip_node2_docker_failover.stdout
+
+    - name: Assert VIP is on backup after container stop on primary
+      ansible.builtin.assert:
+        that:
+          - vip_address in ip_node2_docker_failover.stdout
+        fail_msg: >-
+          CONTAINER FAILOVER FAILED: VIP {{ vip_address }} not found on {{ node2 }}
+          after stopping container {{ ha_container_name }} on {{ node1 }}.
+      when: inventory_hostname == node2
+
+    - name: Collect addresses on primary after container stop
+      ansible.builtin.command: ip -4 addr show
+      register: ip_node1_post_container_stop
+      changed_when: false
+      when: inventory_hostname == node1
+
+    - name: Assert VIP is absent from primary after container stop
+      ansible.builtin.assert:
+        that:
+          - vip_address not in ip_node1_post_container_stop.stdout
+        fail_msg: >-
+          CONTAINER FAILOVER INCOMPLETE: VIP {{ vip_address }} still present on {{ node1 }}
+          after stopping container {{ ha_container_name }}.
+      when: inventory_hostname == node1
+  always:
+    - name: Start Pi-hole container on primary after container failover test
+      community.docker.docker_container:
+        name: "{{ ha_container_name }}"
+        state: started
+      when: inventory_hostname == node1
+
+    - name: Wait for Pi-hole DNS recovery after container failover test
+      ansible.builtin.command: /etc/keepalived/check_pihole.sh
+      register: pihole_health_after_container_restore
+      changed_when: false
+      when: inventory_hostname == node1
+      retries: 30
+      delay: 2
+      until: pihole_health_after_container_restore.rc == 0
+
+- name: Disable local DNS service on primary (functional failover test)
+  ansible.builtin.command: docker exec {{ ha_container_name }} sh -lc "pkill -TERM pihole-FTL || true; exit 0"
+  register: pihole_dns_stop_primary
+  changed_when: true
+  failed_when: false
+  when: inventory_hostname == node1
+
+- name: Wait for VIP on backup after functional DNS failure
+  ansible.builtin.command: ip -4 addr show
+  register: ip_node2_dns_failover
+  changed_when: false
+  when: inventory_hostname == node2
+  retries: 20
+  delay: 3
+  until: vip_address in ip_node2_dns_failover.stdout
+
+- name: Assert VIP moved to backup after DNS failure on primary
+  ansible.builtin.assert:
+    that:
+      - vip_address in ip_node2_dns_failover.stdout
+    fail_msg: >-
+      DNS FAILOVER FAILED: VIP {{ vip_address }} not found on {{ node2 }}
+      after stopping local DNS service on {{ node1 }}.
+  when: inventory_hostname == node2
+
+- name: Restore Pi-hole container on primary after DNS failure test
+  ansible.builtin.command: docker restart {{ ha_container_name }}
+  register: pihole_restart_primary_after_dns_fail
+  changed_when: "'Restarted' in (pihole_restart_primary_after_dns_fail.stdout | default(''))"
+  when: inventory_hostname == node1
+
+- name: Wait for VIP return to primary after DNS recovery
+  ansible.builtin.command: ip -4 addr show
+  register: ip_node1_dns_recovery
+  changed_when: false
+  when: inventory_hostname == node1
+  retries: 20
+  delay: 3
+  until: vip_address in ip_node1_dns_recovery.stdout
+
+- name: Assert VIP returned to primary after DNS recovery
+  ansible.builtin.assert:
+    that:
+      - vip_address in ip_node1_dns_recovery.stdout
+    fail_msg: >-
+      DNS RECOVERY FAILED: VIP {{ vip_address }} did not return to {{ node1 }}
+      after restoring Pi-hole DNS service.
+  when: inventory_hostname == node1

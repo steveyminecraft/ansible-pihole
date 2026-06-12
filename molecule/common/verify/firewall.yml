@@ -1,0 +1,31 @@
+---
+- name: Check firewalld status
+  ansible.builtin.command: firewall-cmd --state
+  register: firewalld_status
+  changed_when: false
+  when: pihole_firewall_deploy | default(false) | bool
+
+- name: Assert firewalld is running
+  ansible.builtin.assert:
+    that:
+      - firewalld_status.stdout == "running"
+    fail_msg: "Firewall service is not running."
+  when: pihole_firewall_deploy | default(false) | bool
+
+- name: Retrieve open firewall ports
+  ansible.builtin.command: firewall-cmd --list-ports
+  register: open_ports
+  changed_when: false
+  when: pihole_firewall_deploy | default(false) | bool
+
+- name: Assert required ports are open in firewalld
+  ansible.builtin.assert:
+    that:
+      - "'53/tcp' in open_ports.stdout"
+      - "'53/udp' in open_ports.stdout"
+      - (pihole_webport_http ~ '/tcp') in open_ports.stdout
+      - (pihole_webport_https ~ '/tcp') in open_ports.stdout
+    fail_msg: "Firewall missing required ports."
+  when: pihole_firewall_deploy | default(false) | bool
+
+# --- DNS ---

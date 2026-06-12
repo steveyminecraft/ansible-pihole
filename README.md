@@ -244,7 +244,7 @@ Two Vagrant VMs run the real playbooks (see [`molecule/ubuntu/converge.yml`](mol
 | Path | Purpose |
 |------|---------|
 | [`molecule/common/prepare.yml`](molecule/common/prepare.yml) | Shared prepare (Python, `dig`, `ip` — apt vs dnf by OS) |
-| [`molecule/common/verify_ha.yml`](molecule/common/verify_ha.yml) | Shared verify (keepalived, firewalld, DNS, Nebula Sync when inventory sets it, Pi-hole container failover) |
+| [`molecule/common/verify_ha.yml`](molecule/common/verify_ha.yml) | Shared verify orchestrator for focused tasks under `molecule/common/verify/` |
 | `molecule/<scenario>/` | `molecule.yml`, `Vagrantfile`, `create.yml`, `destroy.yml`, thin `prepare.yml` / `verify.yml` |
 
 **`molecule test`** sequence: **dependency** (same [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh) as above), **syntax**, **create** (`vagrant up` in the scenario directory), **prepare**, **converge**, **verify**, **destroy**. Localhost lifecycle playbooks use `chdir: "{{ playbook_dir }}"` so Vagrant runs in the right folder.
