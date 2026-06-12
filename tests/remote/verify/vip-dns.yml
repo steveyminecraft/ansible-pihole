@@ -1,0 +1,22 @@
+---
+- name: Verify remote VIP DNS
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Resolve DNS through the Pi-hole VIP
+      ansible.builtin.command:
+        argv:
+          - dig
+          - +short
+          - "@{{ (pihole_vip_ipv4 | split('/'))[0] }}"
+          - "{{ remote_test_dns_qname | default('cloudflare.com') }}"
+      register: remote_vip_dns
+      changed_when: false
+      run_once: true
+
+    - name: Assert VIP DNS is healthy
+      ansible.builtin.assert:
+        that:
+          - remote_vip_dns.stdout | trim | length > 0
+      run_once: true

@@ -1,0 +1,14 @@
+---
+- name: Verify remote keepalived deployment
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Assert keepalived is running
+      ansible.builtin.assert:
+        that:
+          - "'keepalived.service' in ansible_facts.services"
+          - ansible_facts.services['keepalived.service'].state == 'running'

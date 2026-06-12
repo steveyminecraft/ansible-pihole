@@ -1,0 +1,37 @@
+---
+- name: Verify remote Pi-hole-only deployment
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Inspect Unbound container
+      community.docker.docker_container_info:
+        name: "{{ unbound_container_name | default('unbound') }}"
+      register: remote_no_unbound_container
+
+    - name: Inspect Unbound shared network
+      community.docker.docker_network_info:
+        name: "{{ pihole_network_name | default('dns_net') }}"
+      register: remote_no_unbound_network
+
+    - name: Read rendered Pi-hole Compose configuration
+      ansible.builtin.slurp:
+        src: "{{ pihole_compose_file | default((pihole_compose_dir | default('/opt/pihole')) ~ '/docker-compose.yml') }}"
+      register: remote_no_unbound_compose_file
+
+    - name: Parse rendered Pi-hole Compose configuration
+      ansible.builtin.set_fact:
+        remote_no_unbound_compose: >-
+          {{ remote_no_unbound_compose_file.content | b64decode | from_yaml }}
+
+    - name: Assert Unbound resources are absent
+      ansible.builtin.assert:
+        that:
+          - not remote_no_unbound_container.exists
+          - not remote_no_unbound_network.exists
+          - remote_no_unbound_compose.networks is not defined
+          - remote_no_unbound_compose.services.pihole.networks is not defined
+          - remote_no_unbound_compose.services.pihole.environment
+            | select('match', '^FTLCONF_dns_upstreams=.+')
+            | list
+            | length == 1

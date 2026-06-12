@@ -60,10 +60,10 @@ jobs:
         run: |
           ansible --version
           ansible-lint --version
-          ansible-lint -p roles playbooks molecule
+          ansible-lint -p roles playbooks molecule tests/remote/verify
 
       - name: YAML lint
-        run: yamllint roles playbooks molecule inventory
+        run: yamllint roles playbooks molecule inventory tests/remote/inventories tests/remote/verify
 
   ansible-tests-ubuntu:
     name: Ansible syntax & dry-run (${{ matrix.runner }} / Python ${{ matrix.python-version }} / Core ${{ matrix.ansible-core }})
@@ -140,7 +140,7 @@ jobs:
 
       - name: Validate workflow and project YAML formatting
         run: |
-          yamllint .github/workflows molecule inventory playbooks roles
+          yamllint .github/workflows molecule inventory playbooks roles tests/remote/inventories tests/remote/verify
 
       - name: Validate Ansible Core support policy
         run: python scripts/check-ansible-version-policy.py
