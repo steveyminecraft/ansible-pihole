@@ -23,6 +23,7 @@ provisioner:
     create: create.yml
     prepare: prepare.yml
     converge: converge.yml
+    side_effect: side_effect.yml
     verify: verify.yml
     destroy: destroy.yml
   env:
@@ -39,5 +40,6 @@ scenario:
     - create
     - prepare
     - converge
+    - side_effect
     - verify
     - destroy
