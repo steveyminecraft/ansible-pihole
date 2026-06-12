@@ -1,0 +1,27 @@
+---
+- name: Verify remote Pi-hole deployment
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Inspect Pi-hole container
+      community.docker.docker_container_info:
+        name: "{{ pihole_container_name | default('pihole') }}"
+      register: remote_pihole_container
+
+    - name: Resolve external DNS through local Pi-hole
+      ansible.builtin.command:
+        argv:
+          - dig
+          - +short
+          - "@127.0.0.1"
+          - "{{ remote_test_dns_qname | default('cloudflare.com') }}"
+      register: remote_pihole_dns
+      changed_when: false
+
+    - name: Assert remote Pi-hole is healthy
+      ansible.builtin.assert:
+        that:
+          - remote_pihole_container.exists
+          - remote_pihole_container.container.State.Running
+          - remote_pihole_dns.stdout | trim | length > 0

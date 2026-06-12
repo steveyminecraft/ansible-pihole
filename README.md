@@ -260,9 +260,17 @@ services during each converge.
 
 - Molecule, Ansible, Vagrant, and **VirtualBox** or **libvirt** (`vagrant-libvirt`) as appropriate.
 - Run Molecule from the **repository root** so paths and inventory links resolve.
-- **Lint:** CI runs [ansible-lint](https://ansible-lint.readthedocs.io/) on `roles`, `playbooks`, and `molecule`; [yamllint](https://yamllint.readthedocs.io/) includes `molecule/`.
+- **Lint:** CI runs [ansible-lint](https://ansible-lint.readthedocs.io/) on
+  roles, playbooks, Molecule, and remote verification playbooks;
+  [yamllint](https://yamllint.readthedocs.io/) covers their YAML inventories and
+  configuration.
 - Full `molecule test` with Vagrant providers is intended for local or self-hosted
   environments where Vagrant + provider support is guaranteed.
+
+Provider-neutral remote functional tests live under
+[`tests/remote/`](tests/remote/). They run the production bootstrap/update
+playbooks and reusable verification against externally provisioned AWS
+instances, lab VMs, or Raspberry Pi hardware.
 
 ### Scenarios
 
