@@ -248,7 +248,7 @@ Two Vagrant VMs run the real playbooks (see [`molecule/ubuntu/converge.yml`](mol
 |------|---------|
 | [`molecule/common/prepare.yml`](molecule/common/prepare.yml) | Shared prepare (Python, `dig`, `ip` — apt vs dnf by OS) |
 | [`molecule/common/verify_ha.yml`](molecule/common/verify_ha.yml) | Shared verify orchestrator for focused tasks under `molecule/common/verify/` |
-| `molecule/<scenario>/` | `molecule.yml`, `Vagrantfile`, `create.yml`, `destroy.yml`, thin `prepare.yml` / `verify.yml` |
+| `molecule/{scenario}/` | `molecule.yml`, `Vagrantfile`, `create.yml`, `destroy.yml`, thin `prepare.yml` / `verify.yml` |
 
 **`molecule test`** sequence: **dependency** (same [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh) as above), **syntax**, **create** (`vagrant up` in the scenario directory), **prepare**, **converge**, **verify**, **destroy**. Localhost lifecycle playbooks use `chdir: "{{ playbook_dir }}"` so Vagrant runs in the right folder.
 
@@ -396,7 +396,10 @@ Uses **[release-please](https://github.com/googleapis/release-please)** (same ap
 2. That push to **`master`** makes release-please open or update a **Release PR** targeting `master` (changelog + `galaxy.yml` version bump).
 3. Merge the **Release PR** into **`master`** to create the **git tag** (`v*.*.*`), **GitHub release**, and **Galaxy publish**.
 
-Use conventional commits on PRs (`feat:`, `fix:`, etc.) so release-please can choose semver correctly.
+Use descriptive conventional commits on PRs so release-please can choose semver
+correctly and generate useful release notes. Prefer a specific user-facing
+summary such as `fix: reject floating latest image defaults` over a generic
+message such as `fix: updates`.
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
@@ -408,10 +411,10 @@ Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 **Install a specific version**:
 
 ```bash
-ansible-galaxy collection install steveyminecraft.pihole:==1.2.4
+ansible-galaxy collection install steveyminecraft.pihole:==VERSION
 ```
 
-Replace `1.2.4` with another published release when required.
+Replace `VERSION` with the published release required, for example `1.2.5`.
 
 See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.
 
