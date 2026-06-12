@@ -1,17 +1,23 @@
 ---
-# Mirror CI: Python 3.13/3.14 + ansible-core 2.20.5+ (.github/workflows/ci.yml). Stay on 2.20.x until 2.21 migration.
+# Use the ansible-core 2.20.5 runtime floor; CI also validates 2.21.
 repos:
   - repo: https://github.com/adrienverge/yamllint
     rev: v1.38.0
     hooks:
       - id: yamllint
-        args: [-c, .yamllint]
+        args:
+          - -c
+          - .yamllint
 
   - repo: https://github.com/ansible/ansible-lint
     rev: v26.4.0
     hooks:
       - id: ansible-lint
-        args: [-p, roles, playbooks, molecule]
+        args:
+          - -p
+          - roles
+          - playbooks
+          - molecule
         always_run: true
         pass_filenames: false
         additional_dependencies:

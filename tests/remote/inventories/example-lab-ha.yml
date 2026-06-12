@@ -1,0 +1,36 @@
+---
+all:
+  hosts:
+    lab-pihole-01:
+      ansible_host: 192.0.2.10
+      priority: 110
+      keepalive_role: MASTER
+    lab-pihole-02:
+      ansible_host: 192.0.2.11
+      priority: 100
+      keepalive_role: BACKUP
+  children:
+    nebula_sync_controller:
+      hosts:
+        lab-pihole-01:
+  vars:
+    ansible_user: ansible
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_user_home_dir: /home/ansible
+    github_user_for_ssh_key: replace-me
+    password_lock: true
+    timezone: Etc/UTC
+    pihole_enable_unbound: true
+    pihole_ha_mode: true
+    pihole_vip_ipv4: 192.0.2.53/24
+    pihole_environment_variables:
+      TZ: Etc/UTC
+      FTLCONF_webserver_api_password: REPLACE_WITH_ANSIBLE_VAULT
+      FTLCONF_dns_listeningMode: all
+      DHCP_ACTIVE: false
+      REV_SERVER: false
+    nebula_sync_primary_url: http://192.0.2.10
+    nebula_sync_primary_password: REPLACE_WITH_ANSIBLE_VAULT
+    nebula_sync_replicas:
+      - url: http://192.0.2.11
+        password: REPLACE_WITH_ANSIBLE_VAULT

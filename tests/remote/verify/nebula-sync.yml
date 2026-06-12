@@ -1,0 +1,26 @@
+---
+- name: Verify remote Nebula Sync placement
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    remote_nebula_controller: >-
+      {{ (groups['nebula_sync_controller'] | default([]) | first) | default('') }}
+  tasks:
+    - name: Inspect Nebula Sync container
+      community.docker.docker_container_info:
+        name: "{{ nebula_sync_container_name | default('nebula') }}"
+      register: remote_nebula_container
+      when: remote_nebula_controller | length > 0
+
+    - name: Assert Nebula Sync runs only on its controller
+      ansible.builtin.assert:
+        that:
+          - >-
+            (inventory_hostname == remote_nebula_controller
+             and remote_nebula_container.exists
+             and remote_nebula_container.container.State.Running)
+            or
+            (inventory_hostname != remote_nebula_controller
+             and not remote_nebula_container.exists)
+      when: remote_nebula_controller | length > 0

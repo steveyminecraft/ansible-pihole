@@ -9,6 +9,10 @@
           "type": "yaml",
           "path": "galaxy.yml",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "generic",
+          "path": "README.md"
         }
       ]
     }

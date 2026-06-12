@@ -1,0 +1,32 @@
+---
+- name: Verify remote Unbound deployment
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Inspect Unbound container
+      community.docker.docker_container_info:
+        name: "{{ unbound_container_name | default('unbound') }}"
+      register: remote_unbound_container
+
+    - name: Resolve DNS directly through Unbound from Pi-hole container
+      ansible.builtin.command:
+        argv:
+          - docker
+          - exec
+          - "{{ pihole_container_name | default('pihole') }}"
+          - dig
+          - +short
+          - "@{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}"
+          - -p
+          - "{{ unbound_port | default(5335) | string }}"
+          - "{{ remote_test_dns_qname | default('cloudflare.com') }}"
+      register: remote_unbound_dns
+      changed_when: false
+
+    - name: Assert remote Unbound is healthy
+      ansible.builtin.assert:
+        that:
+          - remote_unbound_container.exists
+          - remote_unbound_container.container.State.Running
+          - remote_unbound_dns.stdout | trim | length > 0

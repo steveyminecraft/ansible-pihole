@@ -1,8 +1,12 @@
 # ansible-pihole
 
-Bootstrap hosts with Ansible, install Docker and Pi-hole (optionally Unbound), and optionally run **high availability** with keepalived plus config sync (Nebula Sync).
+Bootstrap hosts with Ansible, install Docker and Pi-hole (optionally Unbound),
+and optionally run **high availability** with keepalived plus config sync
+(Nebula Sync).
 
-Playbooks live under [`playbooks/`](playbooks/). Example inventories for CI and Molecule are under [`inventory/`](inventory/); for real hardware you maintain your own inventory (YAML or INI) with your hosts and variables.
+Playbooks live under [`playbooks/`](playbooks/). Example inventories for CI and
+Molecule are under [`inventory/`](inventory/); for real hardware you maintain
+your own inventory (YAML or INI) with your hosts and variables.
 
 For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker-pi-hole
 
@@ -21,7 +25,11 @@ ansible --version   # ansible-core 2.21.x from env/bin/ansible
 
 Manual venv (if you prefer): `python3.13 -m venv env` or `python3.14 -m venv env`, then `pip install -r requirements.txt`.
 
-This repository is an **Ansible collection** published as **`steveyminecraft.pihole`** on [Ansible Galaxy](https://galaxy.ansible.com/ui/collections/). Collection metadata is in [`galaxy.yml`](galaxy.yml); runtime requirements are in [`meta/runtime.yml`](meta/runtime.yml).
+This repository is an **Ansible collection** published as
+**`steveyminecraft.pihole`** on
+[Ansible Galaxy](https://galaxy.ansible.com/ui/collections/). Collection
+metadata is in [`galaxy.yml`](galaxy.yml); runtime requirements are in
+[`meta/runtime.yml`](meta/runtime.yml).
 
 **From Galaxy** (consumers):
 
@@ -41,9 +49,17 @@ Local build output and development-only directories such as `.ansible/`,
 virtualenvs, Vagrant state, and generated collection tarballs are excluded from
 the collection artifact.
 
-[`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables top-level fact injection so roles use `ansible_facts[...]` with ansible-core 2.20+. Playbooks reference roles by FQCN (for example `steveyminecraft.pihole.pihole`). Re-run the install script after changing [`galaxy.yml`](galaxy.yml) or [`collections/requirements.yml`](collections/requirements.yml).
+[`ansible.cfg`](ansible.cfg) sets `roles_path`, `collections_path`, and disables
+top-level fact injection so roles use `ansible_facts[...]` with ansible-core
+2.20+. Playbooks reference roles by FQCN (for example
+`steveyminecraft.pihole.pihole`). Re-run the install script after changing
+[`galaxy.yml`](galaxy.yml) or
+[`collections/requirements.yml`](collections/requirements.yml).
 
-The Pi-hole Docker role lives in this collection as [`roles/pihole`](roles/pihole/) (sourced from [`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) with ansible-pihole compatibility changes applied in-tree).
+The Pi-hole Docker role lives in this collection as
+[`roles/pihole`](roles/pihole/) (sourced from
+[`docker-pihole`](https://github.com/steveyminecraft/docker-pihole) with
+ansible-pihole compatibility changes applied in-tree).
 Docker host installation is organized into focused platform repository,
 package, networking, diagnostics, user, daemon, and NAT task files under
 [`roles/docker/tasks/`](roles/docker/tasks/).
@@ -248,7 +264,7 @@ Two Vagrant VMs run the real playbooks (see [`molecule/ubuntu/converge.yml`](mol
 |------|---------|
 | [`molecule/common/prepare.yml`](molecule/common/prepare.yml) | Shared prepare (Python, `dig`, `ip` — apt vs dnf by OS) |
 | [`molecule/common/verify_ha.yml`](molecule/common/verify_ha.yml) | Shared verify orchestrator for focused tasks under `molecule/common/verify/` |
-| `molecule/<scenario>/` | `molecule.yml`, `Vagrantfile`, `create.yml`, `destroy.yml`, thin `prepare.yml` / `verify.yml` |
+| `molecule/{scenario}/` | `molecule.yml`, `Vagrantfile`, `create.yml`, `destroy.yml`, thin `prepare.yml` / `verify.yml` |
 
 **`molecule test`** sequence: **dependency** (same [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh) as above), **syntax**, **create** (`vagrant up` in the scenario directory), **prepare**, **converge**, **verify**, **destroy**. Localhost lifecycle playbooks use `chdir: "{{ playbook_dir }}"` so Vagrant runs in the right folder.
 
@@ -260,9 +276,17 @@ services during each converge.
 
 - Molecule, Ansible, Vagrant, and **VirtualBox** or **libvirt** (`vagrant-libvirt`) as appropriate.
 - Run Molecule from the **repository root** so paths and inventory links resolve.
-- **Lint:** CI runs [ansible-lint](https://ansible-lint.readthedocs.io/) on `roles`, `playbooks`, and `molecule`; [yamllint](https://yamllint.readthedocs.io/) includes `molecule/`.
+- **Lint:** CI runs [ansible-lint](https://ansible-lint.readthedocs.io/) on
+  roles, playbooks, Molecule, and remote verification playbooks;
+  [yamllint](https://yamllint.readthedocs.io/) covers their YAML inventories and
+  configuration.
 - Full `molecule test` with Vagrant providers is intended for local or self-hosted
   environments where Vagrant + provider support is guaranteed.
+
+Provider-neutral remote functional tests live under
+[`tests/remote/`](tests/remote/). They run the production bootstrap/update
+playbooks and reusable verification against externally provisioned AWS
+instances, lab VMs, or Raspberry Pi hardware.
 
 ### Scenarios
 
@@ -396,7 +420,10 @@ Uses **[release-please](https://github.com/googleapis/release-please)** (same ap
 2. That push to **`master`** makes release-please open or update a **Release PR** targeting `master` (changelog + `galaxy.yml` version bump).
 3. Merge the **Release PR** into **`master`** to create the **git tag** (`v*.*.*`), **GitHub release**, and **Galaxy publish**.
 
-Use conventional commits on PRs (`feat:`, `fix:`, etc.) so release-please can choose semver correctly.
+Use descriptive conventional commits on PRs so release-please can choose semver
+correctly and generate useful release notes. Prefer a specific user-facing
+summary such as `fix: reject floating latest image defaults` over a generic
+message such as `fix: updates`.
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
@@ -408,10 +435,10 @@ Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 **Install a specific version**:
 
 ```bash
-ansible-galaxy collection install steveyminecraft.pihole:==1.2.4
+ansible-galaxy collection install steveyminecraft.pihole:==VERSION
 ```
 
-Replace `1.2.4` with another published release when required.
+Replace `VERSION` with the published release required, for example `1.2.5`. <!-- x-release-please-version -->
 
 See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.
 
