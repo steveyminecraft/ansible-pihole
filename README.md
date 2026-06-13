@@ -415,13 +415,12 @@ targets fail before Trivy jobs are created.
 
 Collection metadata is in [`galaxy.yml`](galaxy.yml). The collection is published as **`steveyminecraft.pihole`** on [galaxy.ansible.com](https://galaxy.ansible.com/ui/collections/).
 
-Releases and **git tags** are only created from **`master`**
-(not `dev` or topic branches). There is no manual release workflow
-or tag-push publish path.
+Releases and **git tags** are only created from **`master`**.
+There is no manual release workflow or tag-push publish path.
 
 Uses **[release-please](https://github.com/googleapis/release-please)** (same approach as [ansible-pihole-cluster](https://github.com/danylomikula/ansible-pihole-cluster)):
 
-1. Land work on **`dev`**, then open a PR **`dev` → `master`** and merge (promotion to the release branch).
+1. Merge topic PRs into **`master`**.
 2. That push to **`master`** makes release-please open or update a
    **Release PR** targeting `master` (changelog + `galaxy.yml`
    version bump).

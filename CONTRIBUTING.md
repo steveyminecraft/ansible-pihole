@@ -4,12 +4,11 @@ Thanks for helping improve `steveyminecraft.pihole`.
 
 ## Branching and promotion
 
-This repository uses topic branches promoted through `dev` and then `master`:
+This repository uses topic branches merged directly into `master`:
 
-1. Create a topic branch from `dev`.
-2. Open a PR into `dev`.
-3. Promote `dev` to `master` via PR.
-4. Let release automation produce and merge the Release PR on `master`.
+1. Create a topic branch from the latest `master`.
+2. Open a PR into `master`.
+3. Let release automation produce and merge the Release PR on `master`.
 
 See `docs/git-branch-workflow.md` for the full flow and guardrails.
 
