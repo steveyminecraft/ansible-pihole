@@ -14,7 +14,9 @@ For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker
 
 - **ansible-core 2.20 or 2.21**. The normal developer environment uses 2.21
   (see [`requirements.txt`](requirements.txt)); CI also tests the 2.20 runtime floor.
-- **Python 3.13 or 3.14** for the controller (CI tests both; Ubuntu 26.04 ships 3.14—see [`.python-version`](.python-version)).
+- **Python 3.13 or 3.14** for the controller
+  (CI tests both; Ubuntu 26.04 ships 3.14—see
+  [`.python-version`](.python-version)).
 
 ```bash
 ./scripts/setup-env.sh
@@ -23,7 +25,8 @@ source env/bin/activate
 ansible --version   # ansible-core 2.21.x from env/bin/ansible
 ```
 
-Manual venv (if you prefer): `python3.13 -m venv env` or `python3.14 -m venv env`, then `pip install -r requirements.txt`.
+Manual venv (if you prefer): `python3.13 -m venv env` or
+`python3.14 -m venv env`, then `pip install -r requirements.txt`.
 
 This repository is an **Ansible collection** published as
 **`steveyminecraft.pihole`** on
@@ -412,13 +415,18 @@ targets fail before Trivy jobs are created.
 
 Collection metadata is in [`galaxy.yml`](galaxy.yml). The collection is published as **`steveyminecraft.pihole`** on [galaxy.ansible.com](https://galaxy.ansible.com/ui/collections/).
 
-Releases and **git tags** are only created from **`master`** (not `dev` or topic branches). There is no manual release workflow or tag-push publish path.
+Releases and **git tags** are only created from **`master`**
+(not `dev` or topic branches). There is no manual release workflow
+or tag-push publish path.
 
 Uses **[release-please](https://github.com/googleapis/release-please)** (same approach as [ansible-pihole-cluster](https://github.com/danylomikula/ansible-pihole-cluster)):
 
 1. Land work on **`dev`**, then open a PR **`dev` → `master`** and merge (promotion to the release branch).
-2. That push to **`master`** makes release-please open or update a **Release PR** targeting `master` (changelog + `galaxy.yml` version bump).
-3. Merge the **Release PR** into **`master`** to create the **git tag** (`v*.*.*`), **GitHub release**, and **Galaxy publish**.
+2. That push to **`master`** makes release-please open or update a
+   **Release PR** targeting `master` (changelog + `galaxy.yml`
+   version bump).
+3. Merge the **Release PR** into **`master`** to create the **git tag**
+   (`v*.*.*`), **GitHub release**, and **Galaxy publish**.
 
 Use descriptive conventional commits on PRs so release-please can choose semver
 correctly and generate useful release notes. Prefer a specific user-facing

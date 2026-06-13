@@ -24,7 +24,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ansible-core: [">=2.20.5,<2.21", ">=2.21.0,<2.22"]
+        ansible-core:
+          - ">=2.20.5,<2.21"
+          - ">=2.21.0,<2.22"
 
     steps:
       - name: Check out repository
