@@ -1,0 +1,46 @@
+# Contributing
+
+Thanks for helping improve `steveyminecraft.pihole`.
+
+## Branching and promotion
+
+This repository uses topic branches promoted through `dev` and then `master`:
+
+1. Create a topic branch from `dev`.
+2. Open a PR into `dev`.
+3. Promote `dev` to `master` via PR.
+4. Let release automation produce and merge the Release PR on `master`.
+
+See `docs/git-branch-workflow.md` for the full flow and guardrails.
+
+## Conventional commits for useful release notes
+
+This repo uses release-please to generate `CHANGELOG.md` and GitHub release notes.
+Commit subjects directly influence changelog quality.
+
+- `feat:` for user-visible features or capability additions.
+- `fix:` for user-visible bug fixes and regressions.
+- `perf:` for user-visible performance improvements.
+- `refactor:` for internal code structure changes that still matter to operators.
+- `docs:`, `ci:`, `chore:`, `test:`, and `build:` for non-user-facing work.
+
+Good examples:
+
+- `fix: restore keepalived DNS health probe during failover`
+- `feat: add pihole-no-unbound molecule scenario`
+- `perf: reduce update playbook DNS verification retries`
+
+Avoid vague or process-only messages such as:
+
+- `fix: release`
+- `fix: updates`
+- `chore: cleanup`
+
+## Pull request quality checklist
+
+Before opening or merging:
+
+- Ensure PR title and commit subjects describe user-visible impact.
+- Keep formatting-only changes in their own PR where practical.
+- Update `README.md` when behavior, workflows, or setup guidance changes.
+- Confirm CI, linting, and (when relevant) Molecule checks pass.
