@@ -4,12 +4,10 @@ name: CI - Ansible-Pihole Checks
 "on":
   push:
     branches:
-      - dev
       - master
       - "feature/**"
   pull_request:
     branches:
-      - dev
       - master
   workflow_dispatch:
 

@@ -4,12 +4,10 @@ name: Security scanning
 "on":
   push:
     branches:
-      - dev
       - master
       - "feature/**"
   pull_request:
     branches:
-      - dev
       - master
   schedule:
     - cron: "21 4 * * 1"
