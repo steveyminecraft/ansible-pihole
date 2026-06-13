@@ -43,3 +43,21 @@ Before opening or merging:
 - Keep formatting-only changes in their own PR where practical.
 - Update `README.md` when behavior, workflows, or setup guidance changes.
 - Confirm CI, linting, and (when relevant) Molecule checks pass.
+
+## Templates and guardrails
+
+- PRs use `.github/pull_request_template.md` to capture release-note details,
+  validation, and risk/rollback notes.
+- CI validates PR titles against conventional commit format
+  (`type(scope): summary`) on pull requests.
+- Optional local commit template:
+
+  ```bash
+  git config commit.template .github/commit-message-template.txt
+  ```
+
+  You can set this globally if preferred:
+
+  ```bash
+  git config --global commit.template /absolute/path/to/.github/commit-message-template.txt
+  ```

@@ -442,6 +442,14 @@ Recommended commit style for high-signal release notes:
 - Keep release-maintenance/documentation-only work under `docs:`, `ci:`, or
   `chore:` so those entries do not crowd end-user change summaries.
 
+PR quality scaffolding is now included in-repo:
+
+- `.github/pull_request_template.md` prompts release-note summary, validation,
+  and risk/rollback details.
+- `.github/commit-message-template.txt` provides optional local commit-message
+  guidance (`git config commit.template .github/commit-message-template.txt`).
+- CI checks PR titles on pull requests for conventional commit format.
+
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | [Release](.github/workflows/release-please.yml) | Push to `master` only | Release PR; tag + GitHub release + Galaxy publish when the Release PR merges |

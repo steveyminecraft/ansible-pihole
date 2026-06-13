@@ -1,0 +1,20 @@
+<type>(<optional-scope>): <imperative summary>
+
+# Examples:
+# feat(ha): add vip failover smoke check
+# fix(unbound): avoid host publish when container-only resolver is used
+# perf(update): reduce dns verification retries after successful probe
+# docs(readme): document release promotion flow
+#
+# Types:
+# feat, fix, perf, refactor, docs, ci, chore, test, build
+#
+# Guidance:
+# - Write the summary for operators/users, not the implementation process.
+# - Avoid vague subjects such as "updates", "cleanup", or "release".
+# - Keep title <= 72 chars where practical.
+#
+# Optional body (recommended for behavior changes):
+# - Why this change is needed
+# - User-visible impact
+# - Validation performed
