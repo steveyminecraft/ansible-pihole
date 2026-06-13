@@ -425,6 +425,16 @@ correctly and generate useful release notes. Prefer a specific user-facing
 summary such as `fix: reject floating latest image defaults` over a generic
 message such as `fix: updates`.
 
+Recommended commit style for high-signal release notes:
+
+- Use `feat:` only for user-visible capabilities or behavior additions.
+- Use `fix:` only for user-visible bug fixes or regressions.
+- Use short imperative subjects that name the changed behavior, not the process.
+- Avoid release-only noise commits (`fix: release`, `chore: updates`) unless they
+  are truly user-facing and should appear in release notes.
+- Keep release-maintenance/documentation-only work under `docs:`, `ci:`, or
+  `chore:` so those entries do not crowd end-user change summaries.
+
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | [Release](.github/workflows/release-please.yml) | Push to `master` only | Release PR; tag + GitHub release + Galaxy publish when the Release PR merges |
