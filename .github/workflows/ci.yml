@@ -21,9 +21,32 @@ permissions:
   contents: read
 
 jobs:
+  pr-title-check:
+    name: PR title follows conventional commits
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate PR title
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|perf|refactor|docs|ci|chore|test|build)(\([a-z0-9._-]+\))?!?: .+'
+          echo "Checking PR title: ${PR_TITLE}"
+          if ! printf '%s' "${PR_TITLE}" | grep -Eq "${pattern}"; then
+            echo "PR title must follow conventional commit style."
+            echo "Expected: type(scope): summary"
+            echo "Examples: fix(ha): restore keepalived DNS probe"
+            echo "          feat: add no-unbound verification scenario"
+            exit 1
+          fi
+      - name: Skip title validation for non-PR events
+        if: github.event_name != 'pull_request'
+        run: echo "PR title validation only runs on pull_request events."
+
   lint:
     name: Ansible & YAML lint (${{ matrix.runner }} / Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.runner }}
+    needs: pr-title-check
     strategy:
       fail-fast: false
       matrix:
