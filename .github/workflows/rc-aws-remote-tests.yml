@@ -1,7 +1,7 @@
 ---
 name: AWS RC remote tests
 
-"on":
+on:
   push:
     tags:
       - "v*-rc*"
@@ -40,16 +40,21 @@ jobs:
       AWS_SSH_CIDR: ${{ vars.AWS_TEST_SSH_CIDR || '0.0.0.0/0' }}
       AWS_INSTANCE_TYPE: ${{ vars.AWS_TEST_INSTANCE_TYPE_AMD64 }}
       AWS_TEST_PREFIX: ansible-pihole-rc
-      AWS_SSH_PRIVATE_KEY_PATH: ${{ runner.temp }}/aws-test.key
-      AWS_STATE_FILE: ${{ runner.temp }}/aws-rc-state.json
-      AWS_INVENTORY_FILE: ${{ runner.temp }}/aws-rc-inventory.yml
-      AWS_METADATA_FILE: ${{ runner.temp }}/aws-rc-metadata.json
-      AWS_CLEANUP_STATUS_FILE: ${{ runner.temp }}/aws-rc-cleanup.json
       AWS_INVENTORY_TEMPLATE: tests/remote/inventories/aws-ephemeral-template.yml
       GITHUB_USER_FOR_SSH_KEY: ubuntu
       PIHOLE_API_PASSWORD: ${{ secrets.AWS_TEST_PIHOLE_API_PASSWORD }}
-      ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/.aws-test-vault-pass
     steps:
+      - name: Configure ephemeral file paths
+        run: |
+          {
+            echo "AWS_SSH_PRIVATE_KEY_PATH=${RUNNER_TEMP}/aws-test.key"
+            echo "AWS_STATE_FILE=${RUNNER_TEMP}/aws-rc-state.json"
+            echo "AWS_INVENTORY_FILE=${RUNNER_TEMP}/aws-rc-inventory.yml"
+            echo "AWS_METADATA_FILE=${RUNNER_TEMP}/aws-rc-metadata.json"
+            echo "AWS_CLEANUP_STATUS_FILE=${RUNNER_TEMP}/aws-rc-cleanup.json"
+            echo "ANSIBLE_VAULT_PASSWORD_FILE=${RUNNER_TEMP}/.aws-test-vault-pass"
+          } >> "$GITHUB_ENV"
+
       - name: Validate repository configuration
         run: |
           missing=0

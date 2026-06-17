@@ -1,7 +1,7 @@
 ---
 name: AWS remote functional tests
 
-"on":
+on:
   workflow_dispatch:
     inputs:
       scenario:
@@ -125,16 +125,21 @@ jobs:
       AWS_SSH_CIDR: ${{ vars.AWS_TEST_SSH_CIDR }}
       AWS_INSTANCE_TYPE: ${{ matrix.arch == 'arm64' && vars.AWS_TEST_INSTANCE_TYPE_ARM64 || vars.AWS_TEST_INSTANCE_TYPE_AMD64 }}
       AWS_TEST_PREFIX: ansible-pihole-remote
-      AWS_SSH_PRIVATE_KEY_PATH: ${{ runner.temp }}/aws-test.key
-      AWS_STATE_FILE: ${{ runner.temp }}/aws-remote-state-${{ matrix.os_family }}-${{ matrix.arch }}.json
-      AWS_INVENTORY_FILE: ${{ runner.temp }}/aws-remote-inventory-${{ matrix.os_family }}-${{ matrix.arch }}.yml
-      AWS_METADATA_FILE: ${{ runner.temp }}/aws-remote-metadata-${{ matrix.os_family }}-${{ matrix.arch }}.json
-      AWS_CLEANUP_STATUS_FILE: ${{ runner.temp }}/aws-remote-cleanup-${{ matrix.os_family }}-${{ matrix.arch }}.json
       AWS_INVENTORY_TEMPLATE: tests/remote/inventories/aws-ephemeral-template.yml
       GITHUB_USER_FOR_SSH_KEY: ubuntu
       PIHOLE_API_PASSWORD: ${{ secrets.AWS_TEST_PIHOLE_API_PASSWORD }}
-      ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/.aws-test-vault-pass
     steps:
+      - name: Configure ephemeral file paths
+        run: |
+          {
+            echo "AWS_SSH_PRIVATE_KEY_PATH=${RUNNER_TEMP}/aws-test.key"
+            echo "AWS_STATE_FILE=${RUNNER_TEMP}/aws-remote-state-${{ matrix.os_family }}-${{ matrix.arch }}.json"
+            echo "AWS_INVENTORY_FILE=${RUNNER_TEMP}/aws-remote-inventory-${{ matrix.os_family }}-${{ matrix.arch }}.yml"
+            echo "AWS_METADATA_FILE=${RUNNER_TEMP}/aws-remote-metadata-${{ matrix.os_family }}-${{ matrix.arch }}.json"
+            echo "AWS_CLEANUP_STATUS_FILE=${RUNNER_TEMP}/aws-remote-cleanup-${{ matrix.os_family }}-${{ matrix.arch }}.json"
+            echo "ANSIBLE_VAULT_PASSWORD_FILE=${RUNNER_TEMP}/.aws-test-vault-pass"
+          } >> "$GITHUB_ENV"
+
       - name: Validate required repository configuration
         run: |
           missing=0
