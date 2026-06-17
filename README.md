@@ -474,7 +474,7 @@ Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 ansible-galaxy collection install steveyminecraft.pihole:==VERSION
 ```
 
-Replace `VERSION` with the published release required, for example `1.4.0`. <!-- x-release-please-version -->
+Replace `VERSION` with the published release required, for example `1.5.0`. <!-- x-release-please-version -->
 
 See [GitHub releases](https://github.com/steveyminecraft/ansible-pihole/releases) and [`CHANGELOG.md`](CHANGELOG.md) for version history.
 
