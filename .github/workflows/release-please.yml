@@ -36,6 +36,9 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          # PAT avoids GITHUB_TOKEN limits: release PRs trigger CI without the
+          # "workflows awaiting approval" gate for github-actions[bot].
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   publish-galaxy:
     name: Publish collection to Ansible Galaxy

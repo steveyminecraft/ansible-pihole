@@ -1,0 +1,49 @@
+---
+# Release Please opens PRs as github-actions[bot], which GitHub treats as a
+# first-time contributor on public repos. CI workflows then sit in
+# action_required until a maintainer clicks "Approve workflows to run".
+# Rerun those runs under a trusted PAT so checks start automatically.
+name: Auto-run release please checks
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches:
+      - master
+
+permissions:
+  actions: write
+
+jobs:
+  rerun-pending-workflows:
+    name: Rerun blocked release PR workflows
+    if: startsWith(github.event.pull_request.head.ref, 'release-please--branches--')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Rerun workflows awaiting approval
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::warning::RELEASE_PLEASE_TOKEN is not set; cannot auto-run blocked workflows."
+            exit 0
+          fi
+
+          mapfile -t run_ids < <(
+            gh api "repos/${REPO}/actions/runs?head_sha=${HEAD_SHA}&per_page=100" \
+              --jq '.workflow_runs[] | select(.conclusion == "action_required") | .id'
+          )
+
+          if [ "${#run_ids[@]}" -eq 0 ]; then
+            echo "No action_required workflow runs for ${HEAD_SHA}."
+            exit 0
+          fi
+
+          for run_id in "${run_ids[@]}"; do
+            echo "Rerunning workflow run ${run_id}."
+            gh api -X POST "repos/${REPO}/actions/runs/${run_id}/rerun" || true
+          done
