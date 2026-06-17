@@ -137,7 +137,6 @@ jobs:
             echo "AWS_INVENTORY_FILE=${RUNNER_TEMP}/aws-remote-inventory-${{ matrix.os_family }}-${{ matrix.arch }}.yml"
             echo "AWS_METADATA_FILE=${RUNNER_TEMP}/aws-remote-metadata-${{ matrix.os_family }}-${{ matrix.arch }}.json"
             echo "AWS_CLEANUP_STATUS_FILE=${RUNNER_TEMP}/aws-remote-cleanup-${{ matrix.os_family }}-${{ matrix.arch }}.json"
-            echo "ANSIBLE_VAULT_PASSWORD_FILE=${RUNNER_TEMP}/.aws-test-vault-pass"
           } >> "$GITHUB_ENV"
 
       - name: Validate required repository configuration
@@ -195,11 +194,10 @@ jobs:
           printf '%s\n' "${{ secrets.AWS_TEST_SSH_PRIVATE_KEY }}" > "${AWS_SSH_PRIVATE_KEY_PATH}"
           chmod 600 "${AWS_SSH_PRIVATE_KEY_PATH}"
           if [ -n "${{ secrets.AWS_TEST_ANSIBLE_VAULT_PASSWORD }}" ]; then
-            printf '%s\n' "${{ secrets.AWS_TEST_ANSIBLE_VAULT_PASSWORD }}" > "${ANSIBLE_VAULT_PASSWORD_FILE}"
-            chmod 600 "${ANSIBLE_VAULT_PASSWORD_FILE}"
-          else
-            rm -f "${ANSIBLE_VAULT_PASSWORD_FILE}"
-            echo "ANSIBLE_VAULT_PASSWORD_FILE=" >> "$GITHUB_ENV"
+            vault_password_file="${RUNNER_TEMP}/.aws-test-vault-pass"
+            printf '%s\n' "${{ secrets.AWS_TEST_ANSIBLE_VAULT_PASSWORD }}" > "${vault_password_file}"
+            chmod 600 "${vault_password_file}"
+            echo "ANSIBLE_VAULT_PASSWORD_FILE=${vault_password_file}" >> "$GITHUB_ENV"
           fi
 
       - name: Run remote test harness
