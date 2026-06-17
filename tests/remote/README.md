@@ -19,14 +19,16 @@ Run a scenario from the repository root:
 ```bash
 tests/remote/run.sh \
   --inventory tests/remote/inventories/example-no-unbound.yml \
-  --scenario no-unbound
+  --scenario pihole-upstream-only
 ```
 
 | Scenario | Verification |
 |----------|--------------|
-| `single` | Pi-hole and Unbound containers plus local DNS |
-| `no-unbound` | Pi-hole DNS, explicit upstreams, and no Unbound resources |
+| `pihole-unbound` | Pi-hole and Unbound containers plus local DNS |
+| `pihole-upstream-only` | Pi-hole DNS, explicit upstreams, and no Unbound resources |
 | `ha` | Pi-hole, Unbound, keepalived, VIP DNS, and optional Nebula Sync placement |
+
+Legacy aliases `single` and `no-unbound` still work but print a deprecation note.
 
 Copy an example inventory outside the repository and replace all placeholder
 addresses and credentials. Never commit production credentials.
@@ -48,19 +50,19 @@ ephemeral EC2 hosts and always executes teardown.
 ### Trigger modes
 
 - `workflow_dispatch` for on-demand runs
-- weekly `schedule` smoke test (`single`, Ubuntu AMD64)
+
+Pi-hole image updates are tracked separately by
+[`.github/workflows/pihole-image-watch.yml`](../.github/workflows/pihole-image-watch.yml)
+(daily Docker Hub check; opens a GitHub issue when a newer calendar tag exists).
 
 ### Runtime matrix
 
-- Profiles:
-  - `single` (Ubuntu 26.04 on one architecture selected by inputs)
-  - `full` (Ubuntu 26.04 on AMD64 and ARM64)
-- Scenarios:
-  - `single`
-  - `no-unbound`
-
-The scheduled run intentionally stays on a low-cost smoke profile. Expand only
-after repeated stable executions.
+- Platform coverage:
+  - `one-arch` (Ubuntu 26.04 on one architecture selected by inputs)
+  - `all-archs` (Ubuntu 26.04 on AMD64 and ARM64)
+- Deployment scenarios:
+  - `pihole-unbound`
+  - `pihole-upstream-only`
 
 ### Required repository configuration
 

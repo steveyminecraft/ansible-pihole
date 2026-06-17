@@ -5,21 +5,21 @@ on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: "Remote scenario to run"
+        description: "Deployment to bootstrap and verify on ephemeral EC2"
         type: choice
         required: true
-        default: single
+        default: pihole-unbound
         options:
-          - single
-          - no-unbound
-      test_matrix:
-        description: "Matrix profile"
+          - pihole-unbound
+          - pihole-upstream-only
+      platform_coverage:
+        description: "How many CPU architectures to exercise"
         type: choice
         required: true
-        default: single
+        default: one-arch
         options:
-          - single
-          - full
+          - one-arch
+          - all-archs
       arch:
         description: "CPU architecture for single profile"
         type: choice
@@ -37,8 +37,6 @@ on:
         description: "AWS region override (optional)"
         required: false
         default: ""
-  schedule:
-    - cron: "35 2 * * 0"
 
 permissions:
   contents: read
@@ -61,8 +59,7 @@ jobs:
       - name: Resolve matrix
         id: matrix
         env:
-          EVENT_NAME: ${{ github.event_name }}
-          INPUT_TEST_MATRIX: ${{ github.event.inputs.test_matrix }}
+          INPUT_PLATFORM_COVERAGE: ${{ github.event.inputs.platform_coverage }}
           INPUT_ARCH: ${{ github.event.inputs.arch }}
           INPUT_SCENARIO: ${{ github.event.inputs.scenario }}
           INPUT_SKIP_UPDATE: ${{ github.event.inputs.skip_update }}
@@ -73,26 +70,20 @@ jobs:
           import json
           import os
 
-          event = os.environ.get("EVENT_NAME", "")
-          if event == "schedule":
-              matrix = [{"os_family": "ubuntu", "os_version": "26.04", "arch": "amd64"}]
-              scenario = "single"
-              skip_update = "false"
+          profile = (os.environ.get("INPUT_PLATFORM_COVERAGE") or "one-arch").strip()
+          scenario = (os.environ.get("INPUT_SCENARIO") or "pihole-unbound").strip()
+          skip_update = (os.environ.get("INPUT_SKIP_UPDATE") or "false").strip().lower()
+          if profile in ("all-archs", "full"):
+              matrix = [
+                  {"os_family": "ubuntu", "os_version": "26.04", "arch": "amd64"},
+                  {"os_family": "ubuntu", "os_version": "26.04", "arch": "arm64"},
+              ]
           else:
-              profile = (os.environ.get("INPUT_TEST_MATRIX") or "single").strip()
-              scenario = (os.environ.get("INPUT_SCENARIO") or "single").strip()
-              skip_update = (os.environ.get("INPUT_SKIP_UPDATE") or "false").strip().lower()
-              if profile == "full":
-                  matrix = [
-                      {"os_family": "ubuntu", "os_version": "26.04", "arch": "amd64"},
-                      {"os_family": "ubuntu", "os_version": "26.04", "arch": "arm64"},
-                  ]
-              else:
-                  matrix = [{
-                      "os_family": "ubuntu",
-                      "os_version": "26.04",
-                      "arch": (os.environ.get("INPUT_ARCH") or "amd64").strip(),
-                  }]
+              matrix = [{
+                  "os_family": "ubuntu",
+                  "os_version": "26.04",
+                  "arch": (os.environ.get("INPUT_ARCH") or "amd64").strip(),
+              }]
 
           region = (
               (os.environ.get("INPUT_AWS_REGION") or "").strip()
@@ -106,7 +97,7 @@ jobs:
           PY
 
   aws-remote-tests:
-    name: AWS remote tests (Ubuntu ${{ matrix.os_version }} / ${{ matrix.arch }})
+    name: AWS integration — Ubuntu ${{ matrix.os_version }} / ${{ matrix.arch }}
     needs: prepare-matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 90

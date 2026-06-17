@@ -1,4 +1,4 @@
-"""Tests for the default container image scan matrix."""
+"""Unit tests for scripts/default-container-images.py (Trivy scan matrix)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "default-container-images.py"
 
 

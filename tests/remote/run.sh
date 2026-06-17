@@ -13,10 +13,12 @@ usage() {
   cat <<'EOF'
 Usage: tests/remote/run.sh --inventory PATH --scenario SCENARIO [options]
 
-Scenarios:
-  single       Pi-hole with Unbound on independent nodes
-  no-unbound   Pi-hole with explicit upstream resolvers and no Unbound
-  ha           Pi-hole, Unbound, keepalived VIP, and optional Nebula Sync
+Deployment scenarios (what gets installed and verified):
+  pihole-unbound          Pi-hole with Unbound (default)
+  pihole-upstream-only    Pi-hole with public upstream resolvers, no Unbound
+  ha                      Pi-hole, Unbound, keepalived VIP, optional Nebula Sync
+
+Legacy aliases (still accepted): single, no-unbound
 
 Options:
   --skip-converge  Verify an existing deployment without bootstrapping it.
@@ -67,9 +69,20 @@ fi
 
 case "$scenario" in
   single)
-    verify_playbooks=(pihole.yml unbound.yml)
+    echo "Note: scenario 'single' is deprecated; use 'pihole-unbound'." >&2
+    scenario="pihole-unbound"
     ;;
   no-unbound)
+    echo "Note: scenario 'no-unbound' is deprecated; use 'pihole-upstream-only'." >&2
+    scenario="pihole-upstream-only"
+    ;;
+esac
+
+case "$scenario" in
+  pihole-unbound)
+    verify_playbooks=(pihole.yml unbound.yml)
+    ;;
+  pihole-upstream-only)
     verify_playbooks=(pihole.yml no-unbound.yml)
     ;;
   ha)

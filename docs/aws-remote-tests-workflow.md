@@ -7,9 +7,9 @@ There are **two related workflows**. They share the same scripts and AWS setup; 
 | | **AWS RC remote tests** | **AWS remote functional tests** |
 |---|---|---|
 | File | `.github/workflows/rc-aws-remote-tests.yml` | `.github/workflows/aws-remote-tests.yml` |
-| Triggers | RC tags (`v1.0.0-rc.1`) or manual | Manual only, plus weekly cron (Sunday 02:35 UTC) |
-| OS | Ubuntu 26.04 amd64 only | Ubuntu 26.04 — single arch or amd64 + arm64 |
-| Purpose | Pre-release gate on every RC tag | Ad-hoc testing and cheap weekly smoke |
+| Triggers | RC tags (`v1.0.0-rc.1`) or manual | Manual `workflow_dispatch` only |
+| OS | Ubuntu 26.04 amd64 only | Ubuntu 26.04 — one arch or amd64 + arm64 |
+| Purpose | Pre-release gate on every RC tag | Ad-hoc operator testing on demand |
 
 Both follow the same core pattern: **assume AWS role → launch EC2 → Ansible → always destroy**.
 
@@ -44,21 +44,18 @@ sequenceDiagram
 ### 1. Triggers (`on`)
 
 ```yaml
-workflow_dispatch:   # Run workflow from GitHub UI
-schedule:            # Weekly smoke, no human input
+workflow_dispatch:   # Run workflow from GitHub UI only
 ```
 
 **Manual inputs:**
 
 | Input | Purpose |
 |---|---|
-| `scenario` | `single` (Pi-hole + Unbound) or `no-unbound` |
-| `test_matrix` | `single` (one arch) or `full` (amd64 + arm64) |
-| `arch` | For `single` profile only: `amd64` or `arm64` |
+| `scenario` | `pihole-unbound` or `pihole-upstream-only` |
+| `platform_coverage` | `one-arch` or `all-archs` |
+| `arch` | For `one-arch` only: `amd64` or `arm64` |
 | `skip_update` | Skip the update playbook |
 | `aws_region` | Optional override; defaults to `AWS_TEST_REGION` repo variable |
-
-The **schedule** ignores those inputs and always runs a minimal smoke: Ubuntu 26.04 amd64, `single` scenario.
 
 ### 2. Permissions and concurrency
 
@@ -73,14 +70,13 @@ concurrency:
 
 ### 3. Job 1: `prepare-matrix`
 
-This job turns your inputs (or the schedule defaults) into a JSON matrix for job 2.
+This job turns your manual inputs into a JSON matrix for job 2.
 
 | Input profile | Matrix produced |
 |---|---|
-| `single` + amd64 | 1 job: Ubuntu 26.04 amd64 |
-| `single` + arm64 | 1 job: Ubuntu 26.04 arm64 |
-| `full` | 2 jobs: amd64 + arm64 |
-| schedule | 1 job: Ubuntu 26.04 amd64 |
+| `one-arch` + amd64 | 1 job: Ubuntu 26.04 amd64 |
+| `one-arch` + arm64 | 1 job: Ubuntu 26.04 arm64 |
+| `all-archs` | 2 jobs: amd64 + arm64 |
 
 It also passes through **scenario**, **skip_update**, and **region**.
 
@@ -214,4 +210,4 @@ Three layers:
 2. **AWS build-ci** — disposable compute per run (create/destroy scripts)
 3. **Ansible** — the actual Pi-hole test (same playbooks used on real hardware)
 
-The manual workflow is the **operator-friendly** version (manual + weekly). The RC workflow is the **release gate** (tag-triggered, single fixed config).
+The manual workflow is for **on-demand operator testing**. The RC workflow is the **release gate** (tag-triggered, single fixed config). New upstream Pi-hole Docker tags are tracked by **`pihole-image-watch.yml`** (daily issue alert, no EC2 cost).

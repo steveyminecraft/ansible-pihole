@@ -370,6 +370,15 @@ waits during test runs.
 
 ## CI
 
+### Test layers
+
+| Layer | What runs | Where |
+|-------|-----------|--------|
+| **Unit** | Python checks for `scripts/default-container-images.py` (pinned images, Trivy matrix shape) | `tests/unit/`, PR-only job in `ci.yml` |
+| **Static / dry-run** | ansible-lint, yamllint, playbook `--syntax-check`, check-mode `ci-bootstrap` | `ci.yml` on every push/PR |
+| **Molecule integration** | Full bootstrap/update on Vagrant VMs | Local / self-hosted (`molecule/*`) |
+| **AWS integration** | Ephemeral EC2 → production playbooks → teardown | `rc-aws-remote-tests.yml`, `aws-remote-tests.yml` |
+
 GitHub Actions workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 runs lint (ansible-lint, yamllint), installs dependencies via
 [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh),
@@ -397,15 +406,16 @@ persistent Critical findings should trigger a pinned-image upgrade review.
 The dedicated `pihole-no-unbound` Molecule scenario runs the real bootstrap and
 update playbooks with public upstream resolvers. It verifies after each
 workflow that Pi-hole resolves DNS without an Unbound container, shared Unbound
-network, or Unbound health check dependency. Hosted CI also unit tests the
-default-image matrix so malformed, empty, incomplete, or floating `latest` scan
+network, or Unbound health check dependency. Hosted CI runs Python unit tests in
+`tests/unit/` so malformed, empty, incomplete, or floating `latest` scan
 targets fail before Trivy jobs are created.
 
 AWS remote functional tests use ephemeral EC2 hosts and lifecycle hooks wired
 into `tests/remote/run.sh`:
 
 - `.github/workflows/rc-aws-remote-tests.yml` — RC tags (`v*-rc*`), Ubuntu 26.04
-- `.github/workflows/aws-remote-tests.yml` — manual dispatch and weekly smoke
+- `.github/workflows/aws-remote-tests.yml` — manual dispatch only
+- `.github/workflows/pihole-image-watch.yml` — daily check for new `pihole/pihole` Docker tags (GitHub issue alert)
 
 Infrastructure (VPC subnet, OIDC role, SSH key pair) is provisioned in the
 separate `AWS-Cloud/build-account-isolation/build/` Terraform stack. Apply that

@@ -192,7 +192,7 @@ replacements = {
 for old, new in replacements.items():
     content = content.replace(old, new)
 
-if os.environ["AWS_TEST_SCENARIO"] == "no-unbound":
+if os.environ["AWS_TEST_SCENARIO"] in ("no-unbound", "pihole-upstream-only"):
     content = content.replace("pihole_enable_unbound: true", "pihole_enable_unbound: false")
 
 vault_block = os.environ["VAULT_VALUE_LINES"]

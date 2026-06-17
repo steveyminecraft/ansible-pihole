@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       scenario:
-        description: "Remote scenario to run"
+        description: "Deployment to bootstrap and verify on ephemeral EC2"
         type: choice
         required: true
-        default: single
+        default: pihole-unbound
         options:
-          - single
-          - no-unbound
+          - pihole-unbound
+          - pihole-upstream-only
 
 permissions:
   contents: read
@@ -26,12 +26,12 @@ concurrency:
 
 jobs:
   aws-rc-remote-tests:
-    name: RC test (Ubuntu 26.04)
+    name: AWS integration — Pi-hole on Ubuntu 26.04 (RC)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       AWS_REGION: ${{ vars.AWS_TEST_REGION }}
-      AWS_TEST_SCENARIO: ${{ github.event.inputs.scenario || 'single' }}
+      AWS_TEST_SCENARIO: ${{ github.event.inputs.scenario || 'pihole-unbound' }}
       AWS_OS_FAMILY: ubuntu
       AWS_OS_VERSION: "26.04"
       AWS_ARCH: amd64
