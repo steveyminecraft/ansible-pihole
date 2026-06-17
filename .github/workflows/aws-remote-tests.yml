@@ -199,7 +199,7 @@ jobs:
             chmod 600 "${ANSIBLE_VAULT_PASSWORD_FILE}"
           else
             rm -f "${ANSIBLE_VAULT_PASSWORD_FILE}"
-            unset ANSIBLE_VAULT_PASSWORD_FILE
+            echo "ANSIBLE_VAULT_PASSWORD_FILE=" >> "$GITHUB_ENV"
           fi
 
       - name: Run remote test harness
