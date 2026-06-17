@@ -53,8 +53,8 @@ ephemeral EC2 hosts and always executes teardown.
 ### Runtime matrix
 
 - Profiles:
-  - `single` (one OS/arch pair selected by inputs)
-  - `full` (Ubuntu+Rocky on AMD64+ARM64)
+  - `single` (Ubuntu 26.04 on one architecture selected by inputs)
+  - `full` (Ubuntu 26.04 on AMD64 and ARM64)
 - Scenarios:
   - `single`
   - `no-unbound`
@@ -72,7 +72,6 @@ Repository variables:
 - `AWS_TEST_KEY_NAME`
 - `AWS_TEST_INSTANCE_TYPE_AMD64`
 - `AWS_TEST_INSTANCE_TYPE_ARM64`
-- `AWS_TEST_GITHUB_USER_FOR_SSH_KEY`
 - optional `AWS_TEST_SSH_CIDR` (defaults to `0.0.0.0/0` if unset)
 
 Repository secrets:

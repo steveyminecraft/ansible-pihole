@@ -20,14 +20,6 @@ name: AWS remote functional tests
         options:
           - single
           - full
-      os_family:
-        description: "OS family for single profile"
-        type: choice
-        required: true
-        default: ubuntu
-        options:
-          - ubuntu
-          - rocky
       arch:
         description: "CPU architecture for single profile"
         type: choice
@@ -71,7 +63,6 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_TEST_MATRIX: ${{ github.event.inputs.test_matrix }}
-          INPUT_OS_FAMILY: ${{ github.event.inputs.os_family }}
           INPUT_ARCH: ${{ github.event.inputs.arch }}
           INPUT_SCENARIO: ${{ github.event.inputs.scenario }}
           INPUT_SKIP_UPDATE: ${{ github.event.inputs.skip_update }}
@@ -84,7 +75,7 @@ jobs:
 
           event = os.environ.get("EVENT_NAME", "")
           if event == "schedule":
-              matrix = [{"os_family": "ubuntu", "arch": "amd64"}]
+              matrix = [{"os_family": "ubuntu", "os_version": "26.04", "arch": "amd64"}]
               scenario = "single"
               skip_update = "false"
           else:
@@ -93,14 +84,13 @@ jobs:
               skip_update = (os.environ.get("INPUT_SKIP_UPDATE") or "false").strip().lower()
               if profile == "full":
                   matrix = [
-                      {"os_family": "ubuntu", "arch": "amd64"},
-                      {"os_family": "ubuntu", "arch": "arm64"},
-                      {"os_family": "rocky", "arch": "amd64"},
-                      {"os_family": "rocky", "arch": "arm64"},
+                      {"os_family": "ubuntu", "os_version": "26.04", "arch": "amd64"},
+                      {"os_family": "ubuntu", "os_version": "26.04", "arch": "arm64"},
                   ]
               else:
                   matrix = [{
-                      "os_family": (os.environ.get("INPUT_OS_FAMILY") or "ubuntu").strip(),
+                      "os_family": "ubuntu",
+                      "os_version": "26.04",
                       "arch": (os.environ.get("INPUT_ARCH") or "amd64").strip(),
                   }]
 
@@ -116,7 +106,7 @@ jobs:
           PY
 
   aws-remote-tests:
-    name: AWS remote tests (${{ matrix.os_family }} / ${{ matrix.arch }})
+    name: AWS remote tests (Ubuntu ${{ matrix.os_version }} / ${{ matrix.arch }})
     needs: prepare-matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -128,6 +118,7 @@ jobs:
       AWS_TEST_SCENARIO: ${{ needs.prepare-matrix.outputs.scenario }}
       AWS_SKIP_UPDATE: ${{ needs.prepare-matrix.outputs.skip_update }}
       AWS_OS_FAMILY: ${{ matrix.os_family }}
+      AWS_OS_VERSION: ${{ matrix.os_version }}
       AWS_ARCH: ${{ matrix.arch }}
       AWS_SUBNET_ID: ${{ vars.AWS_TEST_SUBNET_ID }}
       AWS_KEY_NAME: ${{ vars.AWS_TEST_KEY_NAME }}
@@ -140,7 +131,7 @@ jobs:
       AWS_METADATA_FILE: ${{ runner.temp }}/aws-remote-metadata-${{ matrix.os_family }}-${{ matrix.arch }}.json
       AWS_CLEANUP_STATUS_FILE: ${{ runner.temp }}/aws-remote-cleanup-${{ matrix.os_family }}-${{ matrix.arch }}.json
       AWS_INVENTORY_TEMPLATE: tests/remote/inventories/aws-ephemeral-template.yml
-      GITHUB_USER_FOR_SSH_KEY: ${{ vars.AWS_TEST_GITHUB_USER_FOR_SSH_KEY }}
+      GITHUB_USER_FOR_SSH_KEY: ubuntu
       PIHOLE_API_PASSWORD: ${{ secrets.AWS_TEST_PIHOLE_API_PASSWORD }}
       ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/.aws-test-vault-pass
     steps:
@@ -249,7 +240,7 @@ jobs:
           print("| Field | Value |")
           print("|---|---|")
           print(f"| Scenario | `{os.environ.get('AWS_TEST_SCENARIO', '')}` |")
-          print(f"| OS / Arch | `{os.environ.get('AWS_OS_FAMILY', '')}` / `{os.environ.get('AWS_ARCH', '')}` |")
+          print(f"| OS / Arch | Ubuntu `{os.environ.get('AWS_OS_VERSION', '')}` / `{os.environ.get('AWS_ARCH', '')}` |")
           print(f"| Region | `{os.environ.get('AWS_REGION', '')}` |")
           print(f"| Instance IDs | `{', '.join(metadata.get('instance_ids', []))}` |")
           print(f"| Cleanup verified | `{cleanup.get('cleanup_verified', False)}` |")

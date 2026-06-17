@@ -46,40 +46,13 @@ resolve_ubuntu_ami() {
     --output text
 }
 
-resolve_rocky_ami() {
-  local version="${1:-10.2}"
-  local arch="${2:-amd64}"
-  local aws_arch="${arch}"
-  local name_arch="${arch}"
-  if [[ "${arch}" == "amd64" ]]; then
-    aws_arch="x86_64"
-    name_arch="x86_64"
-  fi
-  aws ec2 describe-images \
-    --region "${AWS_REGION}" \
-    --owners 679593333241 \
-    --filters \
-      "Name=name,Values=Rocky Linux ${version}-Base*${name_arch}*" \
-      "Name=architecture,Values=${aws_arch}" \
-      "Name=state,Values=available" \
-    --query 'sort_by(Images, &CreationDate)[-1].ImageId' \
-    --output text
-}
+if [[ "${AWS_OS_FAMILY}" != "ubuntu" ]]; then
+  echo "Unsupported AWS_OS_FAMILY: ${AWS_OS_FAMILY} (only ubuntu is supported for AWS remote tests)" >&2
+  exit 2
+fi
 
-case "${AWS_OS_FAMILY}" in
-  ubuntu)
-    ubuntu_version="${AWS_OS_VERSION:-26.04}"
-    ami_id="$(resolve_ubuntu_ami "${ubuntu_version}" "${arch_suffix}")"
-    ;;
-  rocky)
-    rocky_version="${AWS_OS_VERSION:-10.2}"
-    ami_id="$(resolve_rocky_ami "${rocky_version}" "${arch_suffix}")"
-    ;;
-  *)
-    echo "Unsupported AWS_OS_FAMILY: ${AWS_OS_FAMILY}" >&2
-    exit 2
-    ;;
-esac
+ubuntu_version="${AWS_OS_VERSION:-26.04}"
+ami_id="$(resolve_ubuntu_ami "${ubuntu_version}" "${arch_suffix}")"
 
 if [[ -z "${ami_id}" || "${ami_id}" == "None" ]]; then
   echo "Unable to resolve AMI for ${AWS_OS_FAMILY} ${AWS_OS_VERSION:-default} (${arch_suffix})." >&2
@@ -218,10 +191,6 @@ replacements = {
 }
 for old, new in replacements.items():
     content = content.replace(old, new)
-
-if os.environ["AWS_OS_FAMILY"] == "rocky":
-    content = content.replace("ansible_user: ubuntu", "ansible_user: rocky")
-    content = content.replace("/home/ubuntu", "/home/rocky")
 
 if os.environ["AWS_TEST_SCENARIO"] == "no-unbound":
     content = content.replace("pihole_enable_unbound: true", "pihole_enable_unbound: false")
