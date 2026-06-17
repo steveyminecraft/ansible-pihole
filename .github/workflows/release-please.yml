@@ -1,6 +1,7 @@
 ---
 # Releases and tags are only produced from the master branch.
 # Typical flow: merge topic PRs to master (opens/updates a Release PR) →
+# RC tag vX.Y.Z-rc.N is pushed automatically → AWS ephemeral tests run →
 # merge Release PR → tag v*.*.*, GitHub release, Galaxy publish.
 # No workflow_dispatch or tag-push triggers (see removed release.yml).
 name: Release
@@ -28,6 +29,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
+      prs_created: ${{ steps.release.outputs.prs_created }}
 
     steps:
       - name: Run release-please
@@ -39,6 +41,58 @@ jobs:
           # PAT avoids GITHUB_TOKEN limits: release PRs trigger CI without the
           # "workflows awaiting approval" gate for github-actions[bot].
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+  tag-release-candidate:
+    name: Tag release candidate for AWS tests
+    needs: release-please
+    if: >-
+      github.repository_owner == 'steveyminecraft'
+      && github.ref == 'refs/heads/master'
+      && needs.release-please.outputs.prs_created == 'true'
+      && needs.release-please.outputs.release_created != 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out release PR branch
+        uses: actions/checkout@v6
+        with:
+          ref: release-please--branches--master
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+      - name: Create and push RC tag
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::RELEASE_PLEASE_TOKEN is required to push RC tags."
+            exit 1
+          fi
+
+          version="$(python3 -c "import json; print(json.load(open('.release-please-manifest.json'))['.'])")"
+          base_tag="v${version}"
+          head_sha="$(git rev-parse HEAD)"
+
+          existing_for_commit="$(git tag -l "${base_tag}-rc.*" --points-at "${head_sha}" | paste -sd ',' - || true)"
+          if [ -n "${existing_for_commit}" ]; then
+            echo "RC tag already exists for ${head_sha}: ${existing_for_commit}"
+            exit 0
+          fi
+
+          latest_rc=0
+          while IFS= read -r tag; do
+            suffix="${tag#${base_tag}-rc.}"
+            if [[ "${suffix}" =~ ^[0-9]+$ ]] && (( suffix > latest_rc )); then
+              latest_rc="${suffix}"
+            fi
+          done < <(git tag -l "${base_tag}-rc.*")
+
+          rc_tag="${base_tag}-rc.$((latest_rc + 1))"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${rc_tag}" -m "Release candidate for ${base_tag} (release PR ${head_sha::7})" "${head_sha}"
+          git push origin "${rc_tag}"
+          echo "Pushed ${rc_tag}; AWS RC remote tests will start automatically."
 
   publish-galaxy:
     name: Publish collection to Ansible Galaxy
