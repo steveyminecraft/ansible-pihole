@@ -401,6 +401,17 @@ network, or Unbound health check dependency. Hosted CI also unit tests the
 default-image matrix so malformed, empty, incomplete, or floating `latest` scan
 targets fail before Trivy jobs are created.
 
+AWS remote functional tests use ephemeral EC2 hosts and lifecycle hooks wired
+into `tests/remote/run.sh`:
+
+- `.github/workflows/rc-aws-remote-tests.yml` — RC tags (`v*-rc*`), Ubuntu 26.04
+- `.github/workflows/aws-remote-tests.yml` — manual dispatch and weekly smoke
+
+Infrastructure (VPC subnet, OIDC role, SSH key pair) is provisioned in the
+separate `AWS-Cloud/build-account-isolation/build/` Terraform stack. Apply that
+stack and map `terraform output -json ansible_remote_test_configuration` to the
+GitHub repository variables documented in `tests/remote/README.md`.
+
 ## Operational docs
 
 - [Architecture](docs/architecture.md)

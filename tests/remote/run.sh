@@ -65,11 +65,6 @@ if [[ -z "$inventory" || -z "$scenario" ]]; then
   exit 2
 fi
 
-if [[ ! -f "$inventory" ]]; then
-  echo "Inventory not found: $inventory" >&2
-  exit 2
-fi
-
 case "$scenario" in
   single)
     verify_playbooks=(pihole.yml unbound.yml)
@@ -115,6 +110,11 @@ cleanup() {
 trap cleanup EXIT
 
 run_hook create "${REMOTE_CREATE_COMMAND:-}"
+
+if [[ ! -f "$inventory" ]]; then
+  echo "Inventory not found after create hook: $inventory" >&2
+  exit 2
+fi
 
 echo "Validating inventory: $inventory"
 ansible-inventory -i "$inventory" --graph
