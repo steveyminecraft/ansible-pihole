@@ -1,0 +1,128 @@
+---
+name: AWS RC remote tests
+
+"on":
+  push:
+    tags:
+      - "v*-rc*"
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Remote scenario to run"
+        type: choice
+        required: true
+        default: single
+        options:
+          - single
+          - no-unbound
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-rc-remote-tests-${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  aws-rc-remote-tests:
+    name: RC test (Ubuntu 26.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      AWS_REGION: ${{ vars.AWS_TEST_REGION }}
+      AWS_TEST_SCENARIO: ${{ github.event.inputs.scenario || 'single' }}
+      AWS_OS_FAMILY: ubuntu
+      AWS_OS_VERSION: "26.04"
+      AWS_ARCH: amd64
+      AWS_SUBNET_ID: ${{ vars.AWS_TEST_SUBNET_ID }}
+      AWS_KEY_NAME: ${{ vars.AWS_TEST_KEY_NAME }}
+      AWS_SSH_CIDR: ${{ vars.AWS_TEST_SSH_CIDR || '0.0.0.0/0' }}
+      AWS_INSTANCE_TYPE: ${{ vars.AWS_TEST_INSTANCE_TYPE_AMD64 }}
+      AWS_TEST_PREFIX: ansible-pihole-rc
+      AWS_SSH_PRIVATE_KEY_PATH: ${{ runner.temp }}/aws-test.key
+      AWS_STATE_FILE: ${{ runner.temp }}/aws-rc-state.json
+      AWS_INVENTORY_FILE: ${{ runner.temp }}/aws-rc-inventory.yml
+      AWS_METADATA_FILE: ${{ runner.temp }}/aws-rc-metadata.json
+      AWS_CLEANUP_STATUS_FILE: ${{ runner.temp }}/aws-rc-cleanup.json
+      AWS_INVENTORY_TEMPLATE: tests/remote/inventories/aws-ephemeral-template.yml
+      GITHUB_USER_FOR_SSH_KEY: ubuntu
+      PIHOLE_API_PASSWORD: ${{ secrets.AWS_TEST_PIHOLE_API_PASSWORD }}
+      ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/.aws-test-vault-pass
+    steps:
+      - name: Validate repository configuration
+        run: |
+          missing=0
+          for var_name in AWS_REGION AWS_SUBNET_ID AWS_KEY_NAME AWS_INSTANCE_TYPE; do
+            if [ -z "${!var_name:-}" ]; then
+              echo "Missing required variable: $var_name"
+              missing=1
+            fi
+          done
+          if [ -z "${{ vars.AWS_TEST_ROLE_ARN }}" ]; then
+            echo "Missing required variable: AWS_TEST_ROLE_ARN"
+            missing=1
+          fi
+          if [ -z "${PIHOLE_API_PASSWORD:-}" ]; then
+            echo "Missing required secret: AWS_TEST_PIHOLE_API_PASSWORD"
+            missing=1
+          fi
+          if [ -z "${{ secrets.AWS_TEST_SSH_PRIVATE_KEY }}" ]; then
+            echo "Missing required secret: AWS_TEST_SSH_PRIVATE_KEY"
+            missing=1
+          fi
+          [ "$missing" -eq 0 ]
+
+      - name: Check out repository
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 # v4
+        with:
+          role-to-assume: ${{ vars.AWS_TEST_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ansible-pihole-rc-ubuntu-26.04
+
+      - name: Set up Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade 'ansible-core>=2.21.0,<2.22'
+
+      - name: Install collections
+        run: ./scripts/install-ansible-collections.sh
+
+      - name: Prepare SSH credentials
+        run: |
+          umask 077
+          printf '%s\n' "${{ secrets.AWS_TEST_SSH_PRIVATE_KEY }}" > "${AWS_SSH_PRIVATE_KEY_PATH}"
+          chmod 600 "${AWS_SSH_PRIVATE_KEY_PATH}"
+          if [ -n "${{ secrets.AWS_TEST_ANSIBLE_VAULT_PASSWORD }}" ]; then
+            printf '%s\n' "${{ secrets.AWS_TEST_ANSIBLE_VAULT_PASSWORD }}" > "${ANSIBLE_VAULT_PASSWORD_FILE}"
+            chmod 600 "${ANSIBLE_VAULT_PASSWORD_FILE}"
+          else
+            rm -f "${ANSIBLE_VAULT_PASSWORD_FILE}"
+            unset ANSIBLE_VAULT_PASSWORD_FILE
+          fi
+
+      - name: Run remote test harness
+        env:
+          REMOTE_CREATE_COMMAND: tests/remote/aws/create-ephemeral-env.sh
+          REMOTE_RESET_COMMAND: tests/remote/aws/destroy-ephemeral-env.sh
+        run: |
+          args=(--inventory "${AWS_INVENTORY_FILE}" --scenario "${AWS_TEST_SCENARIO}")
+          tests/remote/run.sh "${args[@]}"
+
+      - name: Ensure cleanup executes on failures
+        if: always()
+        run: tests/remote/aws/destroy-ephemeral-env.sh
+
+      - name: Verify AWS cleanup status
+        if: always()
+        run: tests/remote/aws/verify-cleanup.sh

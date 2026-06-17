@@ -38,3 +38,64 @@ update playbook. Use `--skip-converge` to verify an existing deployment or
 Idempotence is an explicit hook because the current HA bootstrap workflow
 intentionally drains and resumes services. Environments that require a strict
 zero-change assertion should provide a topology-specific command.
+
+## GitHub Actions AWS ephemeral workflow
+
+The repository includes an AWS integration workflow at
+`.github/workflows/aws-remote-tests.yml` that runs this harness against
+ephemeral EC2 hosts and always executes teardown.
+
+### Trigger modes
+
+- `workflow_dispatch` for on-demand runs
+- weekly `schedule` smoke test (`single`, Ubuntu AMD64)
+
+### Runtime matrix
+
+- Profiles:
+  - `single` (Ubuntu 26.04 on one architecture selected by inputs)
+  - `full` (Ubuntu 26.04 on AMD64 and ARM64)
+- Scenarios:
+  - `single`
+  - `no-unbound`
+
+The scheduled run intentionally stays on a low-cost smoke profile. Expand only
+after repeated stable executions.
+
+### Required repository configuration
+
+Repository variables:
+
+- `AWS_TEST_ROLE_ARN`
+- `AWS_TEST_REGION`
+- `AWS_TEST_SUBNET_ID`
+- `AWS_TEST_KEY_NAME`
+- `AWS_TEST_INSTANCE_TYPE_AMD64`
+- `AWS_TEST_INSTANCE_TYPE_ARM64`
+- optional `AWS_TEST_SSH_CIDR` (defaults to `0.0.0.0/0` if unset)
+
+Repository secrets:
+
+- `AWS_TEST_SSH_PRIVATE_KEY`
+- `AWS_TEST_PIHOLE_API_PASSWORD`
+- optional `AWS_TEST_ANSIBLE_VAULT_PASSWORD`
+
+The workflow uses OIDC role assumption (`id-token: write`) and does not require
+static AWS API keys.
+
+### Build-ci infrastructure (Terraform)
+
+Remote test networking and GitHub OIDC access live in the **`AWS-Cloud`**
+repository under `build-account-isolation/build/`. After `terraform apply`,
+map `terraform output -json ansible_remote_test_configuration` to repository
+variables:
+
+- `AWS_TEST_ROLE_ARN`
+- `AWS_TEST_REGION`
+- `AWS_TEST_SUBNET_ID`
+- `AWS_TEST_KEY_NAME`
+- `AWS_TEST_INSTANCE_TYPE_AMD64`
+
+RC tag runs (`.github/workflows/rc-aws-remote-tests.yml`) use Ubuntu 26.04 only.
+The manual workflow (`.github/workflows/aws-remote-tests.yml`) supports broader
+matrix profiles when needed.

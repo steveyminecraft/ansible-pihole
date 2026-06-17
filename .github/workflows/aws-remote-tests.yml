@@ -1,0 +1,248 @@
+---
+name: AWS remote functional tests
+
+"on":
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Remote scenario to run"
+        type: choice
+        required: true
+        default: single
+        options:
+          - single
+          - no-unbound
+      test_matrix:
+        description: "Matrix profile"
+        type: choice
+        required: true
+        default: single
+        options:
+          - single
+          - full
+      arch:
+        description: "CPU architecture for single profile"
+        type: choice
+        required: true
+        default: amd64
+        options:
+          - amd64
+          - arm64
+      skip_update:
+        description: "Skip update-pihole playbook"
+        type: boolean
+        required: true
+        default: false
+      aws_region:
+        description: "AWS region override (optional)"
+        required: false
+        default: ""
+  schedule:
+    - cron: "35 2 * * 0"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: aws-remote-tests-${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-matrix:
+    name: Prepare AWS test matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      scenario: ${{ steps.matrix.outputs.scenario }}
+      skip_update: ${{ steps.matrix.outputs.skip_update }}
+      aws_region: ${{ steps.matrix.outputs.aws_region }}
+    steps:
+      - name: Resolve matrix
+        id: matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TEST_MATRIX: ${{ github.event.inputs.test_matrix }}
+          INPUT_ARCH: ${{ github.event.inputs.arch }}
+          INPUT_SCENARIO: ${{ github.event.inputs.scenario }}
+          INPUT_SKIP_UPDATE: ${{ github.event.inputs.skip_update }}
+          INPUT_AWS_REGION: ${{ github.event.inputs.aws_region }}
+          DEFAULT_AWS_REGION: ${{ vars.AWS_TEST_REGION }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+
+          event = os.environ.get("EVENT_NAME", "")
+          if event == "schedule":
+              matrix = [{"os_family": "ubuntu", "os_version": "26.04", "arch": "amd64"}]
+              scenario = "single"
+              skip_update = "false"
+          else:
+              profile = (os.environ.get("INPUT_TEST_MATRIX") or "single").strip()
+              scenario = (os.environ.get("INPUT_SCENARIO") or "single").strip()
+              skip_update = (os.environ.get("INPUT_SKIP_UPDATE") or "false").strip().lower()
+              if profile == "full":
+                  matrix = [
+                      {"os_family": "ubuntu", "os_version": "26.04", "arch": "amd64"},
+                      {"os_family": "ubuntu", "os_version": "26.04", "arch": "arm64"},
+                  ]
+              else:
+                  matrix = [{
+                      "os_family": "ubuntu",
+                      "os_version": "26.04",
+                      "arch": (os.environ.get("INPUT_ARCH") or "amd64").strip(),
+                  }]
+
+          region = (
+              (os.environ.get("INPUT_AWS_REGION") or "").strip()
+              or (os.environ.get("DEFAULT_AWS_REGION") or "").strip()
+          )
+
+          print(f"matrix={json.dumps({'include': matrix})}")
+          print(f"scenario={scenario}")
+          print(f"skip_update={skip_update}")
+          print(f"aws_region={region}")
+          PY
+
+  aws-remote-tests:
+    name: AWS remote tests (Ubuntu ${{ matrix.os_version }} / ${{ matrix.arch }})
+    needs: prepare-matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
+    env:
+      AWS_REGION: ${{ needs.prepare-matrix.outputs.aws_region }}
+      AWS_TEST_SCENARIO: ${{ needs.prepare-matrix.outputs.scenario }}
+      AWS_SKIP_UPDATE: ${{ needs.prepare-matrix.outputs.skip_update }}
+      AWS_OS_FAMILY: ${{ matrix.os_family }}
+      AWS_OS_VERSION: ${{ matrix.os_version }}
+      AWS_ARCH: ${{ matrix.arch }}
+      AWS_SUBNET_ID: ${{ vars.AWS_TEST_SUBNET_ID }}
+      AWS_KEY_NAME: ${{ vars.AWS_TEST_KEY_NAME }}
+      AWS_SSH_CIDR: ${{ vars.AWS_TEST_SSH_CIDR }}
+      AWS_INSTANCE_TYPE: ${{ matrix.arch == 'arm64' && vars.AWS_TEST_INSTANCE_TYPE_ARM64 || vars.AWS_TEST_INSTANCE_TYPE_AMD64 }}
+      AWS_TEST_PREFIX: ansible-pihole-remote
+      AWS_SSH_PRIVATE_KEY_PATH: ${{ runner.temp }}/aws-test.key
+      AWS_STATE_FILE: ${{ runner.temp }}/aws-remote-state-${{ matrix.os_family }}-${{ matrix.arch }}.json
+      AWS_INVENTORY_FILE: ${{ runner.temp }}/aws-remote-inventory-${{ matrix.os_family }}-${{ matrix.arch }}.yml
+      AWS_METADATA_FILE: ${{ runner.temp }}/aws-remote-metadata-${{ matrix.os_family }}-${{ matrix.arch }}.json
+      AWS_CLEANUP_STATUS_FILE: ${{ runner.temp }}/aws-remote-cleanup-${{ matrix.os_family }}-${{ matrix.arch }}.json
+      AWS_INVENTORY_TEMPLATE: tests/remote/inventories/aws-ephemeral-template.yml
+      GITHUB_USER_FOR_SSH_KEY: ubuntu
+      PIHOLE_API_PASSWORD: ${{ secrets.AWS_TEST_PIHOLE_API_PASSWORD }}
+      ANSIBLE_VAULT_PASSWORD_FILE: ${{ runner.temp }}/.aws-test-vault-pass
+    steps:
+      - name: Validate required repository configuration
+        run: |
+          missing=0
+          for var_name in AWS_REGION AWS_SUBNET_ID AWS_KEY_NAME; do
+            value="${!var_name:-}"
+            if [ -z "$value" ]; then
+              echo "Missing required variable: $var_name"
+              missing=1
+            fi
+          done
+          if [ -z "${{ vars.AWS_TEST_ROLE_ARN }}" ]; then
+            echo "Missing required variable: AWS_TEST_ROLE_ARN"
+            missing=1
+          fi
+          if [ -z "${PIHOLE_API_PASSWORD:-}" ]; then
+            echo "Missing required secret: AWS_TEST_PIHOLE_API_PASSWORD"
+            missing=1
+          fi
+          if [ -z "${{ secrets.AWS_TEST_SSH_PRIVATE_KEY }}" ]; then
+            echo "Missing required secret: AWS_TEST_SSH_PRIVATE_KEY"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 # v4
+        with:
+          role-to-assume: ${{ vars.AWS_TEST_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: ansible-pihole-aws-tests
+
+      - name: Set up Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade 'ansible-core>=2.21.0,<2.22'
+
+      - name: Install collections
+        run: ./scripts/install-ansible-collections.sh
+
+      - name: Prepare SSH and optional vault credentials
+        run: |
+          umask 077
+          printf '%s\n' "${{ secrets.AWS_TEST_SSH_PRIVATE_KEY }}" > "${AWS_SSH_PRIVATE_KEY_PATH}"
+          chmod 600 "${AWS_SSH_PRIVATE_KEY_PATH}"
+          if [ -n "${{ secrets.AWS_TEST_ANSIBLE_VAULT_PASSWORD }}" ]; then
+            printf '%s\n' "${{ secrets.AWS_TEST_ANSIBLE_VAULT_PASSWORD }}" > "${ANSIBLE_VAULT_PASSWORD_FILE}"
+            chmod 600 "${ANSIBLE_VAULT_PASSWORD_FILE}"
+          else
+            rm -f "${ANSIBLE_VAULT_PASSWORD_FILE}"
+            unset ANSIBLE_VAULT_PASSWORD_FILE
+          fi
+
+      - name: Run remote test harness
+        env:
+          REMOTE_CREATE_COMMAND: tests/remote/aws/create-ephemeral-env.sh
+          REMOTE_RESET_COMMAND: tests/remote/aws/destroy-ephemeral-env.sh
+        run: |
+          args=(--inventory "${AWS_INVENTORY_FILE}" --scenario "${AWS_TEST_SCENARIO}")
+          if [ "${AWS_SKIP_UPDATE}" = "true" ]; then
+            args+=(--skip-update)
+          fi
+          tests/remote/run.sh "${args[@]}"
+
+      - name: Ensure cleanup executes on failures
+        if: always()
+        run: tests/remote/aws/destroy-ephemeral-env.sh
+
+      - name: Verify AWS cleanup status
+        if: always()
+        run: tests/remote/aws/verify-cleanup.sh
+
+      - name: Publish AWS test summary
+        if: always()
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          metadata_path = Path(os.environ["AWS_METADATA_FILE"])
+          cleanup_path = Path(os.environ["AWS_CLEANUP_STATUS_FILE"])
+
+          def load_json(path):
+              if not path.exists():
+                  return {}
+              return json.loads(path.read_text(encoding="utf-8"))
+
+          metadata = load_json(metadata_path)
+          cleanup = load_json(cleanup_path)
+
+          print("## AWS remote test result")
+          print("")
+          print("| Field | Value |")
+          print("|---|---|")
+          print(f"| Scenario | `{os.environ.get('AWS_TEST_SCENARIO', '')}` |")
+          print(f"| OS / Arch | Ubuntu `{os.environ.get('AWS_OS_VERSION', '')}` / `{os.environ.get('AWS_ARCH', '')}` |")
+          print(f"| Region | `{os.environ.get('AWS_REGION', '')}` |")
+          print(f"| Instance IDs | `{', '.join(metadata.get('instance_ids', []))}` |")
+          print(f"| Cleanup verified | `{cleanup.get('cleanup_verified', False)}` |")
+          print(f"| Security group deleted | `{cleanup.get('security_group_deleted', 'n/a')}` |")
+          PY

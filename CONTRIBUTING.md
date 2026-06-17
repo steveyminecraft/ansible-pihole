@@ -43,6 +43,8 @@ Before opening or merging:
 - Keep formatting-only changes in their own PR where practical.
 - Update `README.md` when behavior, workflows, or setup guidance changes.
 - Confirm CI, linting, and (when relevant) Molecule checks pass.
+- For cloud-impacting role/playbook changes, run the AWS remote workflow
+  (`.github/workflows/aws-remote-tests.yml`) in `workflow_dispatch` mode.
 
 ## Templates and guardrails
 
