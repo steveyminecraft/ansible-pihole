@@ -37,44 +37,7 @@ jobs:
           PINNED_TAG: ${{ steps.check.outputs.pinned_tag }}
           LATEST_TAG: ${{ steps.check.outputs.latest_tag }}
           PINNED_IMAGE: ${{ steps.check.outputs.pinned_image }}
-        run: |
-          set -euo pipefail
-          title="Pi-hole Docker image update available: ${LATEST_TAG}"
-          if gh issue list --state open --search "in:title ${LATEST_TAG}" --json title --jq '.[].title' | grep -Fq "${title}"; then
-            echo "Open issue already exists for ${LATEST_TAG}."
-            exit 0
-          fi
-
-          gh label create "pihole-upstream-update" \
-            --color "d93f0b" \
-            --description "New pihole/pihole calendar tag published on Docker Hub" \
-            2>/dev/null || true
-
-          gh issue create \
-            --title "${title}" \
-            --label "pihole-upstream-update" \
-            --body "$(cat <<EOF
-## Summary
-
-A newer **pihole/pihole** calendar release tag is available on Docker Hub.
-
-| | Tag |
-|---|---|
-| Pinned in \`roles/pihole/defaults/main.yml\` | \`${PINNED_TAG}\` |
-| Latest on Docker Hub | \`${LATEST_TAG}\` |
-
-Full image reference today: \`${PINNED_IMAGE}\`
-
-## Suggested follow-up
-
-1. Review the [Pi-hole release notes](https://github.com/pi-hole/pi-hole/releases) and Docker Hub tag \`${LATEST_TAG}\`.
-2. Bump \`pihole_image\` in \`roles/pihole/defaults/main.yml\` and mirrored CI defaults if appropriate.
-3. Re-run Trivy/security scanning and Molecule or AWS RC tests before merging.
-4. Close this issue after the pin is updated or consciously deferred.
-
-This issue was opened automatically by [\`pihole-image-watch.yml\`](.github/workflows/pihole-image-watch.yml).
-EOF
-)"
+        run: python scripts/open_pihole_image_update_issue.py
 
       - name: Record up-to-date status
         if: steps.check.outputs.update_available != 'true'
