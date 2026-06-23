@@ -32,15 +32,45 @@ jobs:
       prs_created: ${{ steps.release.outputs.prs_created }}
 
     steps:
+      - name: Select GitHub token
+        id: release-token
+        env:
+          RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          GITHUB_TOKEN_FALLBACK: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          token="${RELEASE_PLEASE_TOKEN:-}"
+          status_code="000"
+          if [ -n "${token}" ]; then
+            status_code="$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H "Authorization: Bearer ${token}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${REPO}" || echo '000')"
+          fi
+
+          if [ -n "${token}" ] && [ "${status_code}" = "200" ]; then
+            echo "Using RELEASE_PLEASE_TOKEN."
+          elif [ -z "${token}" ] || [ "${status_code}" = "401" ] || [ "${status_code}" = "403" ]; then
+            if [ -n "${token}" ]; then
+              echo "::warning::RELEASE_PLEASE_TOKEN is invalid; using github.token fallback."
+            else
+              echo "::warning::RELEASE_PLEASE_TOKEN is not set; using github.token fallback."
+            fi
+            token="${GITHUB_TOKEN_FALLBACK}"
+          else
+            echo "::warning::Token validation inconclusive (HTTP ${status_code}); using RELEASE_PLEASE_TOKEN."
+          fi
+          echo "::add-mask::${token}"
+          echo "token=${token}" >> "${GITHUB_OUTPUT}"
+
       - name: Run release-please
         id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          # PAT avoids GITHUB_TOKEN limits: release PRs trigger CI without the
-          # "workflows awaiting approval" gate for github-actions[bot].
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          token: ${{ steps.release-token.outputs.token }}
 
   tag-release-candidate:
     name: Tag release candidate for AWS tests
