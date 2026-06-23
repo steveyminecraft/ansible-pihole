@@ -1,5 +1,5 @@
 ---
-name: AWS remote functional tests
+name: "CI — Pi-hole: AWS EC2 (manual)"
 
 on:
   workflow_dispatch:
@@ -48,7 +48,7 @@ concurrency:
 
 jobs:
   prepare-matrix:
-    name: Prepare AWS test matrix
+    name: Prepare manual EC2 matrix
     runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
@@ -97,7 +97,7 @@ jobs:
           PY
 
   aws-remote-tests:
-    name: AWS integration — Ubuntu ${{ matrix.os_version }} / ${{ matrix.arch }}
+    name: Ubuntu ${{ matrix.os_version }} / ${{ matrix.arch }}
     needs: prepare-matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 90

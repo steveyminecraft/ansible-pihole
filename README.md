@@ -410,11 +410,11 @@ network, or Unbound health check dependency. Hosted CI runs Python unit tests in
 `tests/unit/` so malformed, empty, incomplete, or floating `latest` scan
 targets fail before Trivy jobs are created.
 
-AWS remote functional tests use ephemeral EC2 hosts and lifecycle hooks wired
-into `tests/remote/run.sh`:
+AWS EC2 workflows use ephemeral hosts and lifecycle hooks wired into
+`tests/remote/run.sh`:
 
-- `.github/workflows/rc-aws-remote-tests.yml` — RC tags (`v*-rc*`), Ubuntu 26.04
-- `.github/workflows/aws-remote-tests.yml` — manual dispatch only
+- `.github/workflows/rc-aws-remote-tests.yml` — **CI — Pi-hole: AWS EC2 (RC)** (`v*-rc*`, Ubuntu 26.04)
+- `.github/workflows/aws-remote-tests.yml` — **CI — Pi-hole: AWS EC2 (manual)** (`workflow_dispatch`)
 - `.github/workflows/pihole-image-watch.yml` — daily check for new `pihole/pihole` Docker tags (GitHub issue alert)
 
 Infrastructure (VPC subnet, OIDC role, SSH key pair) is provisioned in the

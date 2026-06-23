@@ -92,7 +92,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${rc_tag}" -m "Release candidate for ${base_tag} (release PR ${head_sha::7})" "${head_sha}"
           git push origin "${rc_tag}"
-          echo "Pushed ${rc_tag}; AWS RC remote tests will start automatically."
+          echo "Pushed ${rc_tag}; CI — Pi-hole: AWS EC2 (RC) will start automatically."
 
   publish-galaxy:
     name: Publish collection to Ansible Galaxy
