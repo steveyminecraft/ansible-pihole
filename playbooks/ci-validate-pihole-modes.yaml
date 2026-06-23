@@ -5,7 +5,7 @@
   gather_facts: false
   vars:
     pihole_container_name: pihole
-    pihole_image: "pihole/pihole:2026.05.0"
+    pihole_image: "pihole/pihole:2026.06.0"
     pihole_dir_loc: /opt/pihole
     pihole_network_name: dns_net
     pihole_use_host_network: false

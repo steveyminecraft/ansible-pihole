@@ -19,7 +19,7 @@
 
     password_lock: false
     # Point Pi-hole image at something valid, but we're in --check anyway
-    pihole_image: "pihole/pihole:2026.05.0"
+    pihole_image: "pihole/pihole:2026.06.0"
     pihole_compose_dir: "/opt/pihole"
 
   roles:

@@ -8,7 +8,7 @@
 # tasks/main.yml aligns pihole_dir_loc so volume paths match the playbook.
 pihole_dir_loc: '/opt/pihole'
 pihole_compose_dir: "{{ pihole_dir_loc }}"
-pihole_image: "pihole/pihole:2026.05.0"
+pihole_image: "pihole/pihole:2026.06.0"
 pihole_firewall_deploy: "{{ lookup('ansible.builtin.vars', 'firewall_deploy', default=false) | bool }}"
 
 # Deploy and integrate Unbound by default for backwards compatibility. When
