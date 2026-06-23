@@ -25,6 +25,42 @@ for var_name in "${required_vars[@]}"; do
   fi
 done
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+write_state_file() {
+  local instance_ids_json="[]"
+  local state_dir state_tmp
+  if [[ -n "${instance_id:-}" ]]; then
+    instance_ids_json="[\"${instance_id}\"]"
+  fi
+
+  state_dir="$(dirname "${AWS_STATE_FILE}")"
+  state_tmp="$(mktemp "${state_dir}/aws-state.XXXXXX")"
+  cat > "${state_tmp}" <<EOF
+{
+  "region": "${AWS_REGION}",
+  "instance_ids": ${instance_ids_json},
+  "security_group_id": "${security_group_id:-}"
+}
+EOF
+  mv "${state_tmp}" "${AWS_STATE_FILE}"
+}
+
+cleanup_on_failure() {
+  local exit_code="$?"
+  if [[ "${exit_code}" -eq 0 ]]; then
+    return
+  fi
+
+  if [[ -f "${AWS_STATE_FILE}" ]]; then
+    echo "Provisioning failed; attempting best-effort AWS cleanup." >&2
+    if ! "${script_dir}/destroy-ephemeral-env.sh"; then
+      echo "WARNING: best-effort cleanup failed; manual AWS cleanup may be required." >&2
+    fi
+  fi
+}
+trap cleanup_on_failure EXIT
+
 if [[ ! -f "${AWS_INVENTORY_TEMPLATE}" ]]; then
   echo "Inventory template not found: ${AWS_INVENTORY_TEMPLATE}" >&2
   exit 2
@@ -65,6 +101,8 @@ name_suffix="$(date +%s)-${RANDOM}"
 name_prefix="${AWS_TEST_PREFIX:-ansible-pihole-remote}"
 security_group_name="${name_prefix}-sg-${name_suffix}"
 resource_name="${name_prefix}-${AWS_OS_FAMILY}-${AWS_ARCH}-${name_suffix}"
+instance_id=""
+security_group_id=""
 
 if [[ -s "${AWS_STATE_FILE}" ]]; then
   echo "State file already exists (${AWS_STATE_FILE}); refusing to overwrite." >&2
@@ -95,6 +133,9 @@ security_group_id="$(aws ec2 create-security-group \
   --query 'GroupId' \
   --output text)"
 
+mkdir -p "$(dirname "${AWS_STATE_FILE}")" "$(dirname "${AWS_INVENTORY_FILE}")" "$(dirname "${AWS_METADATA_FILE}")"
+write_state_file
+
 aws ec2 authorize-security-group-ingress \
   --region "${AWS_REGION}" \
   --group-id "${security_group_id}" \
@@ -116,6 +157,7 @@ instance_id="$(aws ec2 run-instances \
   --count 1 \
   --query 'Instances[0].InstanceId' \
   --output text)"
+write_state_file
 
 aws ec2 wait instance-running --region "${AWS_REGION}" --instance-ids "${instance_id}"
 aws ec2 wait instance-status-ok --region "${AWS_REGION}" --instance-ids "${instance_id}"
@@ -142,15 +184,7 @@ if [[ -z "${private_ip}" || "${private_ip}" == "None" ]]; then
   exit 2
 fi
 
-mkdir -p "$(dirname "${AWS_STATE_FILE}")" "$(dirname "${AWS_INVENTORY_FILE}")" "$(dirname "${AWS_METADATA_FILE}")"
-
-cat > "${AWS_STATE_FILE}" <<EOF
-{
-  "region": "${AWS_REGION}",
-  "instance_ids": ["${instance_id}"],
-  "security_group_id": "${security_group_id}"
-}
-EOF
+write_state_file
 
 cat > "${AWS_METADATA_FILE}" <<EOF
 {
