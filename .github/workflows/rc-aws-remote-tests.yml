@@ -1,5 +1,5 @@
 ---
-name: AWS RC remote tests
+name: "CI — Pi-hole: AWS EC2 (RC)"
 
 on:
   push:
@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   aws-rc-remote-tests:
-    name: AWS integration — Pi-hole on Ubuntu 26.04 (RC)
+    name: Ubuntu 26.04 / amd64 (RC)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:

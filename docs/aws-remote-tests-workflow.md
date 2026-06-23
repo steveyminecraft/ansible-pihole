@@ -4,7 +4,7 @@ This document explains how the GitHub Actions AWS remote test workflows operate,
 
 There are **two related workflows**. They share the same scripts and AWS setup; they differ mainly in **when they run** and **how much they test**.
 
-| | **AWS RC remote tests** | **AWS remote functional tests** |
+| | **CI — Pi-hole: AWS EC2 (RC)** | **CI — Pi-hole: AWS EC2 (manual)** |
 |---|---|---|
 | File | `.github/workflows/rc-aws-remote-tests.yml` | `.github/workflows/aws-remote-tests.yml` |
 | Triggers | RC tags (`v1.0.0-rc.1`) or manual | Manual `workflow_dispatch` only |
