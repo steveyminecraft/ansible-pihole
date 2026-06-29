@@ -21,6 +21,6 @@ repos:
         always_run: true
         pass_filenames: false
         additional_dependencies:
-          - ansible-core==2.20.5
+          - ansible-core==2.21.1
         env:
           ANSIBLE_CONFIG: ansible.cfg
