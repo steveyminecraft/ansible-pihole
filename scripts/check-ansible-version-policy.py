@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MINIMUM = ">=2.20.5,<2.21"
-LATEST = ">=2.21.0,<2.22"
+LATEST = ">=2.21.1,<2.22"
 
 
 def require(path: str, text: str) -> None:
