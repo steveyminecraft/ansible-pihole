@@ -18,8 +18,10 @@ if [[ ! -f "$artifact" ]]; then
   exit 1
 fi
 rm -rf "$COL/ansible_collections/steveyminecraft/pihole"
-ansible-galaxy collection install "${artifact}" -p "$COL" --force
+# --no-cache avoids the ansible-galaxy response-cache corruption bug
+# (KeyError: 'results') that surfaces under concurrent CI runs.
+ansible-galaxy collection install "${artifact}" -p "$COL" --force --no-cache
 
 if [[ -f "$ROOT/collections/requirements.yml" ]]; then
-  ansible-galaxy collection install -r "$ROOT/collections/requirements.yml" -p "$COL"
+  ansible-galaxy collection install -r "$ROOT/collections/requirements.yml" -p "$COL" --no-cache
 fi

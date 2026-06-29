@@ -57,7 +57,9 @@ jobs:
           trap 'rm -rf "${consumer_root}"' EXIT
           cd "${consumer_root}"
 
-          ansible-galaxy collection install "${artifact}" -p collections --force
+          # --no-cache avoids the ansible-galaxy response-cache corruption
+          # bug (KeyError: 'results') seen under concurrent CI runs.
+          ansible-galaxy collection install "${artifact}" -p collections --force --no-cache
           test -d collections/ansible_collections/ansible/posix
 
           installed="${consumer_root}/collections/ansible_collections/steveyminecraft/pihole"
