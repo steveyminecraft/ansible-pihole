@@ -13,6 +13,14 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# GitHub code scanning keeps historical default-branch Trivy configurations in
+# PR comparisons even after the deployed default image is bumped. Keep retired
+# categories here until the repository security state no longer reports them as
+# required for PR alert comparison.
+LEGACY_CODE_SCANNING_IMAGES = (
+    "pihole/pihole:2026.05.0",
+)
+
 
 def load_defaults(role: str) -> dict:
     path = ROOT / "roles" / role / "defaults" / "main.yml"
@@ -37,6 +45,10 @@ def default_images() -> list[str]:
     return sorted(images)
 
 
+def code_scanning_images() -> list[str]:
+    return sorted({*default_images(), *LEGACY_CODE_SCANNING_IMAGES})
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -46,8 +58,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    images = default_images()
     if args.github_matrix:
+        images = code_scanning_images()
         print(
             json.dumps(
                 {
@@ -61,7 +73,7 @@ def main() -> None:
         )
         return
 
-    print("\n".join(images))
+    print("\n".join(default_images()))
 
 
 if __name__ == "__main__":

@@ -414,7 +414,9 @@ content. It also uploads code-scanning SARIF for every default deployed
 container image; image scans are report-only because those findings belong to
 upstream images we do not build in this repository. Image targets are derived
 from role defaults by `scripts/default-container-images.py`, so changing a
-default pin updates the scan matrix without duplicating image names.
+default pin updates the scan matrix without duplicating image names. The
+GitHub matrix may also include retired image pins when GitHub code scanning
+still expects those historical Trivy categories during PR alert comparison.
 The scheduled weekly scan keeps upstream findings visible for periodic triage;
 persistent Critical findings should trigger a pinned-image upgrade review.
 

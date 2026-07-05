@@ -49,6 +49,25 @@ class DefaultContainerImagesTests(unittest.TestCase):
 
         self.assertEqual([], latest_images)
 
+    def test_code_scanning_images_include_legacy_categories(self) -> None:
+        images = set(self.helper.code_scanning_images())
+
+        self.assertTrue(set(self.helper.default_images()) <= images)
+        self.assertIn("pihole/pihole:2026.05.0", images)
+
+    def test_image_key_preserves_image_tag_for_code_scanning_category(self) -> None:
+        self.assertEqual(
+            "registry.example.com-5000-team-image-v1.2.3",
+            self.helper.image_key("registry.example.com:5000/team/image:v1.2.3"),
+        )
+        self.assertEqual(
+            "ghcr.io-lovelaze-nebula-sync-sha256-0123456789abcdef",
+            self.helper.image_key(
+                "ghcr.io/lovelaze/nebula-sync"
+                "@sha256:0123456789abcdef"
+            ),
+        )
+
     def test_github_matrix_is_valid_and_has_unique_keys(self) -> None:
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--github-matrix"],
@@ -58,13 +77,14 @@ class DefaultContainerImagesTests(unittest.TestCase):
         )
         matrix = json.loads(result.stdout)
         entries = matrix["include"]
+        code_scanning_images = self.helper.code_scanning_images()
 
         self.assertGreaterEqual(len(entries), 3)
-        self.assertEqual(len(entries), len(self.helper.default_images()))
+        self.assertEqual(len(entries), len(code_scanning_images))
         self.assertEqual(len({entry["key"] for entry in entries}), len(entries))
         self.assertEqual(
             {entry["image"] for entry in entries},
-            set(self.helper.default_images()),
+            set(code_scanning_images),
         )
 
 
