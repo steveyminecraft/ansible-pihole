@@ -145,6 +145,15 @@ Pi-hole image pulls map common host architectures to Docker platform strings via
 `armv6l` -> `linux/arm/v6`). Unknown architectures omit the platform argument
 and let Docker choose the best matching image.
 
+DNS health checks use `pihole_verify_qname` (default `cloudflare.com`) in
+Pi-hole, Unbound, Molecule, and HA verification paths. The older
+`pihole_unbound_verify_qname` remains as a compatibility alias.
+
+Pi-hole container Linux capabilities are controlled by `pihole_container_cap_add`.
+The defaults preserve existing behavior (`NET_ADMIN`, `SYS_TIME`, `SYS_NICE`,
+`CAP_NET_BIND_SERVICE`, `CAP_NET_RAW`, `CAP_CHOWN`). Override with a smaller list
+only after validating the required Pi-hole features in your deployment mode.
+
 Security defaults:
 
 - `FTLCONF_webserver_api_password` must be provided from inventory/vault and should be at least 16 characters.
@@ -253,7 +262,7 @@ Deploy or adjust keepalived HA between Pi-hole instances. Priorities and VIPs ar
 
 Deploy [Nebula Sync](https://github.com/lovelaze/nebula-sync) on the **`nebula_sync_controller`** inventory group only (one orchestrator per primary→replica topology). Lab inventories define that group in [`inventory/vagrant.yml`](inventory/vagrant.yml) with `vagrant-pihole-01` as controller. The role defaults to pinned tag `v0.11.1`; override `nebula_sync_image_tag` to test a different version.
 
-Nebula Sync defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPLICAS` credentials are written to mounted secret files (`PRIMARY_FILE` / `REPLICAS_FILE`) instead of plain env values where possible. The role defaults ownership to UID/GID `1001`, matching the upstream container user, and rejects placeholder credentials by default.
+Nebula Sync defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPLICAS` credentials are written to mounted secret files (`PRIMARY_FILE` / `REPLICAS_FILE`) instead of plain env values where possible. The service directory, compose file, and optional `.env` file default to `root:root` ownership with non-world-readable modes. Secret files remain owned by UID/GID `1001` with mode `0400`, matching the upstream container user, and placeholder credentials are rejected by default.
 
 ### Playbook tags
 
@@ -405,7 +414,9 @@ content. It also uploads code-scanning SARIF for every default deployed
 container image; image scans are report-only because those findings belong to
 upstream images we do not build in this repository. Image targets are derived
 from role defaults by `scripts/default-container-images.py`, so changing a
-default pin updates the scan matrix without duplicating image names.
+default pin updates the scan matrix without duplicating image names. The
+GitHub matrix may also include retired image pins when GitHub code scanning
+still expects those historical Trivy categories during PR alert comparison.
 The scheduled weekly scan keeps upstream findings visible for periodic triage;
 persistent Critical findings should trigger a pinned-image upgrade review.
 

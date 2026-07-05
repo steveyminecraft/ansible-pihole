@@ -53,6 +53,17 @@ pihole_use_host_network: false
 # a Pi-hole app-container recreation on otherwise unchanged runs.
 pihole_force_recreate: false
 
+# Linux capabilities granted to the Pi-hole container. Defaults preserve the
+# existing role behavior; reduce this list only after validating your Pi-hole
+# mode does not need DHCP, low-port binding, or runtime tuning capabilities.
+pihole_container_cap_add:
+  - NET_ADMIN
+  - SYS_TIME
+  - SYS_NICE
+  - CAP_NET_BIND_SERVICE
+  - CAP_NET_RAW
+  - CAP_CHOWN
+
 # When true on Debian/Ubuntu, disable systemd-resolved stub DNS so host port 53 can be used
 # by Docker (Pi-hole publish). Independent of firewalld — do not tie this to pihole_firewall_deploy.
 pihole_configure_systemd_resolved: true
@@ -86,5 +97,7 @@ pihole_docker_dns: []
 pihole_override_container_resolver: false
 pihole_startup_dns: []
 
-# QNAME used in Unbound integration checks (from host / from Pi-hole container)
+# Backwards-compatible older name for inventories that already override it.
 pihole_unbound_verify_qname: "cloudflare.com"
+# QNAME used in Pi-hole, Unbound, and HA DNS verification checks.
+pihole_verify_qname: "{{ pihole_unbound_verify_qname }}"

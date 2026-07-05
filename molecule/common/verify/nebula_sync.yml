@@ -62,6 +62,49 @@
     - inventory_hostname == nebula_sync_controller_host
     - nebula_sync_use_env_file | default(true) | bool
 
+- name: Stat Nebula Sync service directory
+  ansible.builtin.stat:
+    path: "{{ nebula_sync_host_dir }}"
+  register: nebula_sync_dir_stat
+  when:
+    - nebula_sync_primary_url is defined
+    - inventory_hostname == nebula_sync_controller_host
+
+- name: Stat Nebula Sync compose file
+  ansible.builtin.stat:
+    path: "{{ nebula_sync_compose_host_path }}"
+  register: nebula_sync_compose_file_stat
+  when:
+    - nebula_sync_primary_url is defined
+    - inventory_hostname == nebula_sync_controller_host
+
+- name: Assert Nebula Sync service files are not world-readable
+  ansible.builtin.assert:
+    that:
+      - nebula_sync_dir_stat.stat.exists | default(false)
+      - nebula_sync_dir_stat.stat.pw_name == (nebula_sync_config_owner | default('root'))
+      - nebula_sync_dir_stat.stat.gr_name == (nebula_sync_config_group | default('root'))
+      - nebula_sync_dir_stat.stat.mode == (nebula_sync_config_dir_mode | default('0750'))
+      - nebula_sync_compose_file_stat.stat.exists | default(false)
+      - nebula_sync_compose_file_stat.stat.pw_name == (nebula_sync_config_owner | default('root'))
+      - nebula_sync_compose_file_stat.stat.gr_name == (nebula_sync_config_group | default('root'))
+      - nebula_sync_compose_file_stat.stat.mode == (nebula_sync_compose_file_mode | default('0600'))
+      - >-
+        (not (nebula_sync_use_env_file | default(true) | bool))
+        or
+        (
+          (nebula_sync_env_file_stat.stat.exists | default(false))
+          and nebula_sync_env_file_stat.stat.pw_name == (nebula_sync_config_owner | default('root'))
+          and nebula_sync_env_file_stat.stat.gr_name == (nebula_sync_config_group | default('root'))
+          and nebula_sync_env_file_stat.stat.mode == (nebula_sync_env_file_mode | default('0600'))
+        )
+    fail_msg: >-
+      Nebula Sync service directory, compose file, or env file has unexpected
+      ownership or permissions.
+  when:
+    - nebula_sync_primary_url is defined
+    - inventory_hostname == nebula_sync_controller_host
+
 - name: Read Nebula Sync env file
   no_log: true
   ansible.builtin.slurp:

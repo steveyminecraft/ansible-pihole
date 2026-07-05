@@ -2,6 +2,11 @@
 # Where to deploy the compose project
 nebula_sync_dir: /opt/nebula-sync
 nebula_sync_compose_name: nebula-sync
+nebula_sync_config_owner: root
+nebula_sync_config_group: root
+nebula_sync_config_dir_mode: "0750"
+nebula_sync_compose_file_mode: "0600"
+nebula_sync_env_file_mode: "0600"
 
 # Image (GHCR)
 nebula_sync_image: "ghcr.io/lovelaze/nebula-sync"

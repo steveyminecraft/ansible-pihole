@@ -5,7 +5,8 @@
   serial: 1
   any_errors_fatal: true
   vars:
-    pihole_update_health_qname: "{{ pihole_unbound_verify_qname | default('google.com') }}"
+    pihole_update_health_qname: >-
+      {{ pihole_verify_qname | default(pihole_unbound_verify_qname | default('cloudflare.com')) }}
   roles:
     - role: steveyminecraft.pihole.stop_keepalived
       tags: [stopkeepalived, drain, ha]
@@ -80,7 +81,11 @@
           - dig
           - +short
           - "@{{ (pihole_vip_ipv4 | split('/'))[0] }}"
-          - "{{ pihole_update_health_qname | default(pihole_unbound_verify_qname | default('google.com')) }}"
+          - >-
+            {{
+              pihole_update_health_qname
+              | default(pihole_verify_qname | default(pihole_unbound_verify_qname | default('cloudflare.com')))
+            }}
       register: pihole_update_vip_dns
       changed_when: false
       retries: 30

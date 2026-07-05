@@ -28,7 +28,7 @@
 
 ## Post-restore checks
 
-- `dig +short @<node-ip> google.com`
-- `dig +short @<vip-ip> google.com`
+- `dig +short @<node-ip> <pihole_verify_qname>`
+- `dig +short @<vip-ip> <pihole_verify_qname>`
 - Keepalived service running on both nodes.
 - Nebula Sync containers running and pointed at expected endpoints.
