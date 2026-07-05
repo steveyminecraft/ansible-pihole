@@ -10,6 +10,13 @@ pihole_dir_loc: '/opt/pihole'
 pihole_compose_dir: "{{ pihole_dir_loc }}"
 pihole_image: "pihole/pihole:2026.06.0"
 pihole_firewall_deploy: "{{ lookup('ansible.builtin.vars', 'firewall_deploy', default=false) | bool }}"
+pihole_docker_platform_arch_map:
+  x86_64: linux/amd64
+  amd64: linux/amd64
+  aarch64: linux/arm64
+  arm64: linux/arm64
+  armv7l: linux/arm/v7
+  armv6l: linux/arm/v6
 
 # Deploy and integrate Unbound by default for backwards compatibility. When
 # disabled, configure at least one explicit upstream resolver below or through

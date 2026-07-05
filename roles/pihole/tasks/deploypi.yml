@@ -20,7 +20,11 @@
 - name: Pull docker image
   community.docker.docker_image_pull:
     name: "{{ pihole_image }}"
-    platform: "{{ ansible_facts['architecture'] }}"
+    platform: >-
+      {{
+        pihole_docker_platform_arch_map[ansible_facts['architecture'] | default('')]
+        | default(omit)
+      }}
 
 # Free 127.0.0.1:53 / avoid stub on 127.0.0.53 fighting Docker-published Pi-hole DNS.
 # Not gated on pihole_firewall_deploy — firewalld and resolved are separate concerns.
