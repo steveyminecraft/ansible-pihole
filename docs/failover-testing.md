@@ -23,14 +23,14 @@ molecule test -s ubuntu
 1. Query each node directly:
 
    ```bash
-   dig +short @<node1-ip> google.com
-   dig +short @<node2-ip> google.com
+   dig +short @<node1-ip> <pihole_verify_qname>
+   dig +short @<node2-ip> <pihole_verify_qname>
    ```
 
 2. Query VIP:
 
    ```bash
-   dig +short @<vip-ip> google.com
+   dig +short @<vip-ip> <pihole_verify_qname>
    ```
 
 3. Simulate primary outage (maintenance window) and confirm VIP moves to backup.

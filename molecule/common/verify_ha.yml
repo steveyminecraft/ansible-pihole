@@ -14,9 +14,13 @@
     nebula_sync_test_list_url: "https://example.invalid/nebula-sync-test.txt"
     nebula_sync_test_list_url_legacy: "https://example.invalid/nebula-sync-test.txt"
     nebula_sync_test_list_comment: molecule-nebula-sync-test
+    molecule_dns_verify_qname: >-
+      {{ pihole_verify_qname | default(pihole_unbound_verify_qname | default('cloudflare.com')) }}
     pihole_api_password: "{{ pihole_environment_variables.FTLCONF_webserver_api_password }}"
     nebula_sync_replica_api_url: "{{ nebula_sync_replicas[0].url }}"
     nebula_sync_secret_host_dir: "{{ nebula_sync_secret_dir | default((nebula_sync_dir | default('/opt/nebula-sync')) ~ '/secrets') }}"
+    nebula_sync_host_dir: "{{ nebula_sync_dir | default('/opt/nebula-sync') }}"
+    nebula_sync_compose_host_path: "{{ nebula_sync_host_dir }}/docker-compose.yml"
     nebula_sync_env_host_path: >-
       {{ (nebula_sync_dir | default('/opt/nebula-sync')) ~ '/' ~ (nebula_sync_env_filename | default('.env')) }}
     nebula_sync_primary_secret_container_path: >-

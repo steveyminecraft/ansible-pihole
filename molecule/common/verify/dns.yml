@@ -1,6 +1,11 @@
 ---
 - name: Resolve via local Pi-hole on each node
-  ansible.builtin.command: dig +short @127.0.0.1 google.com
+  ansible.builtin.command:
+    argv:
+      - dig
+      - +short
+      - "@127.0.0.1"
+      - "{{ molecule_dns_verify_qname }}"
   register: dns_local
   changed_when: false
   failed_when: dns_local.stdout == ""
@@ -15,7 +20,12 @@
     fail_msg: "Local DNS did not return an IPv4."
 
 - name: Resolve via VIP (run once on first host)
-  ansible.builtin.command: dig +short @{{ vip_address }} google.com
+  ansible.builtin.command:
+    argv:
+      - dig
+      - +short
+      - "@{{ vip_address }}"
+      - "{{ molecule_dns_verify_qname }}"
   register: dns_vip
   changed_when: false
   failed_when: dns_vip.stdout == ""

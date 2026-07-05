@@ -21,7 +21,7 @@ Upgrade packages and roles while keeping DNS service available through rolling u
 4. Verify VIP answers DNS after run:
 
    ```bash
-   dig +short @<vip-ip> google.com
+   dig +short @<vip-ip> <pihole_verify_qname>
    ```
 
 ## Rollback notes
