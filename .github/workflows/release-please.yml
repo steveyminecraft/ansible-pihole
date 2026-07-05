@@ -83,22 +83,27 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Validate release token for RC tagging
+        id: rc-token
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${GH_TOKEN:-}" ]; then
-            echo "::error::RELEASE_PLEASE_TOKEN is required to push RC tags."
-            exit 1
+            echo "::warning::RELEASE_PLEASE_TOKEN is not available; skipping RC tag and AWS RC tests."
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+            exit 0
           fi
+          echo "available=true" >> "${GITHUB_OUTPUT}"
 
       - name: Check out release PR branch
+        if: steps.rc-token.outputs.available == 'true'
         uses: actions/checkout@v7
         with:
           ref: release-please--branches--master
           fetch-depth: 0
 
       - name: Create and push RC tag
+        if: steps.rc-token.outputs.available == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
         run: |
