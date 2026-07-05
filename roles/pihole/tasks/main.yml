@@ -2,7 +2,11 @@
 # Main task file for Pi-hole setup using Ansible
 - name: Combine pihole_environment_variables with inventory values take precedence
   ansible.builtin.set_fact:
-    pihole_environment_variables: "{{ pihole_vars_environment_variables | default({}) | combine(pihole_environment_variables, recursive=True) }}"
+    pihole_environment_variables: >-
+      {{
+        pihole_vars_environment_variables | default({})
+        | combine(pihole_environment_variables | default({}), recursive=True)
+      }}
 
 # Inventory often sets pihole_compose_dir only; pre.yml and docker volumes use
 # pihole_dir_loc. Keep a single effective root so bind-mount paths match compose and

@@ -139,6 +139,12 @@ Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`
 
 Role-local variable naming now consistently uses the `pihole_` prefix to satisfy ansible-lint role scoping rules (for example `pihole_dir_loc`, `pihole_webport_http`, `pihole_docker_manage_iptables`). Existing inventories that still define legacy unprefixed names continue to work via compatibility lookups, but new configs should use the prefixed names.
 
+Pi-hole image pulls map common host architectures to Docker platform strings via
+`pihole_docker_platform_arch_map` (`x86_64`/`amd64` -> `linux/amd64`,
+`aarch64`/`arm64` -> `linux/arm64`, `armv7l` -> `linux/arm/v7`,
+`armv6l` -> `linux/arm/v6`). Unknown architectures omit the platform argument
+and let Docker choose the best matching image.
+
 Security defaults:
 
 - `FTLCONF_webserver_api_password` must be provided from inventory/vault and should be at least 16 characters.

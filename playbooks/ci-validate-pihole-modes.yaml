@@ -13,10 +13,42 @@
     pihole_docker_dns: []
     pihole_webport_http: "80"
     pihole_webport_https: "443"
+    pihole_docker_platform_arch_map:
+      x86_64: linux/amd64
+      amd64: linux/amd64
+      aarch64: linux/arm64
+      arm64: linux/arm64
+      armv7l: linux/arm/v7
+      armv6l: linux/arm/v6
+    pihole_vars_environment_variables:
+      TZ: UTC
+      FTLCONF_dns_listeningMode: ALL
     pihole_environment_variables:
+      TZ: Europe/London
       DHCP_ACTIVE: false
       FTLCONF_dns_upstreams: "1.1.1.1;1.0.0.1"
   tasks:
+    - name: Merge Pi-hole role and inventory environment variables
+      ansible.builtin.set_fact:
+        pihole_environment_variables: >-
+          {{
+            pihole_vars_environment_variables | default({})
+            | combine(pihole_environment_variables | default({}), recursive=True)
+          }}
+
+    - name: Assert Pi-hole environment variable merge precedence
+      ansible.builtin.assert:
+        that:
+          - pihole_environment_variables.TZ == 'Europe/London'
+          - pihole_environment_variables.FTLCONF_dns_listeningMode == 'ALL'
+
+    - name: Assert Pi-hole Docker platform architecture map
+      ansible.builtin.assert:
+        that:
+          - pihole_docker_platform_arch_map.x86_64 == 'linux/amd64'
+          - pihole_docker_platform_arch_map.aarch64 == 'linux/arm64'
+          - pihole_docker_platform_arch_map.armv7l == 'linux/arm/v7'
+
     - name: Render Pi-hole-only Compose configuration
       ansible.builtin.set_fact:
         pihole_only_compose: >-
@@ -34,6 +66,10 @@
         that:
           - pihole_only_compose.networks is not defined
           - pihole_only_compose.services.pihole.networks is not defined
+          - "'80:80/tcp' in pihole_only_compose.services.pihole.ports"
+          - "'443:443/tcp' in pihole_only_compose.services.pihole.ports"
+          - "'TZ=Europe/London' in pihole_only_compose.services.pihole.environment"
+          - "'FTLCONF_dns_listeningMode=ALL' in pihole_only_compose.services.pihole.environment"
           - "'FTLCONF_dns_upstreams=1.1.1.1;1.0.0.1' in pihole_only_compose.services.pihole.environment"
 
     - name: Render Pi-hole with Unbound Compose configuration
