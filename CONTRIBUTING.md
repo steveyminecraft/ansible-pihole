@@ -63,3 +63,14 @@ Before opening or merging:
   ```bash
   git config --global commit.template /absolute/path/to/.github/commit-message-template.txt
   ```
+
+## Local knowledge vault (graphify)
+
+Architecture maps and agent context live under `graphify-out/` on your machine only (gitignored).
+
+```bash
+./scripts/setup-knowledge-vault.sh          # fast code graph
+./scripts/setup-knowledge-vault.sh --full   # how to run full /graphify . build
+```
+
+See `docs/knowledge-vault.md`. Cursor agents bootstrap automatically when `graph.json` is missing.
