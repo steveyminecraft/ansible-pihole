@@ -1,0 +1,35 @@
+---
+description: Local graphify knowledge vault — query before explore, bootstrap when missing
+alwaysApply: true
+---
+
+# Knowledge vault (local graphify)
+
+`graphify-out/` is **gitignored** and generated per machine. Read `docs/knowledge-vault.md` for the full guide.
+
+## Bootstrap (graph missing)
+
+If `graphify-out/graph.json` does not exist:
+
+1. Run `./scripts/setup-knowledge-vault.sh` from the repo root (fast code graph, no API key).
+2. For **full** coverage (Ansible YAML, docs, Obsidian vault), run `/graphify .` in Cursor or `./scripts/setup-knowledge-vault.sh --full` and follow the agent-driven build.
+
+Do not grep the codebase for architecture questions until bootstrap completes or you have confirmed `graph.json` exists.
+
+## Query before explore
+
+For “how does X work?”, data flow, role/playbook relationships, or cross-file dependencies:
+
+1. `graphify query "<question>"`
+2. `graphify path "<A>" "<B>"` or `graphify explain "<concept>"` when tracing a specific link
+3. Open source files only after the graph orients you
+
+Prefer `graphify-out/KNOWLEDGE_VAULT.md` (local) and `graphify-out/GRAPH_REPORT.md` for hub navigation. Obsidian vault: `graphify-out/obsidian/` (human browsing; agents use `graphify query`).
+
+## Keep local graph fresh
+
+After changing **code** (`.py`, `.sh`): `graphify update .` (AST-only, no API cost).
+
+After changing **docs, roles, playbooks, or inventories**: re-run `/graphify .` or `graphify update .` plus a full rebuild when the graph feels stale.
+
+Optional: `graphify hook install` rebuilds the code graph automatically after each commit (local only).

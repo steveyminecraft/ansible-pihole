@@ -448,6 +448,7 @@ GitHub repository variables documented in `tests/remote/README.md`.
 - [Failover testing](docs/failover-testing.md)
 - [Backup and restore](docs/backup-and-restore.md)
 - [Secrets management](docs/secrets-management.md)
+- [Knowledge vault (local graphify)](docs/knowledge-vault.md) — optional agent architecture map; `graphify-out/` stays local
 
 ### Releases and Ansible Galaxy
 
