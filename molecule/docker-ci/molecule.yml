@@ -13,11 +13,11 @@ platforms:
     privileged: true
     cgroupns_mode: host
     volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
       - /var/run/docker.sock:/var/run/docker.sock
     command: /lib/systemd/systemd
     tmpfs:
       - /run
-      - /tmp
 provisioner:
   name: ansible
   env:
@@ -26,6 +26,7 @@ provisioner:
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
     ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
   playbooks:
+    prepare: prepare.yml
     converge: converge.yml
 verifier:
   name: ansible
@@ -35,5 +36,6 @@ scenario:
     - dependency
     - syntax
     - create
+    - prepare
     - converge
     - destroy
