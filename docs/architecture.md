@@ -1,5 +1,7 @@
 # Architecture
 
+Visual overview: [Project layers diagram](diagrams/ansible-pihole-layers.png) (source: `diagrams/ansible-pihole-layers.drawio`).
+
 `ansible-pihole` deploys a two-node DNS stack using collection roles:
 
 - `steveyminecraft.pihole.docker`
