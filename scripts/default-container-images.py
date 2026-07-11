@@ -18,7 +18,6 @@ ROOT = Path(__file__).resolve().parents[1]
 # categories here until the repository security state no longer reports them as
 # required for PR alert comparison.
 LEGACY_CODE_SCANNING_IMAGES = (
-    "pihole/pihole:2026.05.0",
     "pihole/pihole:2026.06.0",
 )
 
