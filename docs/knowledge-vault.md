@@ -16,7 +16,8 @@ Agents and contributors use the graph for architecture questions; humans can bro
 ```
 
 Open the interactive map: `graphify-out/graph.html`  
-Open Obsidian vault: `graphify-out/obsidian/`
+Open Obsidian vault: `graphify-out/obsidian/`  
+Browse full docs in vault: `00 - Documentation Index.md` → `Documentation/`
 
 ## What gets generated (all local)
 
@@ -26,7 +27,9 @@ Open Obsidian vault: `graphify-out/obsidian/`
 | `graphify-out/graph.html` | Browser visualization |
 | `graphify-out/GRAPH_REPORT.md` | God nodes, communities, surprising connections |
 | `graphify-out/KNOWLEDGE_VAULT.md` | Local entry point (copied from this doc + build stats) |
-| `graphify-out/obsidian/` | Wikilinked notes + `graph.canvas` |
+| `graphify-out/obsidian/` | Wikilinked graph notes + `graph.canvas` |
+| `graphify-out/obsidian/Documentation/` | Full-text copies of `docs/`, README, role READMEs (with graph links) |
+| `graphify-out/obsidian/00 - Documentation Index.md` | Index of all synced documentation |
 
 ## Bootstrap modes
 
@@ -68,7 +71,7 @@ graphify explain "molecule/default/molecule.yml"
 | Python/shell | `graphify update .` (automatic with post-commit hook) |
 | Roles, playbooks, docs | `/graphify .` or full rebuild |
 | After full rebuild | `python3 scripts/dedupe-graphify-graph.py --prune-isolated` |
-| Re-export Obsidian | `graphify export obsidian` |
+| Re-export Obsidian | `graphify export obsidian` then `python3 scripts/sync-obsidian-documentation.py` |
 | Re-export HTML | `graphify export html` |
 
 ### Post-commit hook

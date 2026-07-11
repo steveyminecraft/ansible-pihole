@@ -67,6 +67,7 @@ write_local_index() {
 
   if [[ -d graphify-out/obsidian ]]; then
     cp graphify-out/KNOWLEDGE_VAULT.md "graphify-out/obsidian/00 - Knowledge Vault Index.md"
+    python3 "$ROOT/scripts/sync-obsidian-documentation.py"
   fi
 }
 
@@ -108,6 +109,8 @@ graphify export html
 if [[ -f graphify-out/graph.json ]]; then
   echo "Exporting Obsidian vault..."
   graphify export obsidian
+  echo "Syncing full documentation into Obsidian..."
+  python3 "$ROOT/scripts/sync-obsidian-documentation.py"
   write_local_index
 fi
 
