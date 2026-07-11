@@ -91,14 +91,11 @@ Local graphify setup is valuable; graph quality can be improved.
 
 ## Priority 6 — Architecture hygiene (medium-term)
 
-- [ ] **Legacy unprefixed variable deprecation**
-  - README documents compatibility lookups; add deprecation timeline + lint
-    warning for unprefixed names (prefer `pihole_*`).
+- [x] **Legacy unprefixed variable deprecation**
+  - README deprecation table + `scripts/check-legacy-inventory-vars.py` (warn in CI).
 
-- [ ] **Unified testing index**
-  - New or expanded `docs/testing.md`: CI / Molecule / AWS / manual checks in
-    one page (graph suggested splits: Remote HA Inventories, Failover
-    Verification, Molecule scenarios).
+- [x] **Unified testing index**
+  - `docs/testing.md` — CI / Molecule / AWS / manual checks in one page.
 
 ## Priority 7 — CI polish (lower effort)
 

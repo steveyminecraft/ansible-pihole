@@ -137,7 +137,19 @@ environment subnet (documentation ranges such as `2001:db8::/32` are rejected).
 
 Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`, `pihole_vip_ipv4` / `pihole_vip_ipv6`) are typically set in inventory; see the [docker-pi-hole environment docs](https://github.com/pi-hole/docker-pi-hole#environment-variables) for image variables.
 
-Role-local variable naming now consistently uses the `pihole_` prefix to satisfy ansible-lint role scoping rules (for example `pihole_dir_loc`, `pihole_webport_http`, `pihole_docker_manage_iptables`). Existing inventories that still define legacy unprefixed names continue to work via compatibility lookups, but new configs should use the prefixed names.
+Role-local variable naming now consistently uses the `pihole_` prefix to satisfy ansible-lint role scoping rules (for example `pihole_dir_loc`, `pihole_webport_http`, `pihole_docker_manage_iptables`). Existing inventories that still define legacy unprefixed names continue to work via compatibility lookups in `roles/pihole/defaults/main.yml`, but new configs should use the prefixed names.
+
+| Legacy (deprecated) | Use instead | Removal target |
+|---------------------|-------------|----------------|
+| `dir_loc` | `pihole_dir_loc` | v2.0.0 |
+| `firewall_deploy` | `pihole_firewall_deploy` | v2.0.0 |
+| `webport_http` | `pihole_webport_http` | v2.0.0 |
+| `webport_https` | `pihole_webport_https` | v2.0.0 |
+| `docker_manage_iptables` | `pihole_docker_manage_iptables` | v2.0.0 |
+| `docker_el_nat_fallback` | `pihole_docker_el_nat_fallback` | v2.0.0 |
+| `pihole_unbound_verify_qname` | `pihole_verify_qname` | v2.0.0 |
+
+Lint inventories locally: `python scripts/check-legacy-inventory-vars.py` (warn-only; `--fail-on-find` after v2.0.0). See [Testing guide](docs/testing.md).
 
 Pi-hole image pulls map common host architectures to Docker platform strings via
 `pihole_docker_platform_arch_map` (`x86_64`/`amd64` -> `linux/amd64`,
@@ -450,6 +462,7 @@ GitHub repository variables documented in `tests/remote/README.md`.
 - [Git branch workflow](docs/git-branch-workflow.md)
 - [Upgrade runbook](docs/upgrade-runbook.md)
 - [Failover testing](docs/failover-testing.md)
+- [Testing guide](docs/testing.md) — CI, Molecule, AWS remote, manual checks
 - [Backup and restore](docs/backup-and-restore.md)
 - [Secrets management](docs/secrets-management.md)
 - [Knowledge vault (local graphify)](docs/knowledge-vault.md) — optional agent architecture map; `graphify-out/` stays local

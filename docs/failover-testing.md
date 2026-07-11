@@ -1,6 +1,7 @@
 # Failover Testing
 
 Use Molecule shared HA verification and manual checks to confirm failover behavior.
+See also the [Testing guide](testing.md) for the full CI / Molecule / AWS index.
 
 For planned production changes, reach this page after backup and update through
 the [production change checklist](upgrade-runbook.md#production-change-checklist).
