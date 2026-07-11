@@ -21,6 +21,7 @@ platforms:
 provisioner:
   name: ansible
   env:
+    ANSIBLE_CONFIG: ${MOLECULE_PROJECT_DIRECTORY}/molecule/docker-ci/ansible.cfg
     ANSIBLE_INJECT_FACTS_AS_VARS: "false"
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
     ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
