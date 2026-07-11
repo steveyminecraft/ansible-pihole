@@ -35,10 +35,12 @@ jobs:
           github.event_name != 'schedule'
         uses: dorny/paths-filter@v3
         with:
+          # "every" makes negation patterns act as exclusions; the default
+          # "some" quantifier lets the bare '**' match everything.
+          predicate-quantifier: every
           filters: |
             docs:
-              - 'docs/**'
-              - '**/*.md'
+              - '{docs/**,**/*.md}'
             code:
               - '**'
               - '!docs/**'
