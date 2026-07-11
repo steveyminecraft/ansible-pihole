@@ -93,6 +93,35 @@ See [README — Molecule integration tests](../README.md#molecule-integration-te
 
 ---
 
+## HA testing scope
+
+Full **failover and failback** (keepalived, VIP movement, per-node DNS after
+primary outage) is validated only in the **local Molecule HA lab** — same-subnet
+Vagrant boxes where two nodes can share a virtual IP:
+
+```bash
+molecule test -s ubuntu
+```
+
+Shared verify logic (`molecule/common/verify_ha.yml`) exercises VIP DNS, keepalived
+state, and post-update HA checks. The `ubuntu-26.04` scenario follows the same
+pattern on Ubuntu 26.04.
+
+| Layer | HA coverage | Why |
+|-------|-------------|-----|
+| **GitHub CI** | **No** — `molecule test -s docker-ci` smoke only | Hosted runners have no Vagrant; docker-ci exercises the docker role, not keepalived/VIP failover |
+| **AWS remote** | **No** — single-node bootstrap + verify + optional update today | Dual-node AWS HA is **explicitly out of scope**: ~2× EC2 cost per run, no scheduled/RC workflow wired for it, and remote verify playbooks are not ported for multi-node failover orchestration |
+| **Local Molecule** | **Yes** — full HA path | Only environment with same-subnet dual nodes and existing HA verify tasks |
+
+**Gate for HA-touching PRs:** the PR template checkbox ("Ran `molecule test -s ubuntu`
+locally") remains the required attestation when changes touch keepalived, VIP
+failover, rolling updates, or HA verification. CI and AWS remote tests do not
+substitute for that run.
+
+See also: [Failover testing](failover-testing.md) (manual production checks).
+
+---
+
 ## AWS remote tests
 
 Two workflows share scripts under `tests/remote/`:

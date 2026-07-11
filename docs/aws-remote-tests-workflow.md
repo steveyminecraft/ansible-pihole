@@ -150,6 +150,22 @@ Then `run.sh`:
 | `no-unbound` | `pihole.yml`, `no-unbound.yml` |
 | `ha` | Pi-hole, Unbound, keepalived, VIP DNS, Nebula Sync (not used by default AWS workflows) |
 
+### HA / scope
+
+The `ha` scenario exists in `tests/remote/run.sh` for manual experimentation, but
+**no default workflow** (scheduled, RC, or PR label) invokes it. Remote AWS tests
+today launch **one ephemeral EC2 instance** — bootstrap, verify, optional update,
+teardown.
+
+Dual-node AWS HA (two instances, VIP, keepalived failover) is **not planned** for
+scheduled or RC runs without an explicit product decision. Reasons: ~2× cost per
+run, scope creep versus the smoke-test goal, and HA verify/failover logic lives in
+Molecule (`molecule/common/verify_ha.yml`), not in the remote playbook set wired
+for CI.
+
+For full failover/failback coverage, use local `molecule test -s ubuntu`. See
+[Testing guide — HA testing scope](testing.md#ha-testing-scope).
+
 ---
 
 ## What `create-ephemeral-env.sh` does
