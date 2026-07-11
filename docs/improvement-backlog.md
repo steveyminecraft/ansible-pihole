@@ -37,9 +37,9 @@ Docs are clear at a high level but thin relative to playbook complexity.
   - Cover: local DNS wait, Unbound check, VIP verify, keepalived resume.
   - Include: what fails, expected timing, retry guidance.
 
-- [ ] **Expand stub role READMEs**
-  - Thin today: `start_keepalived`, `stop_keepalived`, `sshd`, `nebula_sync`.
-  - Document drain/resume pattern, when each role runs, relevant tags.
+- [x] **Expand stub role READMEs** ([#163](https://github.com/steveyminecraft/ansible-pihole/issues/163))
+  - Documented `start_keepalived`, `stop_keepalived`, `sshd`, `nebula_sync`.
+  - Cover drain/resume pattern, when each role runs, relevant tags.
 
 - [ ] **Cross-link production change runbooks**
   - Chain: `upgrade-runbook.md` → `failover-testing.md` →
