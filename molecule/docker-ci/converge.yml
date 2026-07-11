@@ -14,15 +14,3 @@
       ansible.builtin.import_role:
         name: steveyminecraft.pihole.docker
         tasks_from: debian_repo.yml
-
-    - name: Install Docker CLI for socket smoke check (Debian family)
-      ansible.builtin.apt:
-        name: docker-ce-cli
-        state: present
-      when: ansible_facts['os_family'] == 'Debian'
-
-    - name: Verify docker CLI reaches host daemon via mounted socket
-      ansible.builtin.command: docker info
-      register: _docker_info
-      changed_when: false
-      failed_when: _docker_info.rc != 0
