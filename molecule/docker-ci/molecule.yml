@@ -1,0 +1,38 @@
+---
+# Hosted-CI Molecule smoke: docker role on docker driver (no Vagrant).
+# Local Vagrant iteration remains in molecule/docker/.
+dependency:
+  name: shell
+  command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
+driver:
+  name: docker
+platforms:
+  - name: docker-ci-01
+    image: geerlingguy/docker-ubuntu2404-ansible:latest
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: /lib/systemd/systemd
+    tmpfs:
+      - /run
+      - /tmp
+provisioner:
+  name: ansible
+  env:
+    ANSIBLE_INJECT_FACTS_AS_VARS: "false"
+    ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/roles
+    ANSIBLE_COLLECTIONS_PATH: ${MOLECULE_PROJECT_DIRECTORY}/collections:${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
+  playbooks:
+    converge: converge.yml
+verifier:
+  name: ansible
+scenario:
+  name: docker-ci
+  test_sequence:
+    - dependency
+    - syntax
+    - create
+    - converge
+    - destroy

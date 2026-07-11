@@ -99,12 +99,11 @@ Local graphify setup is valuable; graph quality can be improved.
 
 ## Priority 7 — CI polish (lower effort)
 
-- [ ] **Molecule in CI alternatives**
-  - Vanilla GitHub runners can't run Vagrant easily.
-  - Options: self-hosted runner, or smoke job on `molecule/docker` (no Vagrant).
+- [x] **Molecule in CI alternatives**
+  - `molecule/docker-ci` scenario (docker driver) + CI job `molecule-docker-smoke`.
 
-- [ ] **PR template checkbox for HA changes**
-  - Add: "Ran `molecule test -s ubuntu` locally" for HA-touching PRs.
+- [x] **PR template checkbox for HA changes**
+  - "Ran `molecule test -s ubuntu` locally" in `.github/pull_request_template.md`.
 
 ---
 
