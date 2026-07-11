@@ -67,11 +67,11 @@ is implicit.
 Image bumps currently touch multiple files manually (defaults, CI playbooks,
 Trivy legacy list).
 
-- [ ] **Wire upstream image check into CI**
+- [x] **Wire upstream image check into CI** ([#181](https://github.com/steveyminecraft/ansible-pihole/issues/181))
   - `tests/unit/test_check_pihole_image_upstream.py` exists; run in CI
     (informational or blocking on drift).
 
-- [ ] **Single source of truth for image pin**
+- [x] **Single source of truth for image pin** ([#181](https://github.com/steveyminecraft/ansible-pihole/issues/181))
   - Generate CI inventory pins from `roles/pihole/defaults/main.yml` (or
     reverse) so bumps are one-line changes.
 

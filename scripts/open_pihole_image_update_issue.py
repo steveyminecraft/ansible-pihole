@@ -30,7 +30,7 @@ Full image reference today: `{pinned_image}`
 ## Suggested follow-up
 
 1. Review the [Pi-hole release notes](https://github.com/pi-hole/pi-hole/releases) and Docker Hub tag `{latest_tag}`.
-2. Bump `pihole_image` in `roles/pihole/defaults/main.yml` and mirrored CI defaults if appropriate.
+2. Bump `pihole_image` in `roles/pihole/defaults/main.yml`, then run `python scripts/check-pihole-image-pins.py --sync`.
 3. Re-run Trivy/security scanning and Molecule or AWS RC tests before merging.
 4. Close this issue after the pin is updated or consciously deferred.
 

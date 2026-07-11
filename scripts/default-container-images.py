@@ -28,6 +28,14 @@ def load_defaults(role: str) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
+def pinned_pihole_image() -> str:
+    """Canonical Pi-hole image pin from role defaults."""
+    image = load_defaults("pihole").get("pihole_image")
+    if not isinstance(image, str) or ":" not in image:
+        raise RuntimeError("Unable to read pihole_image from roles/pihole/defaults/main.yml")
+    return image
+
+
 def image_key(image: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "-", image).strip("-")
 

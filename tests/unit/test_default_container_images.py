@@ -28,6 +28,10 @@ class DefaultContainerImagesTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.helper = load_helper()
 
+    def test_pinned_pihole_image_matches_role_defaults(self) -> None:
+        pihole = self.helper.load_defaults("pihole")
+        self.assertEqual(self.helper.pinned_pihole_image(), pihole["pihole_image"])
+
     def test_default_images_include_each_deployed_service(self) -> None:
         images = set(self.helper.default_images())
         pihole = self.helper.load_defaults("pihole")

@@ -266,6 +266,8 @@ jobs:
             tests/remote/inventories/example-lab-ha.yml \
             inventory/vagrant.yml \
             --structure-only
+          python scripts/check-pihole-image-pins.py
+          python scripts/check-pihole-image-upstream.py --fail-on-drift
 
   ci-success:
     name: CI checks complete
