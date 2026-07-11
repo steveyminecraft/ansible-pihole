@@ -2,7 +2,11 @@
 # Release Please opens PRs as github-actions[bot], which GitHub treats as a
 # first-time contributor on public repos. CI workflows then sit in
 # action_required until a maintainer clicks "Approve workflows to run".
-# Rerun those runs under a trusted PAT so checks start automatically.
+#
+# When release-please falls back to GITHUB_TOKEN, GitHub will not trigger
+# pull_request_target workflows for the new PR. The Release workflow therefore
+# reruns blocked checks directly after release-please updates the release PR.
+# This workflow remains as a backup when a PAT opens the PR and the event fires.
 name: Auto-run release please checks
 
 on:

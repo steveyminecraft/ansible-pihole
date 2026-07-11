@@ -499,8 +499,10 @@ PR quality scaffolding is now included in-repo:
 | [Validate collection for Ansible Galaxy](.github/workflows/galaxy-publish.yml) | Push/PR to `master`, manual | Builds the collection artifact and runs `galaxy-importer` |
 
 The Release workflow uses repository secret **`RELEASE_PLEASE_TOKEN`** for
-opening release PRs and pushing RC tags used by AWS remote tests. If the token
-is unavailable, RC tagging and AWS RC tests are skipped with a warning.
+opening release PRs and pushing RC tags used by AWS remote tests. Without a
+valid token, release-please falls back to `GITHUB_TOKEN`, release PRs are
+authored by `github-actions[bot]`, and CI may wait for manual workflow approval.
+If the token is unavailable, RC tagging and AWS RC tests are skipped with a warning.
 Add repository secret **`GALAXY_API_KEY`** (Galaxy → Preferences → API Key).
 
 **Install a specific version**:
