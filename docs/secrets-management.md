@@ -158,8 +158,13 @@ ansible-playbook -i inventory/rnet.yml playbooks/sync.yaml
 - Compare Nebula Sync cron and primary URL in inventory with the controller's
   rendered compose under `nebula_sync_dir`.
 
-Use the pre-flight inventory validator (`scripts/validate-inventory.py`) before
-bootstrap or update to catch missing HA groups and placeholder secrets early.
+Use the pre-flight inventory validator before bootstrap or update to catch missing
+HA groups and placeholder secrets early:
+
+```bash
+python3 scripts/validate-inventory.py inventory/rnet.yml
+python3 scripts/validate-inventory.py inventory/rnet.yml --structure-only  # layout only
+```
 
 ## Related docs
 

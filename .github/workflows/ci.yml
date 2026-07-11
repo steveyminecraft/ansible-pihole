@@ -262,6 +262,10 @@ jobs:
           python -m pip install --upgrade jinja2
           python -m unittest discover -s tests/unit -p 'test_*.py'
           python scripts/validate-secure-defaults.py
+          python scripts/validate-inventory.py \
+            tests/remote/inventories/example-lab-ha.yml \
+            inventory/vagrant.yml \
+            --structure-only
 
   ci-success:
     name: CI checks complete
