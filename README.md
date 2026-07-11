@@ -431,7 +431,7 @@ AWS EC2 workflows use ephemeral hosts and lifecycle hooks wired into
 `tests/remote/run.sh`:
 
 - `.github/workflows/rc-aws-remote-tests.yml` — **CI — Pi-hole: AWS EC2 (RC)** (`v*-rc*`, Ubuntu 26.04)
-- `.github/workflows/aws-remote-tests.yml` — **CI — Pi-hole: AWS EC2 (manual)** (`workflow_dispatch`)
+- `.github/workflows/aws-remote-tests.yml` — **CI — Pi-hole: AWS EC2 (remote tests)** (1st and 15th monthly on `master`, PR label `run-aws-tests`, or `workflow_dispatch`)
 - `.github/workflows/pihole-image-watch.yml` — daily check for new `pihole/pihole` Docker tags (GitHub issue alert)
 
 Infrastructure (VPC subnet, OIDC role, SSH key pair) is provisioned in the

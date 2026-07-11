@@ -15,10 +15,10 @@ remote), but coverage is uneven on the riskiest path: rolling HA updates.
   - Suggested: add `side_effect.yml` to `molecule/ubuntu` importing
     `playbooks/update-pihole.yaml`, then extend HA verify post-update.
 
-- [ ] **Scheduled or label-triggered AWS remote tests**
-  - `aws-remote-tests.yml` is manual `workflow_dispatch` only.
-  - Options: nightly/weekly on `master`, or PR label `run-aws-tests`.
-  - Start with amd64-only, `pihole-unbound`, include update (not `--skip-update`).
+- [x] **Scheduled or label-triggered AWS remote tests** ([#155](https://github.com/steveyminecraft/ansible-pihole/issues/155))
+  - Runs on the **1st and 15th** of each month on `master`, or via PR label `run-aws-tests`.
+  - Profile: amd64-only, `pihole-unbound`, includes update (not `--skip-update`).
+  - Manual `workflow_dispatch` matrix unchanged.
 
 - [ ] **Check-mode for `update-pihole.yaml` in CI**
   - CI already runs check-mode for `ci-bootstrap.yaml`.
@@ -121,12 +121,12 @@ Local graphify setup is valuable; graph quality can be improved.
 |-------|------------|-----|
 | GitHub CI | Lint, syntax, check-mode bootstrap, compose validation | No functional HA or update path |
 | Molecule | 6 scenarios locally; HA verify on `ubuntu` | Not in CI; `update-pihole` in `ubuntu`, `ubuntu-26.04`, and `pihole-no-unbound` |
-| AWS remote | Bootstrap + optional `update-pihole` | Manual dispatch only |
+| AWS remote | Bootstrap + optional `update-pihole` | Scheduled 1st/15th + PR label; manual dispatch for full matrix |
 
 ## Suggested first issues
 
 1. `ubuntu` Molecule side_effect for `update-pihole` + post-update HA verify
-2. Scheduled AWS remote test on `master` (weekly, amd64)
+2. ~~Scheduled AWS remote test on `master` (twice monthly, amd64)~~ ([#155](https://github.com/steveyminecraft/ansible-pihole/issues/155))
 3. Runbook section for rolling updates / drain-resume
 4. Inventory pre-flight validator
 5. Upstream image check in CI
