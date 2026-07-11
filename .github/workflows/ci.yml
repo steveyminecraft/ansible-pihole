@@ -135,6 +135,10 @@ jobs:
         run: |
           ansible-playbook -i inventory/ci/ci.yml playbooks/ci-bootstrap.yaml --check
 
+      - name: Check-mode update-pihole
+        run: |
+          ansible-playbook -i inventory/ci/ci.yml playbooks/update-pihole.yaml --check
+
       - name: Validate Pi-hole Compose modes
         run: ansible-playbook playbooks/ci-validate-pihole-modes.yaml
 
