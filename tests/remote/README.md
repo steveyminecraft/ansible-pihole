@@ -100,5 +100,5 @@ variables:
 
 RC tag runs (`.github/workflows/rc-aws-remote-tests.yml`) use Ubuntu 26.04 only.
 The remote-tests workflow (`.github/workflows/aws-remote-tests.yml`) runs a
-bi-weekly amd64 smoke on `master`, supports PR label `run-aws-tests`, and offers a
+twice-monthly amd64 smoke on `master` (1st and 15th), supports PR label `run-aws-tests`, and offers a
 broader manual matrix when dispatched from the Actions UI.
