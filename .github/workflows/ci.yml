@@ -299,6 +299,9 @@ jobs:
       - name: Run molecule/docker-ci (docker driver, no Vagrant)
         env:
           MOLECULE_PROJECT_DIRECTORY: ${{ github.workspace }}
+          # molecule-docker create/destroy playbooks use string truthiness in `when:`;
+          # allowed until upstream fixes ansible-core 2.21+ conditional typing.
+          ALLOW_BROKEN_CONDITIONALS: "1"
         run: molecule test -s docker-ci
 
   ci-success:
