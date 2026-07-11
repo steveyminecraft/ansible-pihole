@@ -10,6 +10,13 @@ Run:
 molecule test -s ubuntu
 ```
 
+The `ubuntu` and `ubuntu-26.04` scenarios run a full test sequence:
+
+1. **Converge** — bootstrap the HA stack
+2. **Verify** — baseline HA / DNS checks (`verify_ha.yml`)
+3. **Side effect** — rolling `playbooks/update-pihole.yaml` (drain → update → resume)
+4. **Verify** — post-update HA / DNS checks (`verify_ha.yml`)
+
 `molecule/common/verify_ha.yml` orchestrates focused verifier task files under
 `molecule/common/verify/` and validates:
 
