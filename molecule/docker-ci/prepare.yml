@@ -1,5 +1,7 @@
 ---
-- name: Prepare docker-ci instance
+- import_playbook: ../common/prepare.yml
+
+- name: Prepare docker-ci ansible temp
   hosts: all
   gather_facts: false
   tasks:
