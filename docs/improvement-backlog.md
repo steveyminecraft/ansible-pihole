@@ -41,7 +41,7 @@ Docs are clear at a high level but thin relative to playbook complexity.
   - Documented `start_keepalived`, `stop_keepalived`, `sshd`, `nebula_sync`.
   - Cover drain/resume pattern, when each role runs, relevant tags.
 
-- [ ] **Cross-link production change runbooks**
+- [x] **Cross-link production change runbooks** ([#167](https://github.com/steveyminecraft/ansible-pihole/issues/167))
   - Chain: `upgrade-runbook.md` → `failover-testing.md` →
     `backup-and-restore.md` as a single checklist (backup → update → VIP →
     Nebula sync verify).
