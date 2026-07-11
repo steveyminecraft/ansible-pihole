@@ -17,9 +17,59 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.set.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Match changed paths
+        id: filter
+        if: >-
+          github.event_name != 'workflow_dispatch' &&
+          github.event_name != 'schedule'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docs:
+              - 'docs/**'
+              - '**/*.md'
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+
+      - name: Set change flags
+        id: set
+        run: |
+          case "${{ github.event_name }}" in
+            workflow_dispatch|schedule)
+              echo "code=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+  docs-only:
+    name: Docs-only change (skip security matrix)
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code != 'true'
+    steps:
+      - name: Skip security scans for documentation-only diffs
+        run: echo "Documentation-only change; skipping CodeQL and Trivy jobs."
+
   codeql:
     name: CodeQL - GitHub Actions
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
 
     permissions:
       actions: read
@@ -42,6 +92,8 @@ jobs:
   trivy:
     name: Trivy filesystem scan
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
 
     permissions:
       contents: read
@@ -72,6 +124,8 @@ jobs:
   default-images:
     name: Resolve default container images
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     outputs:
       matrix: ${{ steps.images.outputs.matrix }}
 

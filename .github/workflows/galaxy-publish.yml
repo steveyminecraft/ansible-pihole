@@ -18,9 +18,54 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.set.outputs.code }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Match changed paths
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docs:
+              - 'docs/**'
+              - '**/*.md'
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+
+      - name: Set change flags
+        id: set
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  docs-only:
+    name: Docs-only change (skip Galaxy validation)
+    runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.code != 'true'
+    steps:
+      - name: Skip collection validation for documentation-only diffs
+        run: echo "Documentation-only change; skipping Galaxy build/validate matrix."
+
   validate:
     name: Build and validate steveyminecraft.pihole (${{ matrix.ansible-core }})
     runs-on: ubuntu-24.04
+    needs: changes
+    if: needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
