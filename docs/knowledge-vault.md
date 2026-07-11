@@ -11,7 +11,8 @@ Agents and contributors use the graph for architecture questions; humans can bro
 ./scripts/setup-knowledge-vault.sh
 
 # Optional: rebuild code graph after every commit (local only)
-graphify hook install
+./scripts/install-graphify-hook.sh
+# Or: ./scripts/setup-knowledge-vault.sh --hook
 ```
 
 Open the interactive map: `graphify-out/graph.html`  
@@ -64,10 +65,55 @@ graphify explain "molecule/default/molecule.yml"
 
 | Change type | Command |
 |-------------|---------|
-| Python/shell | `graphify update .` |
+| Python/shell | `graphify update .` (automatic with post-commit hook) |
 | Roles, playbooks, docs | `/graphify .` or full rebuild |
+| After full rebuild | `python3 scripts/dedupe-graphify-graph.py --prune-isolated` |
 | Re-export Obsidian | `graphify export obsidian` |
 | Re-export HTML | `graphify export html` |
+
+### Post-commit hook
+
+```bash
+./scripts/install-graphify-hook.sh
+```
+
+Installs graphify's post-commit hook locally. After each commit, changed Python/shell
+files are re-extracted into `graphify-out/graph.json`. Doc and YAML changes still
+need a full `/graphify .` rebuild.
+
+Check status: `graphify hook status`
+
+### Reduce graph noise
+
+Duplicate concepts (e.g. `update-pihole.yaml` in docs vs `update-pihole playbook`
+in playbooks) can appear after a full corpus build. Run a dedupe pass:
+
+```bash
+python3 scripts/dedupe-graphify-graph.py --dry-run          # preview
+python3 scripts/dedupe-graphify-graph.py                    # merge duplicates
+python3 scripts/dedupe-graphify-graph.py --prune-isolated  # also drop isolated nodes
+```
+
+Prefer a periodic full rebuild (`/graphify .`) then dedupe, rather than incremental
+AST-only updates when exploring roles and playbooks.
+
+## Cursor MCP (optional)
+
+Agents can query the graph via MCP instead of shelling out to `graphify query`.
+
+1. Bootstrap the vault: `./scripts/setup-knowledge-vault.sh`
+2. Copy `.cursor/mcp.json.example` to `.cursor/mcp.json` (gitignored)
+3. Replace `GRAPHIFY_PYTHON` and `GRAPH_PATH` with values from your machine:
+
+```bash
+cat graphify-out/.graphify_python   # interpreter path
+realpath graphify-out/graph.json    # absolute graph path
+```
+
+4. Reload Cursor MCP servers
+
+Tools exposed: `query_graph`, `get_node`, `get_neighbors`, `get_community`,
+`god_nodes`, `graph_stats`, `shortest_path`.
 
 ## Security
 

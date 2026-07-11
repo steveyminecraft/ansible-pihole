@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "graphify": {
+      "command": "GRAPHIFY_PYTHON",
+      "args": [
+        "-m",
+        "graphify.serve",
+        "GRAPH_PATH"
+      ],
+      "description": "Local ansible-pihole knowledge graph (graphify-out/graph.json). Replace GRAPHIFY_PYTHON with: cat graphify-out/.graphify_python. Replace GRAPH_PATH with: realpath graphify-out/graph.json"
+    }
+  }
+}

@@ -79,15 +79,15 @@ Trivy legacy list).
 
 Local graphify setup is valuable; graph quality can be improved.
 
-- [ ] **Install `graphify hook`** for post-commit auto-update
-  - See `docs/knowledge-vault.md` and `./scripts/setup-knowledge-vault.sh`.
+- [x] **Install `graphify hook`** for post-commit auto-update
+  - `./scripts/install-graphify-hook.sh` or `./scripts/setup-knowledge-vault.sh --hook`.
 
-- [ ] **Reduce graph noise**
-  - ~405 isolated nodes; duplicate concepts (e.g. `update-pihole.yaml` vs
-    `update-pihole playbook`). Periodic full rebuild + dedupe pass.
+- [x] **Reduce graph noise**
+  - `scripts/dedupe-graphify-graph.py` merges duplicate concepts; use `--prune-isolated`
+    after a full rebuild.
 
-- [ ] **Optional: graphify MCP server**
-  - Lets Cursor/agents query the graph without shelling out.
+- [x] **Optional: graphify MCP server**
+  - `.cursor/mcp.json.example` — copy to `.cursor/mcp.json` (local, gitignored).
 
 ## Priority 6 — Architecture hygiene (medium-term)
 
