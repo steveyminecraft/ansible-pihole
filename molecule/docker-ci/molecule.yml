@@ -20,6 +20,10 @@ platforms:
       - /run
 provisioner:
   name: ansible
+  inventory:
+    host_vars:
+      docker-ci-01:
+        docker_manage_service: false
   env:
     ANSIBLE_CONFIG: ${MOLECULE_PROJECT_DIRECTORY}/molecule/docker-ci/ansible.cfg
     ANSIBLE_INJECT_FACTS_AS_VARS: "false"
