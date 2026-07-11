@@ -68,9 +68,6 @@ Pi-hole image updates are tracked separately by
 
 Repository variables:
 
-- `AWS_TEST_ROLE_ARN`
-- `AWS_TEST_REGION`
-- `AWS_TEST_SUBNET_ID`
 - `AWS_TEST_KEY_NAME`
 - `AWS_TEST_INSTANCE_TYPE_AMD64`
 - `AWS_TEST_INSTANCE_TYPE_ARM64`
@@ -78,6 +75,9 @@ Repository variables:
 
 Repository secrets:
 
+- `AWS_TEST_ROLE_ARN`
+- `AWS_TEST_REGION`
+- `AWS_TEST_SUBNET_ID`
 - `AWS_TEST_SSH_PRIVATE_KEY`
 - `AWS_TEST_PIHOLE_API_PASSWORD`
 - optional `AWS_TEST_ANSIBLE_VAULT_PASSWORD`
@@ -90,11 +90,16 @@ static AWS API keys.
 Remote test networking and GitHub OIDC access live in the **`AWS-Cloud`**
 repository under `build-account-isolation/build/`. After `terraform apply`,
 map `terraform output -json ansible_remote_test_configuration` to repository
-variables:
+configuration:
+
+Secrets:
 
 - `AWS_TEST_ROLE_ARN`
 - `AWS_TEST_REGION`
 - `AWS_TEST_SUBNET_ID`
+
+Variables:
+
 - `AWS_TEST_KEY_NAME`
 - `AWS_TEST_INSTANCE_TYPE_AMD64`
 

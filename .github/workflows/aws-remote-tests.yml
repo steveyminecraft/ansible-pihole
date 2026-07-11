@@ -77,7 +77,7 @@ jobs:
           INPUT_SCENARIO: ${{ github.event.inputs.scenario }}
           INPUT_SKIP_UPDATE: ${{ github.event.inputs.skip_update }}
           INPUT_AWS_REGION: ${{ github.event.inputs.aws_region }}
-          DEFAULT_AWS_REGION: ${{ vars.AWS_TEST_REGION }}
+          DEFAULT_AWS_REGION: ${{ secrets.AWS_TEST_REGION }}
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
@@ -135,7 +135,7 @@ jobs:
       AWS_OS_FAMILY: ${{ matrix.os_family }}
       AWS_OS_VERSION: ${{ matrix.os_version }}
       AWS_ARCH: ${{ matrix.arch }}
-      AWS_SUBNET_ID: ${{ vars.AWS_TEST_SUBNET_ID }}
+      AWS_SUBNET_ID: ${{ secrets.AWS_TEST_SUBNET_ID }}
       AWS_KEY_NAME: ${{ vars.AWS_TEST_KEY_NAME }}
       AWS_SSH_CIDR: ${{ vars.AWS_TEST_SSH_CIDR }}
       AWS_INSTANCE_TYPE: ${{ matrix.arch == 'arm64' && vars.AWS_TEST_INSTANCE_TYPE_ARM64 || vars.AWS_TEST_INSTANCE_TYPE_AMD64 }}
@@ -164,8 +164,8 @@ jobs:
               missing=1
             fi
           done
-          if [ -z "${{ vars.AWS_TEST_ROLE_ARN }}" ]; then
-            echo "Missing required variable: AWS_TEST_ROLE_ARN"
+          if [ -z "${{ secrets.AWS_TEST_ROLE_ARN }}" ]; then
+            echo "Missing required secret: AWS_TEST_ROLE_ARN"
             missing=1
           fi
           if [ -z "${PIHOLE_API_PASSWORD:-}" ]; then
@@ -188,7 +188,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v4
         with:
-          role-to-assume: ${{ vars.AWS_TEST_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_TEST_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: ansible-pihole-aws-tests
 

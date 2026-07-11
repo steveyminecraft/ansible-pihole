@@ -30,12 +30,12 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
-      AWS_REGION: ${{ vars.AWS_TEST_REGION }}
+      AWS_REGION: ${{ secrets.AWS_TEST_REGION }}
       AWS_TEST_SCENARIO: ${{ github.event.inputs.scenario || 'pihole-unbound' }}
       AWS_OS_FAMILY: ubuntu
       AWS_OS_VERSION: "26.04"
       AWS_ARCH: amd64
-      AWS_SUBNET_ID: ${{ vars.AWS_TEST_SUBNET_ID }}
+      AWS_SUBNET_ID: ${{ secrets.AWS_TEST_SUBNET_ID }}
       AWS_KEY_NAME: ${{ vars.AWS_TEST_KEY_NAME }}
       AWS_SSH_CIDR: ${{ vars.AWS_TEST_SSH_CIDR || '0.0.0.0/0' }}
       AWS_INSTANCE_TYPE: ${{ vars.AWS_TEST_INSTANCE_TYPE_AMD64 }}
@@ -63,8 +63,8 @@ jobs:
               missing=1
             fi
           done
-          if [ -z "${{ vars.AWS_TEST_ROLE_ARN }}" ]; then
-            echo "Missing required variable: AWS_TEST_ROLE_ARN"
+          if [ -z "${{ secrets.AWS_TEST_ROLE_ARN }}" ]; then
+            echo "Missing required secret: AWS_TEST_ROLE_ARN"
             missing=1
           fi
           if [ -z "${PIHOLE_API_PASSWORD:-}" ]; then
@@ -85,7 +85,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v4
         with:
-          role-to-assume: ${{ vars.AWS_TEST_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_TEST_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: ansible-pihole-rc-ubuntu-26.04
 
