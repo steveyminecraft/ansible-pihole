@@ -17,7 +17,8 @@ Agents and contributors use the graph for architecture questions; humans can bro
 
 Open the interactive map: `graphify-out/graph.html`  
 Open Obsidian vault: `graphify-out/obsidian/`  
-Browse full docs in vault: `00 - Documentation Index.md` → `Documentation/`
+Browse full docs in vault: `00 - Documentation Index.md` → `Documentation/`  
+Layers + CI map: `00 - Architecture and CI.md` (diagram embed + workflow links)
 
 ## What gets generated (all local)
 
@@ -30,6 +31,9 @@ Browse full docs in vault: `00 - Documentation Index.md` → `Documentation/`
 | `graphify-out/obsidian/` | Wikilinked graph notes + `graph.canvas` |
 | `graphify-out/obsidian/Documentation/` | Full-text copies of `docs/`, README, role READMEs (with graph links) |
 | `graphify-out/obsidian/00 - Documentation Index.md` | Index of all synced documentation |
+| `graphify-out/obsidian/00 - Architecture and CI.md` | Layer diagram + CI workflow map (links layers to docs and `.github/workflows/`) |
+| `graphify-out/obsidian/Documentation/diagrams/` | Layer diagram PNG + `.drawio` (when `docs/diagrams/` exists in repo) |
+| `graphify-out/obsidian/Documentation/ci-workflows/` | Full-text copies of GitHub Actions workflow YAML |
 
 ## Bootstrap modes
 
