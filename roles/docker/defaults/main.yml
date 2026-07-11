@@ -32,6 +32,10 @@ docker_group_users: []
 # host setting unchanged unless the inventory explicitly requests it.
 docker_enable_ip_forward: false
 
+# Start/restart Docker via systemd. Disable in molecule docker-ci (nested
+# systemd container cannot reliably run docker.service on hosted runners).
+docker_manage_service: true
+
 # When Docker iptables is off on EL, discover IPv4 subnets (docker network inspect) and add
 # nftables masquerade per subnet (iptables MASQUERADE is unreliable on EL9+ nf_tables); re-run
 # after compose so project networks exist. Falls back to 172.16.0.0/12 if discovery is empty.

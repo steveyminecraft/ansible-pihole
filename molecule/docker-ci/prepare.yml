@@ -1,0 +1,13 @@
+---
+- name: Prepare docker-ci instance (shared packages + apt cache)
+  import_playbook: ../common/prepare.yml
+
+- name: Prepare docker-ci instance extras
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Ensure ansible remote temp directory exists
+      ansible.builtin.file:
+        path: /tmp/.ansible-tmp
+        state: directory
+        mode: "1777"

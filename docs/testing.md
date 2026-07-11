@@ -7,8 +7,8 @@ AWS remote tests, and manual production checks.
 
 | Layer | Where it runs | What it proves | Gap |
 |-------|---------------|----------------|-----|
-| **GitHub CI** | Every PR (code paths) | Lint, syntax, check-mode bootstrap + `update-pihole`, compose validation, script unit tests, inventory structure | No functional HA failover on hosted runners |
-| **Molecule** | Local / self-hosted | Full Vagrant HA bootstrap, rolling update, post-update verify | Not in default GitHub matrix (needs Vagrant) |
+| **GitHub CI** | Every PR (code paths) | Lint, syntax, check-mode bootstrap + `update-pihole`, compose validation, script unit tests, inventory structure, **Molecule `docker-ci` smoke** | No functional HA failover on hosted runners |
+| **Molecule** | Local / self-hosted | Full Vagrant HA bootstrap, rolling update, post-update verify | HA scenarios not in default GitHub matrix (needs Vagrant) |
 | **AWS remote** | Scheduled + label + manual | Ephemeral EC2 → production playbooks → teardown | Cost; amd64-only on schedule/label |
 | **Manual** | Production change windows | VIP failover, per-node DNS, Nebula Sync | Operator-driven |
 
@@ -27,6 +27,7 @@ AWS remote tests, and manual production checks.
 | Lint | `ansible-lint`, `yamllint`, Molecule YAML schema smoke |
 | Ansible tests (Ubuntu matrix) | Syntax + check-mode for `bootstrap-pihole.yaml`, `update-pihole.yaml`; `ci-validate-pihole-modes.yaml` |
 | Policy & script validation | Python unit tests, `validate-secure-defaults.py`, `validate-inventory.py`, image pin/upstream checks, legacy variable lint |
+| Molecule docker smoke | `molecule test -s docker-ci` — docker role on docker driver (no Vagrant) |
 | Security | CodeQL, Trivy filesystem + pinned container images |
 | Galaxy build | Collection build for advertised ansible-core range |
 
@@ -53,9 +54,21 @@ Six scenarios under `molecule/`:
 | `ubuntu` | `molecule/ubuntu/` | Ubuntu 24.04 HA — bootstrap, verify, rolling `update-pihole`, re-verify |
 | `ubuntu-26.04` | `molecule/ubuntu-26.04/` | Ubuntu 26.04 — same HA + update sequence |
 | `default` | `molecule/default/` | Rocky-style lab box |
-| `docker` | `molecule/docker/` | Docker role focus |
+| `docker` | `molecule/docker/` | Docker role focus (Vagrant — local) |
+| `docker-ci` | `molecule/docker-ci/` | Docker role on docker driver (hosted CI smoke) |
 | `pihole-no-unbound` | `molecule/pihole-no-unbound/` | Pi-hole-only DNS bootstrap + update |
 | `nebula-sync-migration` | `molecule/nebula-sync-migration/` | Legacy plaintext → secret-file credential migration |
+
+**Hosted CI smoke (no Vagrant):**
+
+```bash
+molecule test -s docker-ci
+```
+
+Runs in GitHub Actions on code-changing PRs. Exercises docker role `debian_repo`
+tasks inside a docker-driver Molecule container — not a full in-container
+`docker.service` start (that path stays on local Vagrant scenarios).
+Full HA still requires local `molecule test -s ubuntu` (see PR template checkbox).
 
 **Typical HA run:**
 
