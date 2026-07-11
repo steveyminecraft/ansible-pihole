@@ -51,7 +51,7 @@ Docs are clear at a high level but thin relative to playbook complexity.
 Real inventory (`inventory/rnet.yml`) is gitignored; examples exist but mapping
 is implicit.
 
-- [ ] **Document real inventory → example mapping**
+- [x] **Document real inventory → example mapping** ([#174](https://github.com/steveyminecraft/ansible-pihole/issues/174))
   - In `docs/production-deployment.md`: required vs optional vars, vault file
     layout, HA-specific fields (`pihole_vip_ipv4`, nebula primary/replicas).
 
