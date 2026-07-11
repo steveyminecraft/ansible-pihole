@@ -99,5 +99,6 @@ variables:
 - `AWS_TEST_INSTANCE_TYPE_AMD64`
 
 RC tag runs (`.github/workflows/rc-aws-remote-tests.yml`) use Ubuntu 26.04 only.
-The manual workflow (`.github/workflows/aws-remote-tests.yml`) supports broader
-matrix profiles when needed.
+The remote-tests workflow (`.github/workflows/aws-remote-tests.yml`) runs a
+weekly amd64 smoke on `master`, supports PR label `run-aws-tests`, and offers a
+broader manual matrix when dispatched from the Actions UI.
