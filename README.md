@@ -389,7 +389,7 @@ waits during test runs.
 
 | Layer | What runs | Where |
 |-------|-----------|--------|
-| **Unit** | Python checks for `scripts/default-container-images.py` (pinned images, Trivy matrix shape) | `tests/unit/`, PR-only job in `ci.yml` |
+| **Unit** | Python checks for scripts (`default-container-images`, upstream image watch, AWS cleanup, update-pihole health gates) and HA playbook/Compose contracts | `tests/unit/`, PR-only job in `ci.yml` |
 | **Static / dry-run** | ansible-lint, yamllint, playbook `--syntax-check`, check-mode `ci-bootstrap` and `update-pihole` | `ci.yml` on every push/PR |
 | **Molecule integration** | Full bootstrap/update on Vagrant VMs | Local / self-hosted (`molecule/*`) |
 | **AWS integration** | Ephemeral EC2 → production playbooks → teardown | `rc-aws-remote-tests.yml`, `aws-remote-tests.yml` |
