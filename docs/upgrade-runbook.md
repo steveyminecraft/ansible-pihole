@@ -4,6 +4,29 @@
 
 Upgrade packages and roles while keeping DNS service available through rolling updates.
 
+## Production change checklist
+
+Use this as the entry point for a planned production change. Complete the
+linked runbooks in order:
+
+- [ ] **Backup** — follow the
+  [pre-change backup checklist](backup-and-restore.md#pre-change-backup-checklist)
+  for both nodes, inventory, and vaulted secrets.
+- [ ] **Pre-check DNS** — query both nodes and the VIP as shown below.
+- [ ] **Rolling update** — run `playbooks/update-pihole.yaml` and confirm each
+  node passes its local DNS and optional Unbound health gates before keepalived
+  resumes.
+- [ ] **Node and VIP validation** — complete the
+  [manual production checks](failover-testing.md#manual-production-checks).
+- [ ] **Failover validation** — during the maintenance window, move the VIP to
+  the peer and restore it as described in
+  [Failover testing](failover-testing.md).
+- [ ] **Nebula Sync verification** — run `playbooks/sync.yaml`, confirm the
+  Nebula Sync container is running on the controller only, and verify a known
+  Pi-hole setting from the primary appears on the replica.
+- [ ] **Record the result** — note backup location, playbook revision, affected
+  hosts, validation results, and any rollback action in the change record.
+
 ## Steps
 
 1. Ensure inventory is current and credentials are valid.

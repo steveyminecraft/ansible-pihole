@@ -2,6 +2,11 @@
 
 Use Molecule shared HA verification and manual checks to confirm failover behavior.
 
+For planned production changes, reach this page after backup and update through
+the [production change checklist](upgrade-runbook.md#production-change-checklist).
+After the checks below pass, return to that checklist for Nebula Sync
+verification and change recording.
+
 ## Automated (Molecule)
 
 Run:
@@ -42,3 +47,9 @@ The `ubuntu` and `ubuntu-26.04` scenarios run a full test sequence:
 
 3. Simulate primary outage (maintenance window) and confirm VIP moves to backup.
 4. Restore primary and confirm failback policy outcome.
+5. Return to the
+   [production change checklist](upgrade-runbook.md#production-change-checklist)
+   and verify Nebula Sync replication.
+
+If failover validation exposes data loss or a node cannot be recovered, follow
+[Backup and restore](backup-and-restore.md).
