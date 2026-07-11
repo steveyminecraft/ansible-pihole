@@ -68,7 +68,7 @@ the PR head commit. Re-runs on new pushes while the label remains.
 | `platform_coverage` | `one-arch` or `all-archs` |
 | `arch` | For `one-arch` only: `amd64` or `arm64` |
 | `skip_update` | Skip the update playbook |
-| `aws_region` | Optional override; defaults to `AWS_TEST_REGION` repo variable |
+| `aws_region` | Optional override; defaults to `AWS_TEST_REGION` repository secret |
 
 ### 2. Permissions and concurrency
 
@@ -99,11 +99,11 @@ Runs once per matrix row (in parallel when `full`).
 
 **Environment variables** wire GitHub configuration to the scripts:
 
-| Variable | Source | Purpose |
+| Name | Source | Purpose |
 |---|---|---|
-| `AWS_TEST_ROLE_ARN` | repo variable | OIDC role in build-ci |
-| `AWS_TEST_REGION` | repo variable | e.g. `eu-west-1` |
-| `AWS_TEST_SUBNET_ID` | repo variable | Public ephemeral subnet |
+| `AWS_TEST_ROLE_ARN` | repo secret | OIDC role in build-ci |
+| `AWS_TEST_REGION` | repo secret | e.g. `eu-west-1` |
+| `AWS_TEST_SUBNET_ID` | repo secret | Public ephemeral subnet |
 | `AWS_TEST_KEY_NAME` | repo variable | EC2 key pair name |
 | `AWS_TEST_INSTANCE_TYPE_*` | repo variable | e.g. `t3.small` |
 | `AWS_TEST_SSH_PRIVATE_KEY` | repo secret | SSH to the new host |

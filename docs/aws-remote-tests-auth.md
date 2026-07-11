@@ -40,11 +40,11 @@ Then:
 ```yaml
 - uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722 # v4
   with:
-    role-to-assume: ${{ vars.AWS_TEST_ROLE_ARN }}
+    role-to-assume: ${{ secrets.AWS_TEST_ROLE_ARN }}
     aws-region: ${{ env.AWS_REGION }}
 ```
 
-`AWS_TEST_ROLE_ARN` is a repository variable, typically:
+`AWS_TEST_ROLE_ARN` is a repository secret, typically:
 
 ```text
 arn:aws:iam::290488660479:role/build-ci-github-build
@@ -146,9 +146,9 @@ Other permissions on the same role (artifacts S3, Secrets Manager under `/build/
 
 | Item | Type | Role |
 |---|---|---|
-| `AWS_TEST_ROLE_ARN` | Variable | Which IAM role OIDC should assume |
-| `AWS_TEST_REGION` | Variable | AWS region for EC2 and STS |
-| `AWS_TEST_SUBNET_ID` | Variable | Subnet for ephemeral hosts |
+| `AWS_TEST_ROLE_ARN` | Secret | Which IAM role OIDC should assume |
+| `AWS_TEST_REGION` | Secret | AWS region for EC2 and STS |
+| `AWS_TEST_SUBNET_ID` | Secret | Subnet for ephemeral hosts |
 | `AWS_TEST_KEY_NAME` | Variable | EC2 key pair name |
 | `AWS_TEST_INSTANCE_TYPE_AMD64` / `_ARM64` | Variable | Instance size per architecture |
 | `AWS_TEST_SSH_PRIVATE_KEY` | Secret | Private half of the EC2 key pair |
