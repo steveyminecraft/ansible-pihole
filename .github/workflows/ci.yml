@@ -300,6 +300,7 @@ jobs:
             'ansible-core>=2.20.5,<2.21' \
             'molecule>=26.6.0' \
             'molecule-docker>=2.1.0' \
+            'molecule-vagrant>=2.0.0' \
             'python-docker>=0.2.0'
 
       - name: Run molecule/docker-ci (docker driver, no Vagrant)
