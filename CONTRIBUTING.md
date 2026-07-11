@@ -71,6 +71,8 @@ Architecture maps and agent context live under `graphify-out/` on your machine o
 ```bash
 ./scripts/setup-knowledge-vault.sh          # fast code graph
 ./scripts/setup-knowledge-vault.sh --full   # how to run full /graphify . build
+./scripts/install-graphify-hook.sh          # post-commit code graph refresh
 ```
 
 See `docs/knowledge-vault.md`. Cursor agents bootstrap automatically when `graph.json` is missing.
+Optional MCP config: copy `.cursor/mcp.json.example` → `.cursor/mcp.json` (local only).

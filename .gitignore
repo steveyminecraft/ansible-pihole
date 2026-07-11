@@ -185,3 +185,4 @@ inventory/rnet.yml
 
 # graphify knowledge vault (local only — see docs/knowledge-vault.md)
 graphify-out/
+.cursor/mcp.json

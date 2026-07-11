@@ -50,7 +50,7 @@ write_local_index() {
   mkdir -p graphify-out
   local nodes edges communities commit
   nodes="$(python3 -c "import json; g=json.load(open('graphify-out/graph.json')); print(len(g.get('nodes',[])))" 2>/dev/null || echo '?')"
-  edges="$(python3 -c "import json; g=json.load(open('graphify-out/graph.json')); print(len(g.get('edges',[])))" 2>/dev/null || echo '?')"
+  edges="$(python3 -c "import json; g=json.load(open('graphify-out/graph.json')); print(len(g.get('links', g.get('edges',[]))))" 2>/dev/null || echo '?')"
   communities="$(python3 -c "import json; g=json.load(open('graphify-out/graph.json')); print(len({n.get('community') for n in g.get('nodes',[]) if n.get('community') is not None}))" 2>/dev/null || echo '?')"
   commit="$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 
@@ -112,8 +112,7 @@ if [[ -f graphify-out/graph.json ]]; then
 fi
 
 if [[ "$INSTALL_HOOK" -eq 1 ]]; then
-  graphify hook install
-  graphify hook status
+  "$ROOT/scripts/install-graphify-hook.sh"
 fi
 
 cat <<EOF
