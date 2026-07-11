@@ -14,9 +14,11 @@
       tags: [updates, system]
     - role: steveyminecraft.pihole.pihole
       tags: [pihole, dns]
+      when: not ansible_check_mode
   post_tasks:
     - name: Validate node DNS before resuming keepalived
       tags: [pihole, dns, ha]
+      when: not ansible_check_mode
       block:
         - name: Wait for local Pi-hole DNS listener
           ansible.builtin.wait_for:

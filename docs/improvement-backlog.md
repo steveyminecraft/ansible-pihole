@@ -20,10 +20,9 @@ remote), but coverage is uneven on the riskiest path: rolling HA updates.
   - Profile: amd64-only, `pihole-unbound`, includes update (not `--skip-update`).
   - Manual `workflow_dispatch` matrix unchanged.
 
-- [ ] **Check-mode for `update-pihole.yaml` in CI**
+- [x] **Check-mode for `update-pihole.yaml` in CI** ([#157](https://github.com/steveyminecraft/ansible-pihole/issues/157))
   - CI already runs check-mode for `ci-bootstrap.yaml`.
-  - Add syntax + `--check` for `playbooks/update-pihole.yaml` against
-    `inventory/ci/ci.yml`.
+  - `inventory/ci/group_vars/all.yml` supplies CI-safe vars; live DNS/container steps skip in `--check`.
 
 - [ ] **Expand unit/integration tests beyond scripts**
   - Current unit tests: `default-container-images`, upstream image check, AWS
@@ -119,7 +118,7 @@ Local graphify setup is valuable; graph quality can be improved.
 
 | Layer | Runs today | Gap |
 |-------|------------|-----|
-| GitHub CI | Lint, syntax, check-mode bootstrap, compose validation | No functional HA or update path |
+| GitHub CI | Lint, syntax, check-mode bootstrap + update-pihole, compose validation | No functional HA or update path |
 | Molecule | 6 scenarios locally; HA verify on `ubuntu` | Not in CI; `update-pihole` in `ubuntu`, `ubuntu-26.04`, and `pihole-no-unbound` |
 | AWS remote | Bootstrap + optional `update-pihole` | Scheduled 1st/15th + PR label; manual dispatch for full matrix |
 
