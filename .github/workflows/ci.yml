@@ -19,9 +19,47 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.set.outputs.code }}
+      docs: ${{ steps.set.outputs.docs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Match changed paths
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docs:
+              - 'docs/**'
+              - '**/*.md'
+            code:
+              - '**'
+              - '!docs/**'
+              - '!**/*.md'
+
+      - name: Set change flags
+        id: set
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "docs=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=${{ steps.filter.outputs.code }}" >> "$GITHUB_OUTPUT"
+            echo "docs=${{ steps.filter.outputs.docs }}" >> "$GITHUB_OUTPUT"
+          fi
+
   pr-title-check:
     name: PR title follows conventional commits
     runs-on: ubuntu-24.04
+    needs: changes
     steps:
       - name: Validate PR title
         if: github.event_name == 'pull_request'
@@ -41,10 +79,26 @@ jobs:
         if: github.event_name != 'pull_request'
         run: echo "PR title validation only runs on pull_request events."
 
+  docs-only:
+    name: Docs-only change (skip full matrix)
+    runs-on: ubuntu-24.04
+    needs: [changes, pr-title-check]
+    if: >-
+      needs.changes.outputs.docs == 'true' &&
+      needs.changes.outputs.code != 'true'
+    steps:
+      - name: Skip heavy CI for documentation-only diffs
+        run: |
+          echo "Documentation-only change detected."
+          echo "Skipping Ansible lint, syntax/dry-run matrix, and PR safety checks."
+
   lint:
     name: Ansible & YAML lint (${{ matrix.runner }} / Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.runner }}
-    needs: pr-title-check
+    needs: [changes, pr-title-check]
+    if: >-
+      needs.changes.outputs.code == 'true' ||
+      github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
@@ -89,7 +143,14 @@ jobs:
   ansible-tests-ubuntu:
     name: Ansible syntax & dry-run (${{ matrix.runner }} / Python ${{ matrix.python-version }} / Core ${{ matrix.ansible-core }})
     runs-on: ${{ matrix.runner }}
-    needs: lint
+    needs: [changes, lint]
+    if: >-
+      always() &&
+      needs.lint.result == 'success' &&
+      (
+        needs.changes.outputs.code == 'true' ||
+        github.event_name == 'workflow_dispatch'
+      )
     strategy:
       fail-fast: false
       matrix:
@@ -145,8 +206,10 @@ jobs:
   ci-safety-checks:
     name: Policy & script validation (PR)
     runs-on: ubuntu-24.04
-    needs: ansible-tests-ubuntu
-    if: github.event_name == 'pull_request'
+    needs: [changes, ansible-tests-ubuntu]
+    if: >-
+      github.event_name == 'pull_request' &&
+      needs.changes.outputs.code == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -197,3 +260,47 @@ jobs:
           python -m pip install --upgrade jinja2
           python -m unittest discover -s tests/unit -p 'test_*.py'
           python scripts/validate-secure-defaults.py
+
+  ci-success:
+    name: CI checks complete
+    runs-on: ubuntu-24.04
+    needs:
+      - changes
+      - pr-title-check
+      - docs-only
+      - lint
+      - ansible-tests-ubuntu
+      - ci-safety-checks
+    if: always()
+    steps:
+      - name: Validate CI outcome for change set
+        env:
+          CODE: ${{ needs.changes.outputs.code }}
+          PR_TITLE: ${{ needs.pr-title-check.result }}
+          DOCS_ONLY: ${{ needs.docs-only.result }}
+          LINT: ${{ needs.lint.result }}
+          ANSIBLE: ${{ needs.ansible-tests-ubuntu.result }}
+          SAFETY: ${{ needs.ci-safety-checks.result }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$PR_TITLE" != "success" ]; then
+            echo "PR title check failed."
+            exit 1
+          fi
+          if [ "$CODE" = "true" ]; then
+            if [ "$LINT" != "success" ] || [ "$ANSIBLE" != "success" ]; then
+              echo "Full CI matrix did not succeed (lint=${LINT}, ansible=${ANSIBLE})."
+              exit 1
+            fi
+            if [ "$EVENT" = "pull_request" ] && [ "$SAFETY" != "success" ]; then
+              echo "PR safety checks did not succeed."
+              exit 1
+            fi
+          else
+            if [ "$DOCS_ONLY" != "success" ]; then
+              echo "Docs-only CI gate did not succeed."
+              exit 1
+            fi
+          fi
+          echo "CI checks complete."

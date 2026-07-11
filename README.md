@@ -390,7 +390,7 @@ waits during test runs.
 | Layer | What runs | Where |
 |-------|-----------|--------|
 | **Unit** | Python checks for scripts (`default-container-images`, upstream image watch, AWS cleanup, update-pihole health gates) and HA playbook/Compose contracts | `tests/unit/`, PR-only job in `ci.yml` |
-| **Static / dry-run** | ansible-lint, yamllint, playbook `--syntax-check`, check-mode `ci-bootstrap` and `update-pihole` | `ci.yml` on every push/PR |
+| **Static / dry-run** | ansible-lint, yamllint, playbook `--syntax-check`, check-mode `ci-bootstrap` and `update-pihole` | `ci.yml` on code changes (skipped for docs-only PRs) |
 | **Molecule integration** | Full bootstrap/update on Vagrant VMs | Local / self-hosted (`molecule/*`) |
 | **AWS integration** | Ephemeral EC2 → production playbooks → teardown | `rc-aws-remote-tests.yml`, `aws-remote-tests.yml` |
 
@@ -399,6 +399,10 @@ runs lint (ansible-lint, yamllint), installs dependencies via
 [`scripts/install-ansible-collections.sh`](scripts/install-ansible-collections.sh),
 and syntax-checks / check-modes selected playbooks against [`inventory/ci/`](inventory/ci/)
 on GitHub-hosted Ubuntu 24.04 x64 and ARM64 runners.
+
+Pull requests that touch only `docs/**` and `**/*.md` skip the heavy Ansible lint
+and test matrix. Those PRs still run the PR title check and a lightweight
+`CI checks complete` gate. Use `workflow_dispatch` to force a full run.
 
 Hosted CI also runs lightweight safety checks for Molecule configuration files (YAML/schema
 sanity) that do not require Vagrant or a VM provider. Full Molecule Vagrant scenarios remain
