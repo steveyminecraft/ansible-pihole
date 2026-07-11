@@ -110,8 +110,26 @@ pattern on Ubuntu 26.04.
 | Layer | HA coverage | Why |
 |-------|-------------|-----|
 | **GitHub CI** | **No** — `molecule test -s docker-ci` smoke only | Hosted runners have no Vagrant; docker-ci exercises the docker role, not keepalived/VIP failover |
-| **AWS remote** | **No** — single-node bootstrap + verify + optional update today | Dual-node AWS HA is **explicitly out of scope**: ~2× EC2 cost per run, no scheduled/RC workflow wired for it, and remote verify playbooks are not ported for multi-node failover orchestration |
+| **AWS remote** | **No** — single-node smoke only | Dual-node AWS HA is **declined / out of scope** (see below) |
 | **Local Molecule** | **Yes** — full HA path | Only environment with same-subnet dual nodes and existing HA verify tasks |
+
+**Decision — dual-node AWS HA declined:** Running full HA failover in AWS remote tests is
+**not worth the operational burden** for the value it adds. Local Molecule already
+covers keepalived, VIP movement, and post-update HA verification; AWS remote tests
+remain **single-node smoke** (bootstrap → verify → optional update → teardown).
+
+This is an explicit **out-of-scope** choice, not a backlog item. Operational cost
+exceeds benefit:
+
+- **2× EC2** per run (primary + secondary) and longer wall-clock time
+- **VRRP security group** rules and cross-instance networking on a public subnet
+- **Private/public IP inventory** wiring for keepalived and Ansible groups
+- **Porting failover verify** — remote playbooks would need the Molecule HA verify
+  path (`molecule/common/verify_ha.yml`) adapted for ephemeral multi-host orchestration
+- **Higher AWS spend** on every scheduled, RC, and label-triggered run
+
+The `ha` scenario in `tests/remote/run.sh` remains for ad-hoc experimentation only;
+no scheduled, RC, or PR-label workflow will invoke dual-node AWS HA.
 
 **Gate for HA-touching PRs:** the PR template checkbox ("Ran `molecule test -s ubuntu`
 locally") remains the required attestation when changes touch keepalived, VIP
