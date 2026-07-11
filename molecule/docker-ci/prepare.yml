@@ -1,7 +1,8 @@
 ---
-- import_playbook: ../common/prepare.yml
+- name: Prepare docker-ci instance (shared packages + apt cache)
+  import_playbook: ../common/prepare.yml
 
-- name: Prepare docker-ci ansible temp
+- name: Prepare docker-ci instance extras
   hosts: all
   gather_facts: false
   tasks:
