@@ -185,5 +185,5 @@ python scripts/check-legacy-inventory-vars.py path/to/your-inventory.yml
 ## Related docs
 
 - [Production deployment](production-deployment.md) — inventory mapping, health gates
-- [Improvement backlog](improvement-backlog.md) — planned test gaps
+- [Improvement backlog](improvement-backlog.md) — shipped improvement history
 - [Knowledge vault](knowledge-vault.md) — architecture graph for agents

@@ -117,11 +117,13 @@ Local graphify setup is valuable; graph quality can be improved.
 
 ## Suggested first issues
 
-1. `ubuntu` Molecule side_effect for `update-pihole` + post-update HA verify
+All items below shipped (see Priority 1–7 above). No open starter issues remain.
+
+1. ~~`ubuntu` Molecule side_effect for `update-pihole` + post-update HA verify~~ ([#153](https://github.com/steveyminecraft/ansible-pihole/issues/153))
 2. ~~Scheduled AWS remote test on `master` (twice monthly, amd64)~~ ([#155](https://github.com/steveyminecraft/ansible-pihole/issues/155))
-3. Runbook section for rolling updates / drain-resume
-4. Inventory pre-flight validator
-5. Upstream image check in CI
+3. ~~Runbook section for rolling updates / drain-resume~~ ([#161](https://github.com/steveyminecraft/ansible-pihole/issues/161))
+4. ~~Inventory pre-flight validator~~ ([#178](https://github.com/steveyminecraft/ansible-pihole/issues/178))
+5. ~~Upstream image check in CI~~ ([#181](https://github.com/steveyminecraft/ansible-pihole/issues/181))
 
 ---
 
