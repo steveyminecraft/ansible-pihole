@@ -1,6 +1,7 @@
 # AWS remote tests — workflow guide
 
 This document explains how the GitHub Actions AWS remote test workflows operate, from trigger to teardown.
+For a single index of all test layers (CI, Molecule, AWS, manual), see [Testing guide](testing.md).
 
 There are **two related workflows**. They share the same scripts and AWS setup; they differ mainly in **when they run** and **how much they test**.
 
