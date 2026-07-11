@@ -17,6 +17,7 @@ all:
     ansible_user: ansible
     ansible_python_interpreter: /usr/bin/python3
     ansible_user_home_dir: /home/ansible
+    pihole_compose_dir: /opt/pihole
     github_user_for_ssh_key: replace-me
     password_lock: true
     timezone: Etc/UTC

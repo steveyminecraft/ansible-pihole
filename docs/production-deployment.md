@@ -192,6 +192,17 @@ Both bootstrap and update run one host at a time (`serial: 1`) and include DNS
 health gates before moving to the next node. See
 [upgrade-runbook.md](upgrade-runbook.md) for the full production change checklist.
 
+### Pre-flight inventory validation
+
+Before bootstrap or update, run:
+
+```bash
+python3 scripts/validate-inventory.py inventory/rnet.yml
+```
+
+Use `--structure-only` to check HA groups and required keys without evaluating
+secret placeholders (useful for vault-backed or template inventories).
+
 ## Related docs
 
 - [secrets-management.md](secrets-management.md) — vault naming, rotation (P3 item 2)

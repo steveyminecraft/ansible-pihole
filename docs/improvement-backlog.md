@@ -58,7 +58,7 @@ is implicit.
 - [x] **Expand `docs/secrets-management.md`** ([#176](https://github.com/steveyminecraft/ansible-pihole/issues/176))
   - Vault naming convention, Nebula Sync password rotation, drift between nodes.
 
-- [ ] **Pre-flight inventory validator**
+- [x] **Pre-flight inventory validator** ([#178](https://github.com/steveyminecraft/ansible-pihole/issues/178))
   - Playbook or script asserting HA completeness and rejecting placeholders
     before bootstrap/update (fail fast vs mid-deploy).
 
