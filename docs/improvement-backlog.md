@@ -55,7 +55,7 @@ is implicit.
   - In `docs/production-deployment.md`: required vs optional vars, vault file
     layout, HA-specific fields (`pihole_vip_ipv4`, nebula primary/replicas).
 
-- [ ] **Expand `docs/secrets-management.md`**
+- [x] **Expand `docs/secrets-management.md`** ([#176](https://github.com/steveyminecraft/ansible-pihole/issues/176))
   - Vault naming convention, Nebula Sync password rotation, drift between nodes.
 
 - [ ] **Pre-flight inventory validator**
