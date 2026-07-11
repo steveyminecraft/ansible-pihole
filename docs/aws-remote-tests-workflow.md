@@ -150,6 +150,33 @@ Then `run.sh`:
 | `no-unbound` | `pihole.yml`, `no-unbound.yml` |
 | `ha` | Pi-hole, Unbound, keepalived, VIP DNS, Nebula Sync (not used by default AWS workflows) |
 
+### HA / scope — single-node only (dual-node declined)
+
+Remote AWS tests launch **one ephemeral EC2 instance** per matrix row: bootstrap,
+verify, optional update, teardown. That is the intended scope for scheduled, RC,
+and PR-label runs.
+
+**Dual-node AWS HA is explicitly declined / out of scope.** The operational burden
+does not justify the incremental confidence over local Molecule:
+
+| Burden | Why it matters |
+|--------|----------------|
+| 2× EC2 per run | Doubles cost and runtime on every scheduled, RC, and label-triggered job |
+| VRRP security group | Keepalived needs multicast/VRRP between instances on a public subnet |
+| Private/public IP inventory | Dual-node keepalived requires per-node and VIP addressing in ephemeral inventory |
+| Porting failover verify | Molecule HA checks (`molecule/common/verify_ha.yml`) are not wired into remote verify playbooks |
+| Longer runs | Create, converge, verify, and destroy scale with two hosts |
+
+Local Molecule already exercises full failover and failback on same-subnet Vagrant
+boxes. AWS remote stays **single-node smoke**; full HA coverage is **local Molecule
+only** (`molecule test -s ubuntu`).
+
+The `ha` scenario in `tests/remote/run.sh` exists for ad-hoc manual experimentation
+only — **no default workflow** (scheduled, RC, or PR label) invokes it, and there
+is no plan to add dual-node AWS HA to CI.
+
+See [Testing guide — HA testing scope](testing.md#ha-testing-scope).
+
 ---
 
 ## What `create-ephemeral-env.sh` does
