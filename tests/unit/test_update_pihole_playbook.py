@@ -18,6 +18,7 @@ ROLLING_PLAYBOOKS = (
 )
 UBUNTU_MOLECULE = ROOT / "molecule" / "ubuntu" / "molecule.yml"
 COMPOSE_TEMPLATE = ROOT / "roles" / "pihole" / "templates" / "docker-compose.yml.j2"
+PIHOLE_DEFAULTS = ROOT / "roles" / "pihole" / "defaults" / "main.yml"
 
 
 def load_yaml(path: Path):
@@ -72,10 +73,11 @@ class PiholeComposeTemplateTests(unittest.TestCase):
         cls.env = env
 
     def _render(self, **overrides) -> str:
+        defaults = yaml.safe_load(PIHOLE_DEFAULTS.read_text(encoding="utf-8")) or {}
         variables = {
             "pihole_container_name": "pihole",
             "inventory_hostname": "node1",
-            "pihole_image": "pihole/pihole:2026.07.2",
+            "pihole_image": defaults["pihole_image"],
             "pihole_use_host_network": False,
             "pihole_enable_unbound": True,
             "pihole_network_name": "dns_net",
