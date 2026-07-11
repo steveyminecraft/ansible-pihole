@@ -24,13 +24,10 @@ remote), but coverage is uneven on the riskiest path: rolling HA updates.
   - CI already runs check-mode for `ci-bootstrap.yaml`.
   - `inventory/ci/group_vars/all.yml` supplies CI-safe vars; live DNS/container steps skip in `--check`.
 
-- [ ] **Expand unit/integration tests beyond scripts**
-  - Current unit tests: `default-container-images`, upstream image check, AWS
-    cleanup scripts.
-  - Gaps: playbook health-gate logic, rolling serial behavior, rendered
-    templates.
-  - Consider lightweight `ansible-test` or expression-level tests for
-    `failed_when` blocks in `update-pihole.yaml`.
+- [x] **Expand unit/integration tests beyond scripts** ([#159](https://github.com/steveyminecraft/ansible-pihole/issues/159))
+  - Added `scripts/update-pihole-health.py` plus unit tests for dig health-gate logic.
+  - Playbook contract tests cover rolling `serial: 1`, check-mode guards, VIP retry, Molecule update path.
+  - Compose template smoke tests cover DHCP port gating.
 
 ## Priority 2 — Operations documentation
 
