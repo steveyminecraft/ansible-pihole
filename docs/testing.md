@@ -65,8 +65,10 @@ Six scenarios under `molecule/`:
 molecule test -s docker-ci
 ```
 
-Runs in GitHub Actions on code-changing PRs. Full HA still requires local
-`molecule test -s ubuntu` (see PR template checkbox).
+Runs in GitHub Actions on code-changing PRs. Exercises docker role apt repository
+tasks and validates Docker CLI access via the mounted host socket — not a full
+in-container `docker.service` start (that path stays on local Vagrant scenarios).
+Full HA still requires local `molecule test -s ubuntu` (see PR template checkbox).
 
 **Typical HA run:**
 

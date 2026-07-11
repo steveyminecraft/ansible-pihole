@@ -1,3 +1,22 @@
 ---
-- name: Converge — docker role smoke (CI)
-  import_playbook: ../default/converge-docker.yml
+# CI smoke: exercise docker role apt wiring without starting docker.service inside
+# the Molecule container (systemd + DinD is unreliable on hosted runners).
+# Full docker role coverage remains in molecule/docker (Vagrant).
+- name: Converge — docker role CI smoke
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    docker_manage_iptables: false
+    docker_enable_ip_forward: true
+  tasks:
+    - name: Configure Docker apt repository (Debian family)
+      ansible.builtin.import_role:
+        name: steveyminecraft.pihole.docker
+        tasks_from: debian_repo.yml
+
+    - name: Verify docker CLI reaches host daemon via mounted socket
+      ansible.builtin.command: docker info
+      register: _docker_info
+      changed_when: false
+      failed_when: _docker_info.rc != 0
