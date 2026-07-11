@@ -7,7 +7,7 @@ There are **two related workflows**. They share the same scripts and AWS setup; 
 | | **CI — Pi-hole: AWS EC2 (RC)** | **CI — Pi-hole: AWS EC2 (remote tests)** |
 |---|---|---|
 | File | `.github/workflows/rc-aws-remote-tests.yml` | `.github/workflows/aws-remote-tests.yml` |
-| Triggers | RC tags (`v1.0.0-rc.1`) or manual | Weekly on `master`, PR label `run-aws-tests`, or manual |
+| Triggers | RC tags (`v1.0.0-rc.1`) or manual | Bi-weekly on `master`, PR label `run-aws-tests`, or manual |
 | OS | Ubuntu 26.04 amd64 only | Scheduled/label: Ubuntu 26.04 amd64; manual: one or all archs |
 | Purpose | Pre-release gate on every RC tag | Scheduled smoke + on-demand operator / PR testing |
 
@@ -45,14 +45,18 @@ sequenceDiagram
 
 ```yaml
 schedule:
-  - cron: "0 6 * * 0"   # Weekly Sunday 06:00 UTC on master
+  - cron: "0 6 * * 0"   # Every other Sunday 06:00 UTC on master (ISO week gate)
 pull_request:
   types: [labeled, synchronize, reopened]   # when label run-aws-tests is present
 workflow_dispatch:   # Full manual matrix from GitHub UI
 ```
 
-**Automatic profile** (schedule + labeled PRs): Ubuntu 26.04 **amd64**,
+**Automatic profile** (bi-weekly schedule + labeled PRs): Ubuntu 26.04 **amd64**,
 `pihole-unbound`, **includes** `update-pihole.yaml` (does not pass `--skip-update`).
+
+Scheduled runs fire every **other** Sunday (06:00 UTC): the workflow cron still
+evaluates weekly, but job `schedule-gate` skips odd ISO weeks so EC2 cost stays
+bi-weekly.
 
 **PR label:** add `run-aws-tests` to a pull request to run the same profile against
 the PR head commit. Re-runs on new pushes while the label remains.
@@ -220,7 +224,7 @@ Three layers:
 2. **AWS build-ci** — disposable compute per run (create/destroy scripts)
 3. **Ansible** — the actual Pi-hole test (same playbooks used on real hardware)
 
-The remote-tests workflow covers **scheduled smoke on `master`**, **PR label
+The remote-tests workflow covers **bi-weekly smoke on `master`**, **PR label
 `run-aws-tests`**, and **on-demand operator testing**. The RC workflow is the
 **release gate** (tag-triggered, single fixed config). New upstream Pi-hole Docker
 tags are tracked by **`pihole-image-watch.yml`** (daily issue alert, no EC2 cost).

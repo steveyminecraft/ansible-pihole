@@ -3,7 +3,7 @@ name: "CI — Pi-hole: AWS EC2 (remote tests)"
 
 on:
   schedule:
-    # Weekly smoke on master: amd64, pihole-unbound, include update-pihole.
+    # Bi-weekly smoke on master (every other Sunday 06:00 UTC; see schedule-gate).
     - cron: "0 6 * * 0"
   pull_request:
     types: [labeled, synchronize, reopened]
@@ -52,15 +52,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  schedule-gate:
+    name: Bi-weekly schedule gate
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - name: Run on alternating ISO weeks only
+        id: check
+        run: |
+          week=$((10#$(date -u +%V)))
+          if [ $((week % 2)) -eq 0 ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "Bi-weekly on week: ${week}"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping off week (ISO week ${week})"
+          fi
+
   prepare-matrix:
     name: Prepare EC2 matrix
+    needs: schedule-gate
     runs-on: ubuntu-24.04
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'schedule' && github.ref == 'refs/heads/master') ||
+      always() &&
       (
-        github.event_name == 'pull_request' &&
-        contains(github.event.pull_request.labels.*.name, 'run-aws-tests')
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'schedule' &&
+          github.ref == 'refs/heads/master' &&
+          needs.schedule-gate.outputs.run == 'true'
+        ) ||
+        (
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'run-aws-tests')
+        )
       )
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
