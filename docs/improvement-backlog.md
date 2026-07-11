@@ -33,7 +33,7 @@ remote), but coverage is uneven on the riskiest path: rolling HA updates.
 
 Docs are clear at a high level but thin relative to playbook complexity.
 
-- [ ] **Document `update-pihole.yaml` health gates**
+- [x] **Document `update-pihole.yaml` health gates** ([#161](https://github.com/steveyminecraft/ansible-pihole/issues/161))
   - Cover: local DNS wait, Unbound check, VIP verify, keepalived resume.
   - Include: what fails, expected timing, retry guidance.
 

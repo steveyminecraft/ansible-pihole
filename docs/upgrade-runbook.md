@@ -7,22 +7,61 @@ Upgrade packages and roles while keeping DNS service available through rolling u
 ## Steps
 
 1. Ensure inventory is current and credentials are valid.
-2. Run update playbook:
+2. Confirm the health query name is reachable before maintenance:
+
+   ```bash
+   dig +short @<node1-ip> <pihole_verify_qname>
+   dig +short @<node2-ip> <pihole_verify_qname>
+   dig +short @<vip-ip> <pihole_verify_qname>
+   ```
+
+   The playbook uses `pihole_verify_qname`, then
+   `pihole_unbound_verify_qname`, then `cloudflare.com` as its fallback health
+   query name.
+3. Run update playbook:
 
    ```bash
    ansible-playbook -i /path/to/inventory.yml playbooks/update-pihole.yaml
    ```
 
-3. Observe per-node sequence:
-   - stop keepalived on current node
-   - apply updates and role changes
-   - restart keepalived
-   - run local DNS health checks
-4. Verify VIP answers DNS after run:
+4. Observe the per-node drain/resume sequence:
+   - stop keepalived on the current node so the VIP can move away before changes
+   - apply OS updates and Pi-hole role changes
+   - wait for the local Pi-hole DNS listener on `127.0.0.1:53` for up to 180 seconds
+   - run `dig +short @127.0.0.1 <health-qname>` and require at least one IPv4 answer
+   - when Unbound is deployed, run `dig` from inside the Pi-hole container to the Unbound target and require at least one IPv4 answer
+   - resume keepalived only after local DNS and optional Unbound checks pass
+5. Verify VIP answers DNS after run:
 
    ```bash
    dig +short @<vip-ip> <pihole_verify_qname>
    ```
+
+## Health gates
+
+`playbooks/update-pihole.yaml` runs with `serial: 1`, so only one node is
+drained and updated at a time. A failure stops the play before the next node is
+touched.
+
+| Gate | When it runs | Failure behavior |
+|------|--------------|------------------|
+| Drain current node | Before package and Pi-hole changes | keepalived is stopped when present; the VIP should move to the other node |
+| Local DNS listener | After updates, before keepalived resumes | waits up to 180 seconds for `127.0.0.1:53`; failure leaves the node drained |
+| Local Pi-hole DNS | After listener is open | `dig +short @127.0.0.1 <health-qname>` must return an IPv4 line; failure leaves the node drained |
+| Local Unbound DNS | Only when `pihole_unbound_present` is true | `dig` from inside the Pi-hole container to Unbound must return an IPv4 line; failure leaves the node drained |
+| Keepalived resume | After local DNS gates pass | keepalived starts only for a locally healthy node |
+| VIP DNS verify | After all nodes update, when HA and `pihole_vip_ipv4` are set | retries for up to about 60 seconds (`30` retries, `2` seconds delay) and fails the run if the VIP does not answer |
+
+## Retry guidance
+
+- If a node fails before keepalived resumes, leave it out of VIP service until
+  local DNS is healthy. Check `docker ps`, Pi-hole logs, Unbound logs, and direct
+  DNS with `dig +short @127.0.0.1 <health-qname>` on that node.
+- After repair, re-run `playbooks/update-pihole.yaml`. Because the playbook is
+  rolling and idempotent, it will re-check the repaired node before moving on.
+- If only the final VIP check fails, verify keepalived status on both nodes,
+  confirm `pihole_vip_ipv4` matches the expected address, and query each node
+  directly before testing the VIP again.
 
 ## Rollback notes
 
