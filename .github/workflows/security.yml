@@ -33,7 +33,7 @@ jobs:
         if: >-
           github.event_name != 'workflow_dispatch' &&
           github.event_name != 'schedule'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           # "every" makes negation patterns act as exclusions; the default
           # "some" quantifier lets the bare '**' match everything.
