@@ -2,14 +2,21 @@
 
 Configure keepalived for Pi-hole high availability with VIP failover.
 
-The health script requires the configured Pi-hole container (`PIHOLE_CONTAINER`,
-default `pihole`) to be running, then performs a functional DNS query against
-local Pi-hole on `127.0.0.1:53`. Container checks use `sg docker` so they still
-work when keepalived runs the script without supplementary groups. The script
-uses `set -o pipefail` only (never `set -e`) because keepalived's script runner
-mishandles common bash control-flow patterns. Set `PIHOLE_HA_HEALTH_DOMAIN` in
-the keepalived service environment to override the default `cloudflare.com`
-query name.
+The health script (`/etc/keepalived/check_pihole.sh`) requires:
+
+1. The configured Pi-hole container (`PIHOLE_CONTAINER`, default `pihole`) to be
+   running.
+2. A functional DNS query against local Pi-hole on `127.0.0.1:53` that returns
+   at least one IPv4 answer for `pihole_verify_qname` (default `cloudflare.com`).
+3. When `pihole_enable_unbound` is true, Unbound must also be running and answer
+   the same qname on port `5335`. Pi-hole cache alone is not enough — otherwise
+   upstream failure would not trigger VIP failover.
+
+Container checks use `sg docker` so they still work when keepalived runs the
+script without supplementary groups. The script uses `set -o pipefail` only
+(never `set -e`) because keepalived's script runner mishandles common bash
+control-flow patterns. Override the query name with `PIHOLE_HA_HEALTH_DOMAIN`
+in the keepalived service environment if needed.
 
 The role leaves IPv4 forwarding disabled by default because a local service VIP
 does not normally require routing. Set `keepalived_enable_ip_forward: true`

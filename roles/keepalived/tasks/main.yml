@@ -57,10 +57,10 @@
     enabled: true
   when: keepalived_defer_service_restart | default(false) | bool
 
-- name: Copy check_pihole.sh
-  ansible.builtin.copy:
+- name: Install check_pihole.sh health probe
+  ansible.builtin.template:
     dest: /etc/keepalived/check_pihole.sh
-    src: check_pihole.sh
+    src: check_pihole.sh.j2
     mode: "0755"
 
 # Finds the IP_ADDRS of the group and removes the ansible_host ip's from it's peer list

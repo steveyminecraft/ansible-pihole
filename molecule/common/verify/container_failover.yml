@@ -136,3 +136,106 @@
       DNS RECOVERY FAILED: VIP {{ vip_address }} did not return to {{ node1 }}
       after restoring Pi-hole DNS service.
   when: inventory_hostname == node1
+
+- name: Verify Unbound-stop health failover and restore primary
+  when: pihole_enable_unbound | default(true) | bool
+  block:
+    - name: Stop Unbound on primary to trigger upstream DNS failover
+      community.docker.docker_container:
+        name: "{{ unbound_container_name | default('unbound') }}"
+        state: stopped
+      when: inventory_hostname == node1
+
+    - name: Wait for Keepalived health check to fail after Unbound stop
+      ansible.builtin.command: /etc/keepalived/check_pihole.sh
+      register: pihole_health_after_unbound_stop
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == node1
+      retries: 10
+      delay: 2
+      until: pihole_health_after_unbound_stop.rc != 0
+
+    - name: Assert Keepalived detects Unbound/upstream failure
+      ansible.builtin.assert:
+        that:
+          - pihole_health_after_unbound_stop.rc != 0
+        fail_msg: >-
+          HEALTH CHECK FAILED: /etc/keepalived/check_pihole.sh remained healthy
+          after stopping Unbound on {{ node1 }} while Pi-hole was still running.
+          External/upstream DNS resolution must be required for VIP health.
+      when: inventory_hostname == node1
+
+    - name: Wait for VIP on backup after Unbound stop on primary
+      ansible.builtin.command: ip -4 addr show
+      register: ip_node2_unbound_failover
+      changed_when: false
+      when: inventory_hostname == node2
+      retries: 30
+      delay: 2
+      until: vip_address in ip_node2_unbound_failover.stdout
+
+    - name: Assert VIP is on backup after Unbound stop on primary
+      ansible.builtin.assert:
+        that:
+          - vip_address in ip_node2_unbound_failover.stdout
+        fail_msg: >-
+          UNBOUND FAILOVER FAILED: VIP {{ vip_address }} not found on {{ node2 }}
+          after stopping Unbound on {{ node1 }}.
+      when: inventory_hostname == node2
+
+    - name: Collect addresses on primary after Unbound stop
+      ansible.builtin.command: ip -4 addr show
+      register: ip_node1_post_unbound_stop
+      changed_when: false
+      when: inventory_hostname == node1
+
+    - name: Assert VIP is absent from primary after Unbound stop
+      ansible.builtin.assert:
+        that:
+          - vip_address not in ip_node1_post_unbound_stop.stdout
+        fail_msg: >-
+          UNBOUND FAILOVER INCOMPLETE: VIP {{ vip_address }} still present on {{ node1 }}
+          after stopping Unbound (Pi-hole container alone must not retain the VIP).
+      when: inventory_hostname == node1
+  always:
+    - name: Start Unbound on primary after Unbound failover test
+      community.docker.docker_container:
+        name: "{{ unbound_container_name | default('unbound') }}"
+        state: started
+      when:
+        - inventory_hostname == node1
+        - pihole_enable_unbound | default(true) | bool
+
+    - name: Wait for Keepalived health recovery after Unbound restore
+      ansible.builtin.command: /etc/keepalived/check_pihole.sh
+      register: pihole_health_after_unbound_restore
+      changed_when: false
+      when:
+        - inventory_hostname == node1
+        - pihole_enable_unbound | default(true) | bool
+      retries: 30
+      delay: 2
+      until: pihole_health_after_unbound_restore.rc == 0
+
+    - name: Wait for VIP return to primary after Unbound recovery
+      ansible.builtin.command: ip -4 addr show
+      register: ip_node1_unbound_recovery
+      changed_when: false
+      when:
+        - inventory_hostname == node1
+        - pihole_enable_unbound | default(true) | bool
+      retries: 30
+      delay: 2
+      until: vip_address in ip_node1_unbound_recovery.stdout
+
+    - name: Assert VIP returned to primary after Unbound recovery
+      ansible.builtin.assert:
+        that:
+          - vip_address in ip_node1_unbound_recovery.stdout
+        fail_msg: >-
+          UNBOUND RECOVERY FAILED: VIP {{ vip_address }} did not return to {{ node1 }}
+          after restoring Unbound.
+      when:
+        - inventory_hostname == node1
+        - pihole_enable_unbound | default(true) | bool
