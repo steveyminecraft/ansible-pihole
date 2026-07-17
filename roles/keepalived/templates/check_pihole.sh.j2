@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Templated by steveyminecraft.pihole.keepalived
+# Keepalived's script runner mishandles set -e and some compound conditionals.
+# Use explicit exit codes and pipefail only.
+set -o pipefail
+
+PIHOLE_CONTAINER="${PIHOLE_CONTAINER:-{{ pihole_container_name | default('pihole') }}}"
+PIHOLE_HEALTH_DOMAIN="${PIHOLE_HA_HEALTH_DOMAIN:-{{ pihole_verify_qname | default(pihole_unbound_verify_qname | default('cloudflare.com')) }}}"
+PIHOLE_HEALTH_SERVER="${PIHOLE_HA_HEALTH_SERVER:-127.0.0.1}"
+PIHOLE_HEALTH_PORT="${PIHOLE_HA_HEALTH_PORT:-53}"
+{% if pihole_enable_unbound | default(true) | bool %}
+UNBOUND_CONTAINER="${UNBOUND_CONTAINER:-{{ unbound_container_name | default('unbound') }}}"
+UNBOUND_PORT="${UNBOUND_PORT:-{{ unbound_port | default(5335) }}}"
+UNBOUND_DNS_TARGET="${UNBOUND_DNS_TARGET:-{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}}"
+{% endif %}
+
+# IPv4 A-record line (aligned with update-pihole health gates).
+ipv4_answer() {
+  grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' >/dev/null
+}
+
+# Container must be running. Fail hard before DNS probes.
+running="$(sg docker -c "docker inspect --format '{{ '{{' }}.State.Running{{ '}}' }}' \"${PIHOLE_CONTAINER}\"" 2>/dev/null || true)"
+if [ "${running}" != "true" ]; then
+  exit 1
+fi
+
+# Functional DNS through local Pi-hole (external qname, require IPv4).
+if command -v dig >/dev/null 2>&1; then
+  dig +time=1 +tries=1 +short "@${PIHOLE_HEALTH_SERVER}" -p "${PIHOLE_HEALTH_PORT}" "${PIHOLE_HEALTH_DOMAIN}" \
+    | ipv4_answer || exit 1
+else
+  sg docker -c "docker exec \"${PIHOLE_CONTAINER}\" sh -lc \
+    \"dig +time=1 +tries=1 +short @127.0.0.1 -p 53 ${PIHOLE_HEALTH_DOMAIN}\"" \
+    | ipv4_answer || exit 1
+fi
+{% if pihole_enable_unbound | default(true) | bool %}
+
+# Upstream must resolve too. Pi-hole cache can answer while Unbound is down;
+# a direct query to Unbound detects that and triggers VIP failover.
+sg docker -c "docker inspect --format '{{ '{{' }}.State.Running{{ '}}' }}' \"${UNBOUND_CONTAINER}\"" 2>/dev/null \
+  | grep -qx true || exit 1
+
+sg docker -c "docker exec \"${PIHOLE_CONTAINER}\" sh -lc \
+  \"dig +time=1 +tries=1 +short @${UNBOUND_DNS_TARGET} -p ${UNBOUND_PORT} ${PIHOLE_HEALTH_DOMAIN}\"" \
+  | ipv4_answer || exit 1
+{% endif %}
+
+exit 0

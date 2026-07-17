@@ -135,7 +135,7 @@ Do not reuse lab-only fixture credentials from
 |----------|-------------|---------------------|
 | `nebula_sync_dir` | `/opt/nebula` | Writable path on controller node |
 | `nebula_sync_cron` | `*/15 * * * *` | Adjust sync cadence |
-| `nebula_sync_full_sync` | `true` in vagrant | `false` unless initial sync |
+| `nebula_sync_full_sync` | `false` | `false` (use selective sync; env-locked keys like `listeningMode`/`upstreams` must be excluded) |
 | `nebula_sync_use_secret_files` | `true` in role defaults | Keep `true`; see secrets doc |
 | `nebula_sync_run_gravity` | varies | Enable if gravity sync required |
 

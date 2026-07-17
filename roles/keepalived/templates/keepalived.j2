@@ -9,7 +9,8 @@ global_defs {
 vrrp_script check_pihole_dns {
     script "/etc/keepalived/check_pihole.sh"
     interval 5
-    timeout 4
+    # Pi-hole dig + optional Unbound dig (each +time=1) need headroom.
+    timeout 6
     fall 1
     rise 1
 }

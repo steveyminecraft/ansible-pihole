@@ -67,7 +67,7 @@ all:
     nebula_sync_replicas:
       - url: "http://192.168.121.5"
         password: '{{ pihole_environment_variables.FTLCONF_webserver_api_password }}'
-    nebula_sync_full_sync: true
+    nebula_sync_full_sync: false
     nebula_sync_cron: "*/15 * * * *"
     nebula_sync_dir: "/opt/nebula"
     pihole_unbound_upstream: "{{ unbound_container_name }}#{{ unbound_port }}"

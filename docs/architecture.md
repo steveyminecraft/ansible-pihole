@@ -21,7 +21,10 @@ Visual overview: [Project layers diagram](diagrams/ansible-pihole-layers.png) (s
 ## Health and failover
 
 - VIP failover uses `/etc/keepalived/check_pihole.sh`.
-- The health script runs DNS-level checks (not only container metadata).
+- The health script requires local Pi-hole DNS to return an IPv4 answer for an
+  external qname, and (when Unbound is enabled) a direct Unbound query as well.
+  Container/Docker health alone is not sufficient — cached Pi-hole answers must
+  not keep the VIP on a node whose upstream resolver is down.
 - Rolling playbooks (`bootstrap-pihole.yaml`, `update-pihole.yaml`) run with `serial: 1`
   and now include post-role DNS health gates per node before proceeding.
 

@@ -39,6 +39,10 @@ nebula_sync_sync_config:
   misc: false
   debug: false
 
+# Node-local keys forced via FTLCONF_* env vars cannot be patched via the API.
+# Exclude them so selective DNS sync does not 400 on replicas.
+nebula_sync_sync_config_dns_exclude: "listeningMode,upstreams"
+
 nebula_sync_sync_gravity:
   dhcp_leases: false
   group: false

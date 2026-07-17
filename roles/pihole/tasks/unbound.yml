@@ -44,14 +44,11 @@
       }}
   when: pihole_unbound_present
 
+# Prefer the Docker DNS name so Pi-hole survives Unbound IP changes on dns_net.
+# The bridge IPv4 is still collected above for host-side dig verification.
 - name: Set Pi-hole Unbound DNS target
   ansible.builtin.set_fact:
-    pihole_unbound_dns_target: >-
-      {{
-        pihole_unbound_container_ipv4
-        if (pihole_unbound_container_ipv4 | default('') | length > 0)
-        else (unbound_container_name | default('unbound'))
-      }}
+    pihole_unbound_dns_target: "{{ unbound_container_name | default('unbound') }}"
   when: pihole_unbound_present
 
 - name: Use public DNS as Pi-hole container startup resolver
