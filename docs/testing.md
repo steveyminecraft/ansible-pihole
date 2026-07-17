@@ -3,6 +3,10 @@
 Single index for how this collection is validated: GitHub CI, local Molecule,
 AWS remote tests, and manual production checks.
 
+Visual overview: [Unit tests map](diagrams/ansible-pihole-unit-tests.png) and
+[Repository / CI map](diagrams/ansible-pihole-repo-map.png)
+(source: `diagrams/ansible-pihole-unit-tests.drawio`).
+
 ## Coverage at a glance
 
 | Layer | Where it runs | What it proves | Gap |
