@@ -32,7 +32,7 @@ jobs:
       - name: Match changed paths
         id: filter
         if: github.event_name != 'workflow_dispatch'
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         with:
           # "every" makes negation patterns act as exclusions; the default
           # "some" quantifier lets the bare '**' match everything.
