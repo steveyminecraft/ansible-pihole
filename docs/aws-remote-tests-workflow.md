@@ -91,7 +91,7 @@ This job turns your manual inputs into a JSON matrix for job 2.
 | `one-arch` + arm64 | 1 job: Ubuntu 26.04 arm64 |
 | `all-archs` | 2 jobs: amd64 + arm64 |
 
-It also passes through **scenario**, **skip_update**, and **region**.
+It also passes through **scenario** and **skip_update**. Region is resolved in job 2 directly from `github.event.inputs.aws_region` or `secrets.AWS_TEST_REGION` (Actions redacts secret-bearing job outputs to empty, so region must not cross the job boundary via outputs).
 
 ### 4. Job 2: `aws-remote-tests` (main work)
 

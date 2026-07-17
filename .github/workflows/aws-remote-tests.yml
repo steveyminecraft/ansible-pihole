@@ -66,7 +66,6 @@ jobs:
       matrix: ${{ steps.matrix.outputs.matrix }}
       scenario: ${{ steps.matrix.outputs.scenario }}
       skip_update: ${{ steps.matrix.outputs.skip_update }}
-      aws_region: ${{ steps.matrix.outputs.aws_region }}
     steps:
       - name: Resolve matrix
         id: matrix
@@ -76,8 +75,6 @@ jobs:
           INPUT_ARCH: ${{ github.event.inputs.arch }}
           INPUT_SCENARIO: ${{ github.event.inputs.scenario }}
           INPUT_SKIP_UPDATE: ${{ github.event.inputs.skip_update }}
-          INPUT_AWS_REGION: ${{ github.event.inputs.aws_region }}
-          DEFAULT_AWS_REGION: ${{ secrets.AWS_TEST_REGION }}
         run: |
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
@@ -109,15 +106,9 @@ jobs:
                   "arch": (os.environ.get("INPUT_ARCH") or "amd64").strip(),
               }]
 
-          region = (
-              (os.environ.get("INPUT_AWS_REGION") or "").strip()
-              or (os.environ.get("DEFAULT_AWS_REGION") or "").strip()
-          )
-
           print(f"matrix={json.dumps({'include': matrix})}")
           print(f"scenario={scenario}")
           print(f"skip_update={skip_update}")
-          print(f"aws_region={region}")
           PY
 
   aws-remote-tests:
@@ -129,7 +120,9 @@ jobs:
       fail-fast: false
       matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
     env:
-      AWS_REGION: ${{ needs.prepare-matrix.outputs.aws_region }}
+      # Resolve region in this job. Do not pass secrets.AWS_TEST_REGION through
+      # prepare-matrix outputs — Actions redacts secret-bearing job outputs to empty.
+      AWS_REGION: ${{ github.event.inputs.aws_region || secrets.AWS_TEST_REGION }}
       AWS_TEST_SCENARIO: ${{ needs.prepare-matrix.outputs.scenario }}
       AWS_SKIP_UPDATE: ${{ needs.prepare-matrix.outputs.skip_update }}
       AWS_OS_FAMILY: ${{ matrix.os_family }}
@@ -230,11 +223,21 @@ jobs:
 
       - name: Ensure cleanup executes on failures
         if: always()
-        run: tests/remote/aws/destroy-ephemeral-env.sh
+        run: |
+          if [ ! -f tests/remote/aws/destroy-ephemeral-env.sh ]; then
+            echo "Repository checkout did not run; skipping destroy."
+            exit 0
+          fi
+          tests/remote/aws/destroy-ephemeral-env.sh
 
       - name: Verify AWS cleanup status
         if: always()
-        run: tests/remote/aws/verify-cleanup.sh
+        run: |
+          if [ ! -f tests/remote/aws/verify-cleanup.sh ]; then
+            echo "Repository checkout did not run; skipping cleanup verification."
+            exit 0
+          fi
+          tests/remote/aws/verify-cleanup.sh
 
       - name: Publish AWS test summary
         if: always()
