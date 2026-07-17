@@ -2,6 +2,8 @@
 
 Visual overview: [Project layers diagram](diagrams/ansible-pihole-layers.png) (source: `diagrams/ansible-pihole-layers.drawio`).
 
+Repository and CI map: [Repository map](diagrams/ansible-pihole-repo-map.png) (source: `diagrams/ansible-pihole-unit-tests.drawio`, page “Repository and CI”).
+
 `ansible-pihole` deploys a two-node DNS stack using collection roles:
 
 - `steveyminecraft.pihole.docker`
