@@ -186,7 +186,7 @@ jobs:
           role-session-name: ansible-pihole-aws-tests
 
       - name: Set up Python
-        uses: actions/setup-python@v6.2.0
+        uses: actions/setup-python@v6.3.0
         with:
           python-version: "3.14"
 
