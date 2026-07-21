@@ -90,14 +90,14 @@ jobs:
           role-session-name: ansible-pihole-rc-ubuntu-26.04
 
       - name: Set up Python
-        uses: actions/setup-python@v6.2.0
+        uses: actions/setup-python@v6.3.0
         with:
           python-version: "3.14"
 
       - name: Install Ansible
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --upgrade 'ansible-core>=2.21.1,<2.22'
+          python -m pip install --upgrade 'ansible-core>=2.21.2,<2.22'
 
       - name: Install collections
         run: ./scripts/install-ansible-collections.sh

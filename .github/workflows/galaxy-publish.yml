@@ -73,14 +73,14 @@ jobs:
       matrix:
         ansible-core:
           - ">=2.20.5,<2.21"
-          - ">=2.21.1,<2.22"
+          - ">=2.21.2,<2.22"
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v6.3.0
         with:
           python-version: "3.13"
 
