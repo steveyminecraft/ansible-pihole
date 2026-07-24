@@ -120,7 +120,8 @@ keepalived_enable_ip_forward: true
 On RedHat/Rocky, `keepalived_t` remains enforcing by default. The
 `keepalived_selinux_permissive: true` compatibility escape hatch weakens
 SELinux enforcement and should only be used for a known denial while a narrow
-policy fix is prepared.
+policy fix is prepared. Vagrant lab inventories enable it so keepalived can run
+the docker/dig VIP health script under Molecule without a custom SELinux module.
 
 `docker_disable_ipv6` now defaults to `false` for production safety. Set it explicitly in
 lab inventories where guest networking requires the workaround (for example Vagrant/Rocky).
@@ -246,7 +247,10 @@ Pi-hole uses. After all nodes pass and rejoin, the playbooks verify DNS through
 the VIP.
 
 Keepalived health checks require both the configured Pi-hole container to be
-running and Pi-hole DNS to answer functionally. Container checks use `sg docker`
+running and Pi-hole DNS to answer functionally. When Unbound is enabled, the
+check also probes Unbound (preferring the container's live IPv4 from
+`docker inspect` so VIP health still works if Docker embedded DNS is down).
+Container checks use `sg docker`
 so they work under keepalived's script execution context. This prevents another
 local DNS listener from masking a stopped Pi-hole container during HA failover.
 
@@ -264,7 +268,10 @@ The Vagrant inventories set `docker_daemon_dns` and `pihole_docker_dns` to
 public resolvers so Docker Hub image pulls and fresh Pi-hole gravity bootstrap
 do not depend on guest-local stub or embedded Docker DNS before Pi-hole/Unbound
 are healthy. Leave these unset or empty in production unless the host or
-container needs an explicit resolver list.
+container needs an explicit resolver list. On lab hosts where Docker does not
+manage iptables (typical Vagrant/`vagrant_env`), the Pi-hole role falls back to
+Unbound's bridge IPv4 for `FTLCONF_dns_upstreams` because `127.0.0.11` is often
+refused inside the container.
 
 ### `playbooks/keepalived.yaml`
 
@@ -306,6 +313,8 @@ services during each converge.
 
 - Molecule, Ansible, Vagrant, and **VirtualBox** or **libvirt** (`vagrant-libvirt`) as appropriate.
 - Run Molecule from the **repository root** so paths and inventory links resolve.
+- Vagrant inventories set `IdentitiesOnly=yes` in `ansible_ssh_common_args` so a busy
+  `ssh-agent` does not exhaust MaxAuthTries before the Vagrant key (or password) is tried.
 - **Lint:** CI runs [ansible-lint](https://ansible-lint.readthedocs.io/) on
   roles, playbooks, Molecule, and remote verification playbooks;
   [yamllint](https://yamllint.readthedocs.io/) covers their YAML inventories and

@@ -11,7 +11,8 @@ all:
     ansible_password: vagrant
     ansible_user_home_dir: /home/vagrant
     ansible_python_interpreter: /usr/bin/python3
-    ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    # IdentitiesOnly: avoid "Too many authentication failures" when ssh-agent holds many keys.
+    ansible_ssh_common_args: "-F /dev/null -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     github_user_for_ssh_key: steveyminecraft
     password_lock: false
     timezone: Europe/London

@@ -41,8 +41,20 @@ fi
 sg docker -c "docker inspect --format '{{ '{{' }}.State.Running{{ '}}' }}' \"${UNBOUND_CONTAINER}\"" 2>/dev/null \
   | grep -qx true || exit 1
 
+# Prefer Unbound's live container IPv4: keepalived.conf/script are often rendered
+# before Pi-hole sets pihole_unbound_dns_target, and Docker embedded DNS
+# (127.0.0.11) is frequently refused when iptables management is off.
+UNBOUND_CHECK_TARGET="$(
+  sg docker -c "docker inspect --format '{{ '{{' }}range .NetworkSettings.Networks{{ '}}' }}{{ '{{' }}.IPAddress{{ '}}' }}{{ '{{' }}println{{ '}}' }}{{ '{{' }}end{{ '}}' }}' \"${UNBOUND_CONTAINER}\"" 2>/dev/null \
+    | awk 'NF { print; exit }'
+)"
+if [ -z "${UNBOUND_CHECK_TARGET}" ]; then
+  UNBOUND_CHECK_TARGET="${UNBOUND_DNS_TARGET}"
+fi
+[ -n "${UNBOUND_CHECK_TARGET}" ] || exit 1
+
 sg docker -c "docker exec \"${PIHOLE_CONTAINER}\" sh -lc \
-  \"dig +time=1 +tries=1 +short @${UNBOUND_DNS_TARGET} -p ${UNBOUND_PORT} ${PIHOLE_HEALTH_DOMAIN}\"" \
+  \"dig +time=1 +tries=1 +short @${UNBOUND_CHECK_TARGET} -p ${UNBOUND_PORT} ${PIHOLE_HEALTH_DOMAIN}\"" \
   | ipv4_answer || exit 1
 {% endif %}
 

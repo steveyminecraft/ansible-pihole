@@ -26,7 +26,8 @@ all:
     ansible_user: vagrant
     ansible_password: vagrant  # only used on first run
     # Avoid failing on local /etc/ssh/ssh_config* permission issues; also suppress hostkey prompts.
-    ansible_ssh_common_args: "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    # IdentitiesOnly: avoid "Too many authentication failures" when ssh-agent holds many keys.
+    ansible_ssh_common_args: "-F /dev/null -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     password_lock: false  # Change to false if you still wish to login via passwd auth
     ansible_user_home_dir: /home/{{ ansible_user }}
     ansible_python_interpreter: /usr/bin/python3
@@ -55,6 +56,9 @@ all:
     dnsmasq_listening: single
     pihole_container_name: pihole
     vagrant_env: true
+    # Rocky/EL keepalived_t cannot run the docker/dig health script under enforcing
+    # without a custom policy; lab escape hatch (defaults stay enforcing for production).
+    keepalived_selinux_permissive: true
     docker_group_users:
       - vagrant
     # Lab-only: avoid Docker image pulls depending on the guest's systemd-resolved stub.
