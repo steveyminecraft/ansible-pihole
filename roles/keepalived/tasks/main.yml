@@ -42,6 +42,25 @@
     permissive: "{{ keepalived_selinux_permissive | default(false) | bool }}"
   when: ansible_facts['os_family'] == 'RedHat'
 
+# Belt-and-suspenders: community.general.selinux_permissive can report ok without
+# keepalived_t actually becoming permissive on some Rocky 10 images; semanage is
+# authoritative for the lab escape hatch (required so check_pihole.sh can use docker).
+- name: Ensure keepalived_t is permissive via semanage (lab escape hatch)
+  ansible.builtin.command:
+    argv:
+      - semanage
+      - permissive
+      - -a
+      - keepalived_t
+  register: _keepalived_semanage_permissive
+  changed_when: _keepalived_semanage_permissive.rc == 0
+  failed_when: >-
+    _keepalived_semanage_permissive.rc != 0
+    and ('already' not in (_keepalived_semanage_permissive.stderr | default('')))
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - keepalived_selinux_permissive | default(false) | bool
+
 # Since yum doesn't like using notify because yum we have to this instead
 - name: Start service keepalived started, if not started
   ansible.builtin.service:
@@ -119,12 +138,23 @@
     mode: "0644"
   notify: Restart keepalived service
 
-### Add in firewall rules for vrrp protocol
+### Add in firewall rules for vrrp protocol (proto 112; unicast + multicast)
 - name: Add VRRP protocol to firewall
   ansible.posix.firewalld:
     rich_rule: rule protocol value="vrrp" accept
     permanent: true
     state: enabled
+    immediate: true
+  notify: Restart firewall config
+
+- name: Allow VRRP unicast from keepalived peers
+  ansible.posix.firewalld:
+    rich_rule: "rule family=ipv4 source address={{ item }} protocol value=vrrp accept"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ keepalived_peer_list | default([]) }}"
+  when: keepalived_peer_list | default([]) | length > 0
   notify: Restart firewall config
 
 - name: Flush handlers

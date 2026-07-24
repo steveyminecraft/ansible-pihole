@@ -24,6 +24,13 @@ pihole_docker_platform_arch_map:
 pihole_enable_unbound: true
 pihole_upstream_resolvers: []
 
+# Mirrored from roles/unbound/defaults so inventory expressions like
+# pihole_unbound_upstream / pihole_network_name resolve even when the unbound
+# role is not in the play (e.g. molecule side_effect → update-pihole).
+unbound_container_name: unbound
+unbound_port: 5335
+unbound_network_name: dns_net
+
 # Must stay aligned with roles/docker/defaults — same variable is used in both roles; last role used to
 # win in defaults, so a literal `true` here overwrote the docker role and broke EL/Vagrant bridge egress.
 # EL Docker NAT fallback after compose (see tasks/redhat_nat_fallback.yml).

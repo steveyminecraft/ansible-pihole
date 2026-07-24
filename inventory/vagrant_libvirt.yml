@@ -33,11 +33,13 @@ all:
     pihole_webport_http: '80'  # Port for HTTP-Requests to Webinterface.
     pihole_webport_https: '443'  # Port for HTTPS-DoH Requests.
     pihole_firewall_deploy: true  # will ensure firewalld is install and configured
+    # Rocky lab: keepalived_t otherwise blocks check_pihole.sh (docker/sg); VIP never moves.
+    keepalived_selinux_permissive: true
     DHCP_ACTIVE: false
     pihole_environment_variables:
       TZ: "{{ timezone }}"
       FTLCONF_MAXDBDAYS: "180"
-      FTLCONF_webserver_api_password: 'Intranet'  # example value, change it and better use ansible-vault
+      FTLCONF_webserver_api_password: 'LabOnly-Molecule-Pihole-Password!'
       FTLCONF_dns_listeningMode: "all"
       DHCP_ACTIVE: false
       REV_SERVER: false
@@ -75,6 +77,11 @@ all:
     nebula_sync_full_sync: false
     nebula_sync_cron: "*/15 * * * *"
     nebula_sync_dir: "/opt/nebula"
-    pihole_unbound_upstream: "{{ unbound_container_name }}#{{ unbound_port }}"
-    pihole_network_name: "{{ unbound_network_name }}"
+    # Explicit unbound defaults (role defaults are not loaded until roles run;
+    # inventory jinja for pihole_unbound_upstream must resolve at parse time).
+    unbound_container_name: unbound
+    unbound_port: 5335
+    unbound_network_name: dns_net
+    pihole_unbound_upstream: "{{ unbound_container_name | default('unbound') }}#{{ unbound_port | default(5335) }}"
+    pihole_network_name: "{{ unbound_network_name | default('dns_net') }}"
     pihole_network_external: true

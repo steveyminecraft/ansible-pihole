@@ -8,39 +8,58 @@ global_defs {
 
 vrrp_script check_pihole_dns {
     script "/etc/keepalived/check_pihole.sh"
-    interval 5
+    interval {{ keepalived_track_script_interval | default(2) }}
     # Pi-hole dig + optional Unbound dig (each +time=1) need headroom.
-    timeout 6
-    fall 1
-    rise 1
+    timeout {{ keepalived_track_script_timeout | default(8) }}
+    fall {{ keepalived_track_script_fall | default(2) }}
+    rise {{ keepalived_track_script_rise | default(2) }}
+    {# weight != 0: failed checks adjust priority instead of FAULT.
+       FAULT on the backup prevents VIP takeover when the master process stops
+       (seen under lab dig flakes / Docker DNS). #}
+    weight {{ keepalived_track_script_weight | default(-50) }}
 }
 
+{# Vagrant is IPv4-only. A one-member vrrp_sync_group makes keepalived (Rocky 10 /
+   keepalived 2.2+) ignore weighted instance track_scripts ("ignoring tracked
+   script … with weights due to SYNC group"), so container-stop VIP failover never
+   fires. Skip the sync group in lab; keep it for production IPv4+IPv6. #}
+{% if not (vagrant_env | default(false) | bool) %}
 vrrp_sync_group PIHOLE {
     group {
-        PIHOLE-IPv4 
-        {% if not (vagrant_env | default(false) | bool) %}
+        PIHOLE-IPv4
         PIHOLE-IPv6
-        {% endif %}
     }
-
+    {# Non-vagrant: track on sync group so IPv4+IPv6 share health. #}
     track_script {
         check_pihole_dns
     }
 }
+{% endif %}
 
 vrrp_instance PIHOLE-IPv4 {
     interface {{ keepalived_vrrp_interface | default(ansible_facts['default_ipv4']['interface']) }}
     state {{ keepalive_role }}
-    virtual_router_id 1
+    virtual_router_id {{ keepalived_virtual_router_id | default(1) }}
     priority {{ priority }}
     advert_int 1
-    preempt_delay 30
+    preempt_delay {{ 5 if (vagrant_env | default(false) | bool) else 30 }}
+    {# Unicast VRRP — required on libvirt/KVM NAT bridges where multicast is unreliable. #}
     unicast_src_ip {{ keepalived_vrrp_src_address | default(ansible_facts['default_ipv4']['address']) }}
     unicast_peer {
 {% for peer in keepalived_peer_list %}
         {{ peer }}
 {% endfor %}
     }
+{% if vagrant_env | default(false) | bool %}
+    # Faster VIP visibility on bridged/NAT lab networks (VirtualBox + libvirt).
+    garp_master_delay 1
+    garp_master_repeat 5
+    garp_master_refresh 10
+    {# Weighted track_script on the instance (no sync_group in vagrant_env). #}
+    track_script {
+        check_pihole_dns
+    }
+{% endif %}
 
     virtual_ipaddress {
         {{ pihole_vip_ipv4 }}
@@ -50,7 +69,7 @@ vrrp_instance PIHOLE-IPv4 {
 {% if not (vagrant_env | default(false) | bool) %}
 vrrp_instance PIHOLE-IPv6 {
     interface {{ keepalived_vrrp_interface | default((ansible_facts['default_ipv6'] | default({}))['interface'] | default(ansible_facts['default_ipv4']['interface'])) }}
-    virtual_router_id 1
+    virtual_router_id {{ keepalived_virtual_router_id | default(1) }}
     priority {{ priority }}
     advert_int 1
     preempt_delay 30

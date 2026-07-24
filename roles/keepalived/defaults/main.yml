@@ -5,3 +5,12 @@ keepalived_enable_ip_forward: false
 # Compatibility escape hatch for deployments with a known keepalived SELinux
 # denial. Prefer a narrowly scoped policy fix.
 keepalived_selinux_permissive: false
+
+# track_script tuning: non-zero weight avoids FAULT (which blocks VIP takeover
+# on the backup when the master keepalived process is stopped).
+keepalived_track_script_weight: -50
+keepalived_track_script_interval: 2
+keepalived_track_script_timeout: 8
+keepalived_track_script_fall: 1
+keepalived_track_script_rise: 2
+keepalived_virtual_router_id: 1

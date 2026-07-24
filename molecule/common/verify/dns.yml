@@ -4,11 +4,22 @@
     argv:
       - dig
       - +short
+      - +time=2
+      - +tries=2
       - "@127.0.0.1"
       - "{{ molecule_dns_verify_qname }}"
   register: dns_local
   changed_when: false
-  failed_when: dns_local.stdout == ""
+  retries: 15
+  delay: 2
+  until: >
+    (dns_local.stdout_lines | default([])
+     | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+     | list | length) > 0
+  failed_when: >
+    (dns_local.stdout_lines | default([])
+     | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+     | list | length) == 0
 
 - name: Assert local DNS returned IPv4
   ansible.builtin.assert:
@@ -17,7 +28,10 @@
         | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
         | list
         | length > 0
-    fail_msg: "Local DNS did not return an IPv4."
+    fail_msg: >-
+      Local DNS did not return an IPv4.
+      dig stdout={{ dns_local.stdout | default('') | trim | truncate(200) }}
+      rc={{ dns_local.rc | default('n/a') }}
 
 - name: Resolve via VIP (run once on first host)
   ansible.builtin.command:

@@ -5,6 +5,11 @@
   serial: 1
   any_errors_fatal: true
   vars:
+    # Ensure inventory expressions that reference unbound_* resolve even when
+    # this play does not include the unbound role (molecule side_effect).
+    unbound_container_name: unbound
+    unbound_port: 5335
+    unbound_network_name: dns_net
     pihole_update_health_qname: >-
       {{ pihole_verify_qname | default(pihole_unbound_verify_qname | default('cloudflare.com')) }}
   roles:
@@ -42,6 +47,8 @@
              | list | length) == 0
 
         - name: Verify local Unbound DNS when deployed
+          # Resolve Docker DNS names via 127.0.0.11 when pihole_docker_dns
+          # overrides container resolv.conf away from the embedded resolver.
           ansible.builtin.command:
             argv:
               - docker
@@ -50,8 +57,13 @@
               - sh
               - -lc
               - >-
-                dig +short @{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}
-                -p {{ unbound_port | default(5335) | string }} {{ pihole_update_health_qname }}
+                t='{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}';
+                case "$t" in
+                  [0-9]*.[0-9]*.[0-9]*.[0-9]*) ;;
+                  *) t=$(dig +short "$t" @127.0.0.11 +tries=2 +time=3 | awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/{print; exit}');;
+                esac;
+                test -n "$t" || exit 1;
+                dig +short @"$t" -p {{ unbound_port | default(5335) | string }} {{ pihole_update_health_qname }}
           register: pihole_update_unbound_dns
           changed_when: false
           failed_when: >

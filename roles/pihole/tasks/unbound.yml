@@ -91,11 +91,24 @@
   failed_when: pihole_dns_net_create.rc != 0
   when: pihole_unbound_present and pihole_dns_net_inspect.rc != 0
 
+# When pihole_docker_dns replaces Docker embedded DNS (127.0.0.11), FTL cannot
+# resolve the "unbound" hostname at startup (CRIT: Name does not resolve) and
+# local dig @127.0.0.1 stays broken. Prefer Unbound's container IP (already
+# computed above as pihole_unbound_container_ipv4).
 - name: Enable Pi-hole upstream to Unbound (set env vars)
   vars:
+    _pihole_unbound_upstream_host: >-
+      {{
+        (pihole_unbound_container_ipv4 | default('') | trim)
+        if (
+          (pihole_docker_dns | default([]) | length > 0)
+          and (pihole_unbound_container_ipv4 | default('') | trim | length > 0)
+        )
+        else (pihole_unbound_dns_target | default(unbound_container_name | default('unbound')))
+      }}
     _pihole_ftl_dns_upstreams: >-
       {{
-        (pihole_unbound_dns_target | default(unbound_container_name | default('unbound')))
+        _pihole_unbound_upstream_host
         ~ '#'
         ~ (unbound_port | default(5335) | string)
       }}
@@ -300,9 +313,18 @@
     _pihole_unbound_dig_target: >-
       {{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}
     _pihole_verify_qname: "{{ pihole_verify_qname | default('cloudflare.com') }}"
+  # Resolve Docker DNS names via 127.0.0.11: containers with pihole_docker_dns /
+  # custom resolv.conf cannot dig @unbound by name using public resolvers.
   ansible.builtin.command: >
     docker exec {{ pihole_container_name | default('pihole') }}
-    sh -lc "dig @{{ _pihole_unbound_dig_target }} -p {{ unbound_port | default(5335) }} {{ _pihole_verify_qname }} +short"
+    sh -lc
+    "t='{{ _pihole_unbound_dig_target }}';
+    case \"$t\" in
+      [0-9]*.[0-9]*.[0-9]*.[0-9]*) ;;
+      *) t=$(dig +short \"$t\" @127.0.0.11 +tries=2 +time=3 | awk '/^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$/{print; exit}');;
+    esac;
+    test -n \"$t\" || exit 1;
+    dig @\"$t\" -p {{ unbound_port | default(5335) }} {{ _pihole_verify_qname }} +short"
   register: pihole_unbound_dns_test
   changed_when: false
   failed_when: >

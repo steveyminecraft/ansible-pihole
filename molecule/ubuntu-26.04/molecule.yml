@@ -1,6 +1,8 @@
 ---
 # Molecule scenario: Ubuntu 26.04 + full stack (see converge.yml).
-# VirtualBox: konstruktoid/ubuntu-26.04 (Bento build). Libvirt: cloud-image/ubuntu-26.04.
+# VirtualBox: konstruktoid/ubuntu-26.04 (Bento build).
+# Libvirt: cloud-image/ubuntu-26.04 — must be the amd64 provider box pre-installed
+# (this Vagrant lacks vm.box_architecture; arm64 box hangs with no DHCP/SSH).
 dependency:
   name: shell
   command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
