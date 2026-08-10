@@ -52,9 +52,6 @@ all:
     dnsmasq_listening: single
     pihole_container_name: pihole
     vagrant_env: true
-    # Rocky/EL keepalived_t cannot run the docker/dig health script under enforcing
-    # without a custom policy; lab escape hatch (defaults stay enforcing for production).
-    keepalived_selinux_permissive: true
     docker_disable_ipv6: true  # lab-only workaround for Rocky/Vagrant guest networking
     docker_enable_ip_forward: true  # lab bridge/NAT topology requires forwarding
     docker_group_users:
