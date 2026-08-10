@@ -333,7 +333,7 @@ instances, lab VMs, or Raspberry Pi hardware.
 |----------|------|-----------|
 | `ubuntu` | [`molecule/ubuntu/`](molecule/ubuntu/) | Ubuntu 24.04 (`bento/ubuntu-24.04`); HA bootstrap, verify, rolling `update-pihole`, post-update verify |
 | `ubuntu-26.04` | [`molecule/ubuntu-26.04/`](molecule/ubuntu-26.04/) | Ubuntu 26.04 — VirtualBox: `konstruktoid/ubuntu-26.04` (Bento); libvirt: `cloud-image/ubuntu-26.04`; same HA + update sequence as `ubuntu` |
-| `default` | [`molecule/default/`](molecule/default/) | Rocky-style box (see `molecule.yml`) |
+| `default` | [`molecule/default/`](molecule/default/) | Rocky-style box — **parked on libvirt** until 10 GiB disk fix is re-smoked (wrong box `virtual_size` → dracut; see [docs/testing.md](docs/testing.md#parked-default-rocky--libvirt)) |
 | `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
 | `pihole-no-unbound` | [`molecule/pihole-no-unbound/`](molecule/pihole-no-unbound/) | Runs bootstrap and update workflows with Pi-hole-only DNS |
 

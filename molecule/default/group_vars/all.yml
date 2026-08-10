@@ -6,3 +6,8 @@ pihole_rocky_network_debug_flush_nft: false
 
 # Rocky/Vagrant test: run Pi-hole with host networking to bypass Docker bridge issues
 pihole_use_host_network: false
+
+# keepalived_t blocks check_pihole.sh (docker/sg/dig) under enforcing SELinux on Rocky 10,
+# so the weighted track_script stays BAD (priority stuck at base-50) and container-stop
+# VIP failover never fires. Lab escape hatch — prefer a targeted policy for production.
+keepalived_selinux_permissive: true

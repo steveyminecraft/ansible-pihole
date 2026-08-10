@@ -52,6 +52,8 @@
              | list | length) == 0
 
         - name: Verify local Unbound DNS when deployed
+          # Resolve Docker DNS names via 127.0.0.11 when pihole_docker_dns
+          # overrides container resolv.conf away from the embedded resolver.
           ansible.builtin.command:
             argv:
               - docker
@@ -60,8 +62,13 @@
               - sh
               - -lc
               - >-
-                dig +short @{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}
-                -p {{ unbound_port | default(5335) | string }} {{ pihole_bootstrap_health_qname }}
+                t='{{ pihole_unbound_dns_target | default(unbound_container_name | default('unbound')) }}';
+                case "$t" in
+                  [0-9]*.[0-9]*.[0-9]*.[0-9]*) ;;
+                  *) t=$(dig +short "$t" @127.0.0.11 +tries=2 +time=3 | awk '/^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/{print; exit}');;
+                esac;
+                test -n "$t" || exit 1;
+                dig +short @"$t" -p {{ unbound_port | default(5335) | string }} {{ pihole_bootstrap_health_qname }}
           register: pihole_bootstrap_unbound_dns
           changed_when: false
           failed_when: >

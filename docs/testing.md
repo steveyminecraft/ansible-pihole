@@ -57,7 +57,7 @@ Six scenarios under `molecule/`:
 |----------|------|-------|
 | `ubuntu` | `molecule/ubuntu/` | Ubuntu 24.04 HA — bootstrap, verify, rolling `update-pihole`, re-verify |
 | `ubuntu-26.04` | `molecule/ubuntu-26.04/` | Ubuntu 26.04 — same HA + update sequence |
-| `default` | `molecule/default/` | Rocky-style lab box |
+| `default` | `molecule/default/` | Rocky-style lab box (**parked on libvirt** — see below) |
 | `docker` | `molecule/docker/` | Docker role focus (Vagrant — local) |
 | `docker-ci` | `molecule/docker-ci/` | Docker role on docker driver (hosted CI smoke) |
 | `pihole-no-unbound` | `molecule/pihole-no-unbound/` | Pi-hole-only DNS bootstrap + update |
@@ -94,6 +94,39 @@ Shared verify logic: `molecule/common/verify_ha.yml` and tasks under
 ```
 
 See [README — Molecule integration tests](../README.md#molecule-integration-tests) for provider notes (VirtualBox vs libvirt, ARM64, box selection).
+
+### Parked: `default` (Rocky / libvirt)
+
+**Status (2026-07-23):** root causes fixed in-tree (disk `virtual_size`, NM `multi-connect` for mgmt+private NICs, `vagrant-56` DHCP host reservations for `.4`/`.5`). Re-run `./scripts/ensure-rockylinux10-amd64.sh` then `molecule test -s default` on libvirt; delete stale 5G volumes first if any remain.
+
+| Check | Result |
+|-------|--------|
+| Box | Official CDN `Rocky-10-Vagrant-Libvirt.latest.x86_64` (Vagrant Cloud often picks `libvirt/arm64` → 404; pin CDN URL / `ensure-rockylinux10-amd64.sh`) |
+| Host NICs / dnsmasq | Fine for Ubuntu scenarios; Rocky MACs never leased because guest never booted far enough |
+| Guest disk size | **Bug:** `metadata.json` had `virtual_size: 5` but `qemu-img` reports **10 GiB**; vagrant-libvirt created a **5G** `vda` while GPT/root XFS needs 10 GiB |
+| Symptom | Domain runs, SeaBIOS boots kernel, **dracut emergency** (`/run/initramfs/rdsosreport.txt`), **0 TX** on virtio NICs → Vagrant SSH wait / create hang (rc=143) |
+| QEMU smoke (`-cpu host`) | **5G** overlay: stuck in `dracut-initqueue`. **10G** overlay: reaches `multi-user.target` and `localhost login:` |
+| NM inject | Still required (CDN box has empty `system-connections`); irrelevant until root mounts |
+
+**Root cause:** truncated guest disk from wrong box `virtual_size`, not bridge/DHCP config.
+
+**Fix staged:**
+1. `scripts/ensure-rockylinux10-amd64.sh` — rewrite `metadata.json` `virtual_size` from `qemu-img` + NM inject
+2. `molecule/default/Vagrantfile` — `libvirt.machine_virtual_size = 10`
+
+**Unpark checklist (this host):**
+```bash
+sudo service libvirtd restart   # if qemu:///system is down
+./scripts/ensure-rockylinux10-amd64.sh
+# delete any rockylinux*_box.img / default_vagrant-pihole-*.img pool vols, then:
+sg libvirt -c 'source env/bin/activate
+  export VAGRANT_DEFAULT_PROVIDER=libvirt MOLECULE_VAGRANT_INVENTORY=vagrant_libvirt.yml LIBVIRT_DEFAULT_URI=qemu:///system
+  molecule destroy -s default
+  molecule create -s default'
+```
+Confirm DHCP leases for Rocky MACs and SSH, then full `molecule test -s default`.
+
+**Also fine on libvirt today:** `ubuntu`, `ubuntu-26.04`, `nebula-sync-migration`, `pihole-no-unbound`.
 
 ---
 

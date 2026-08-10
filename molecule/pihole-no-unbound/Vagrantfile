@@ -2,6 +2,9 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
+  # Molecule converges over SSH; disable default share (libvirt NFS needs host sudo).
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
   config.vm.define "pihole-no-unbound" do |node|
     node.vm.hostname         = "pihole-no-unbound"
     node.vm.box              = "bento/ubuntu-24.04"
@@ -21,12 +24,13 @@ Vagrant.configure("2") do |config|
         l.memory = 2048
         l.cpus   = 2
         l.driver = "kvm"
+        l.management_network_keep = true
         override.vm.network "private_network",
                             ip: "192.168.121.6",
                             netmask: "255.255.255.0",
                             auto_config: true,
                             libvirt__network_name: "vagrant-56",
-                            libvirt__mgmt_network: "none"
+                            libvirt__always_destroy: false
       end
     end
   end

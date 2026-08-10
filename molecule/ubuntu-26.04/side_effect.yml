@@ -1,3 +1,10 @@
 ---
+# Rolling update (update-pihole) as Molecule side_effect.
+# unbound_* must be present before inventory jinja for pihole_unbound_upstream
+# is evaluated inside the pihole role (unbound role defaults are not loaded here).
 - name: Exercise rolling HA update workflow
   import_playbook: ../../playbooks/update-pihole.yaml
+  vars:
+    unbound_container_name: unbound
+    unbound_port: 5335
+    unbound_network_name: dns_net

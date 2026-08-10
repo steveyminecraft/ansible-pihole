@@ -2,8 +2,27 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
+  # Molecule converges over SSH; disable default share (libvirt NFS needs host sudo).
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  provider_name = ENV.fetch("VAGRANT_DEFAULT_PROVIDER", "virtualbox")
+  use_libvirt = %w[libvirt kvm].include?(provider_name)
+
   # VirtualBox: 192.168.56.0/24 — libvirt (vagrant-56): 192.168.121.0/24 by default here;
   # override ip_libvirt if your KVM network differs. Match inventory file to provider.
+  #
+  # Libvirt/x86_64: this Vagrant (2.3.x) lacks vm.box_architecture and may request
+  # rockylinux/10 libvirt/arm64 from Vagrant Cloud (404). Pin the official Rocky
+  # CDN x86_64 libvirt box URL so amd64 is used regardless of Cloud arch selection.
+  #
+  # Boot: SeaBIOS is fine (hybrid GPT + i386-pc GRUB). The historical "no DHCP"
+  # hang was a 5GiB disk from wrong box metadata (real image is 10GiB) — see
+  # machine_virtual_size below and scripts/ensure-rockylinux10-amd64.sh.
+  rocky_libvirt_amd64_url = ENV.fetch(
+    "ROCKY10_LIBVIRT_AMD64_BOX_URL",
+    "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-Vagrant-Libvirt.latest.x86_64.vagrant.libvirt.box"
+  )
+
   vm_settings = {
     box: "rockylinux/10",
     memory: 4096,
@@ -47,6 +66,9 @@ Vagrant.configure("2") do |config|
       node.vm.hostname         = machine[:name]
       node.vm.box              = vm_settings[:box]
       node.vm.box_check_update = false
+      if use_libvirt
+        node.vm.box_url = rocky_libvirt_amd64_url
+      end
 
       node.vm.provider "virtualbox" do |v, o|
         v.memory = vm_settings[:memory]
@@ -66,13 +88,24 @@ Vagrant.configure("2") do |config|
           l.memory = vm_settings[:memory]
           l.cpus   = vm_settings[:cpus]
           l.driver = "kvm"
+          # Avoid libvirt "CPU vendor specified without CPU model" on domain redefine
+          # (host-model can emit vendor without model on some QEMU/libvirt combos).
+          l.cpu_mode = "host-passthrough"
+          l.management_network_keep = true
+          # CDN box disk is 10GiB; box metadata.json wrongly says 5. Without this
+          # (or scripts/ensure-rockylinux10-amd64.sh metadata fix) vagrant-libvirt
+          # creates a 5G volume → root XFS past EOF → dracut emergency → no DHCP.
+          l.machine_virtual_size = 10
+          # Prefer virtio NICs (Rocky libvirt box). NM DHCP profiles are injected
+          # into the box by scripts/ensure-rockylinux10-amd64.sh (empty
+          # system-connections otherwise → no first-boot DHCP / SSH hang).
           o.vm.network "private_network",
                        ip: machine[:ip_libvirt],
                        netmask: "255.255.255.0",
                        auto_config: true,
                        libvirt__network_name: "vagrant-56",
                        libvirt__mac: machine[:mac],
-                       libvirt__mgmt_network: "none"
+                       libvirt__always_destroy: false
         end
       end
 

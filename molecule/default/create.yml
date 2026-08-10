@@ -4,6 +4,12 @@
   connection: local
   gather_facts: false
   tasks:
+    - name: Ensure vagrant-56 DHCP reservations match inventory IPs
+      when: lookup('env', 'VAGRANT_DEFAULT_PROVIDER') in ['libvirt', 'kvm']
+      ansible.builtin.command: "{{ playbook_dir }}/../../scripts/ensure-vagrant-56-dhcp-hosts.sh"
+      register: vagrant_56_dhcp_hosts
+      changed_when: "'SET:' in vagrant_56_dhcp_hosts.stdout"
+
     - name: Start Vagrant environment for this scenario
       ansible.builtin.command: vagrant up
       args:

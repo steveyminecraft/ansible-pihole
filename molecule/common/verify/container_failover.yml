@@ -45,8 +45,9 @@
       register: ip_node2_docker_failover
       changed_when: false
       when: inventory_hostname == node2
-      retries: 30
-      delay: 2
+      # Health-check weight/preempt on libvirt can take >60s; allow headroom.
+      retries: 60
+      delay: 3
       until: vip_address in ip_node2_docker_failover.stdout
 
     - name: Assert VIP is on backup after container stop on primary
