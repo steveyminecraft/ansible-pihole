@@ -73,7 +73,7 @@ jobs:
       matrix:
         ansible-core:
           - ">=2.20.5,<2.21"
-          - ">=2.21.2,<2.22"
+          - ">=2.21.3,<2.22"
 
     steps:
       - name: Check out repository
