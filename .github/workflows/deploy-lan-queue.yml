@@ -57,14 +57,16 @@ jobs:
       - name: Send deploy message
         env:
           QUEUE_URL: ${{ vars.AWS_DEPLOY_QUEUE_URL }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           set -euo pipefail
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
             SHA="${GITHUB_SHA}"
             REF="${GITHUB_REF}"
           else
-            SHA="${{ github.event.workflow_run.head_sha }}"
-            REF="refs/heads/${{ github.event.workflow_run.head_branch }}"
+            SHA="${WORKFLOW_SHA}"
+            REF="refs/heads/${WORKFLOW_BRANCH}"
           fi
           BODY=$(jq -nc \
             --arg repo "${GITHUB_REPOSITORY}" \

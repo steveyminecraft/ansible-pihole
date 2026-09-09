@@ -35,6 +35,27 @@ class DeployLanQueueWorkflowTests(unittest.TestCase):
         self.assertIn("head_branch == 'master'", self.text)
         self.assertIn("id-token: write", self.text)
 
+    def test_workflow_run_fields_are_passed_via_env_not_shell_interpolation(self) -> None:
+        """CodeQL actions/code-injection: do not expand workflow_run into run: scripts."""
+        self.assertNotIn(
+            'SHA="${{ github.event.workflow_run.head_sha }}"',
+            self.text,
+        )
+        self.assertNotIn(
+            'REF="refs/heads/${{ github.event.workflow_run.head_branch }}"',
+            self.text,
+        )
+        self.assertIn(
+            "WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}",
+            self.text,
+        )
+        self.assertIn(
+            "WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}",
+            self.text,
+        )
+        self.assertIn('SHA="${WORKFLOW_SHA}"', self.text)
+        self.assertIn('REF="refs/heads/${WORKFLOW_BRANCH}"', self.text)
+
 
 if __name__ == "__main__":
     unittest.main()
