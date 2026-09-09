@@ -1,0 +1,77 @@
+---
+# After CI on master succeeds, SendMessage to the shared LAN deploy queue.
+# GitHub runners must not open a remote shell or invoke playbooks.
+#
+# Repository variables:
+#   AWS_DEPLOY_QUEUE_ROLE_ARN  terraform output github_deploy_queue_send_role_arn
+#   AWS_DEPLOY_QUEUE_URL       terraform output github_deploy_queue_url
+#   AWS_REGION                 eu-west-1
+
+name: Deploy to LAN queue
+
+on:  # yamllint disable-line rule:truthy
+  workflow_run:
+    workflows:
+      - CI - Ansible-Pihole Checks
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  enqueue:
+    name: Enqueue master SHA
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'master')
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate repository variables
+        env:
+          AWS_DEPLOY_QUEUE_ROLE_ARN: ${{ vars.AWS_DEPLOY_QUEUE_ROLE_ARN }}
+          AWS_DEPLOY_QUEUE_URL: ${{ vars.AWS_DEPLOY_QUEUE_URL }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          for var_name in AWS_DEPLOY_QUEUE_ROLE_ARN AWS_DEPLOY_QUEUE_URL AWS_REGION; do
+            if [ -z "${!var_name:-}" ]; then
+              echo "Missing required repository variable: ${var_name}"
+              exit 1
+            fi
+          done
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_QUEUE_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: ansible-pihole-lan-queue
+
+      - name: Send deploy message
+        env:
+          QUEUE_URL: ${{ vars.AWS_DEPLOY_QUEUE_URL }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            SHA="${GITHUB_SHA}"
+            REF="${GITHUB_REF}"
+          else
+            SHA="${WORKFLOW_SHA}"
+            REF="refs/heads/${WORKFLOW_BRANCH}"
+          fi
+          BODY=$(jq -nc \
+            --arg repo "${GITHUB_REPOSITORY}" \
+            --arg sha "$SHA" \
+            --arg ref "$REF" \
+            --arg run_id "${GITHUB_RUN_ID}" \
+            '{repo:$repo,sha:$sha,ref:$ref,run_id:$run_id}')
+          aws sqs send-message --queue-url "$QUEUE_URL" --message-body "$BODY"
