@@ -35,6 +35,22 @@ class DeployLanQueueWorkflowTests(unittest.TestCase):
         self.assertIn("head_branch == 'master'", self.text)
         self.assertIn("id-token: write", self.text)
 
+    def test_actions_display_name_is_release_alert(self) -> None:
+        self.assertRegex(self.text, r"(?m)^name: Release-Alert$")
+
+    def test_does_not_use_release_event_trigger(self) -> None:
+        """OIDC send role is master/main refs only; release events run on tag refs."""
+        self.assertNotRegex(self.text, r"(?m)^\s+release:")
+
+    def test_skips_master_ci_unless_sha_is_latest_published_release(self) -> None:
+        self.assertIn("releases/latest", self.text)
+        self.assertIn("enqueue=false", self.text)
+        self.assertIn("steps.target.outputs.enqueue == 'true'", self.text)
+
+    def test_message_includes_release_version_and_keeps_master_ref(self) -> None:
+        self.assertIn("version:$version", self.text)
+        self.assertIn('ref="refs/heads/${WORKFLOW_BRANCH}"', self.text)
+
     def test_workflow_run_fields_are_passed_via_env_not_shell_interpolation(self) -> None:
         """CodeQL actions/code-injection: do not expand workflow_run into run: scripts."""
         self.assertNotIn(
@@ -53,8 +69,6 @@ class DeployLanQueueWorkflowTests(unittest.TestCase):
             "WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}",
             self.text,
         )
-        self.assertIn('SHA="${WORKFLOW_SHA}"', self.text)
-        self.assertIn('REF="refs/heads/${WORKFLOW_BRANCH}"', self.text)
 
 
 if __name__ == "__main__":
