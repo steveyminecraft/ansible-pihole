@@ -458,6 +458,7 @@ AWS EC2 workflows use ephemeral hosts and lifecycle hooks wired into
 - `.github/workflows/rc-aws-remote-tests.yml` — **CI — Pi-hole: AWS EC2 (RC)** (`v*-rc*`, Ubuntu 26.04)
 - `.github/workflows/aws-remote-tests.yml` — **CI — Pi-hole: AWS EC2 (remote tests)** (1st and 15th monthly on `master`, PR label `run-aws-tests`, or `workflow_dispatch`)
 - `.github/workflows/pihole-image-watch.yml` — daily check for new `pihole/pihole` Docker tags (GitHub issue alert)
+- `.github/workflows/deploy-lan-queue.yml` — **Release-Alert** (after successful master CI, enqueue that SHA to the LAN deploy queue only when it is the latest published GitHub Release)
 
 Infrastructure (VPC subnet, OIDC role, SSH key pair) is provisioned in the
 separate `AWS-Cloud/build-account-isolation/build/` Terraform stack. Apply that
@@ -518,6 +519,7 @@ PR quality scaffolding is now included in-repo:
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | [Release](.github/workflows/release-please.yml) | Push to `master` only | Release PR; tag + GitHub release + Galaxy publish when the Release PR merges |
+| [Release-Alert](.github/workflows/deploy-lan-queue.yml) | Successful master CI for the latest published GitHub Release | Enqueue that SHA to the LAN deploy queue |
 | [Validate collection for Ansible Galaxy](.github/workflows/galaxy-publish.yml) | Push/PR to `master`, manual | Builds the collection artifact and runs `galaxy-importer` |
 
 The Release workflow uses repository secret **`RELEASE_PLEASE_TOKEN`** for
