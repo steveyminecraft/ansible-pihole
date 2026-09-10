@@ -5,7 +5,7 @@
 # GitHub runners must not open a remote shell or invoke playbooks.
 # OIDC send role allows master/main refs only; do not trigger on release/tag.
 #
-# Repository variables:
+# Repository secrets (not vars; vars appear unmasked in public Actions logs):
 #   AWS_DEPLOY_QUEUE_ROLE_ARN  terraform output github_deploy_queue_send_role_arn
 #   AWS_DEPLOY_QUEUE_URL       terraform output github_deploy_queue_url
 #   AWS_REGION                 eu-west-1
@@ -36,16 +36,16 @@ jobs:
        github.event.workflow_run.head_branch == 'master')
     runs-on: ubuntu-24.04
     steps:
-      - name: Validate repository variables
+      - name: Validate repository secrets
         env:
-          AWS_DEPLOY_QUEUE_ROLE_ARN: ${{ vars.AWS_DEPLOY_QUEUE_ROLE_ARN }}
-          AWS_DEPLOY_QUEUE_URL: ${{ vars.AWS_DEPLOY_QUEUE_URL }}
-          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_DEPLOY_QUEUE_ROLE_ARN: ${{ secrets.AWS_DEPLOY_QUEUE_ROLE_ARN }}
+          AWS_DEPLOY_QUEUE_URL: ${{ secrets.AWS_DEPLOY_QUEUE_URL }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           set -euo pipefail
           for var_name in AWS_DEPLOY_QUEUE_ROLE_ARN AWS_DEPLOY_QUEUE_URL AWS_REGION; do
             if [ -z "${!var_name:-}" ]; then
-              echo "Missing required repository variable: ${var_name}"
+              echo "Missing required repository secret: ${var_name}"
               exit 1
             fi
           done
@@ -102,14 +102,14 @@ jobs:
         if: steps.target.outputs.enqueue == 'true'
         uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_QUEUE_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_DEPLOY_QUEUE_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
           role-session-name: ansible-pihole-lan-queue
 
       - name: Send deploy message
         if: steps.target.outputs.enqueue == 'true'
         env:
-          QUEUE_URL: ${{ vars.AWS_DEPLOY_QUEUE_URL }}
+          QUEUE_URL: ${{ secrets.AWS_DEPLOY_QUEUE_URL }}
           SHA: ${{ steps.target.outputs.sha }}
           REF: ${{ steps.target.outputs.ref }}
           VERSION: ${{ steps.target.outputs.version }}

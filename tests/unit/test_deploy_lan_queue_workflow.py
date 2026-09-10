@@ -22,10 +22,13 @@ class DeployLanQueueWorkflowTests(unittest.TestCase):
         self.assertNotRegex(self.text, r"(?m)^\s+ssh\s")
         self.assertNotIn("appleboy/ssh-action", self.text)
 
-    def test_uses_shared_queue_variables_not_github_build_secret(self) -> None:
-        self.assertIn("vars.AWS_DEPLOY_QUEUE_ROLE_ARN", self.text)
-        self.assertIn("vars.AWS_DEPLOY_QUEUE_URL", self.text)
-        self.assertIn("vars.AWS_REGION", self.text)
+    def test_uses_shared_queue_secrets_not_public_vars(self) -> None:
+        self.assertIn("secrets.AWS_DEPLOY_QUEUE_ROLE_ARN", self.text)
+        self.assertIn("secrets.AWS_DEPLOY_QUEUE_URL", self.text)
+        self.assertIn("secrets.AWS_REGION", self.text)
+        self.assertNotIn("vars.AWS_DEPLOY_QUEUE_ROLE_ARN", self.text)
+        self.assertNotIn("vars.AWS_DEPLOY_QUEUE_URL", self.text)
+        self.assertNotIn("vars.AWS_REGION", self.text)
         self.assertNotIn("secrets.AWS_TEST_ROLE_ARN", self.text)
         self.assertIn("aws sqs send-message", self.text)
 
