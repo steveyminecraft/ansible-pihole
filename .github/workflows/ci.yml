@@ -41,7 +41,7 @@ jobs:
           predicate-quantifier: every
           filters: |
             docs:
-              - '{docs/**,**/*.md}'
+              - '**/*.md'
             code:
               - '**'
               - '!docs/**'
