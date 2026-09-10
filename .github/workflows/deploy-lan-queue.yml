@@ -1,13 +1,16 @@
 ---
-# After CI on master succeeds, SendMessage to the shared LAN deploy queue.
+# After CI on master succeeds, enqueue the SHA only when it is the latest
+# published GitHub Release (the release-please merge that bumps the version).
+# Other master merges (deps, features) do not hit the LAN queue.
 # GitHub runners must not open a remote shell or invoke playbooks.
+# OIDC send role allows master/main refs only; do not trigger on release/tag.
 #
 # Repository variables:
 #   AWS_DEPLOY_QUEUE_ROLE_ARN  terraform output github_deploy_queue_send_role_arn
 #   AWS_DEPLOY_QUEUE_URL       terraform output github_deploy_queue_url
 #   AWS_REGION                 eu-west-1
 
-name: Deploy to LAN queue
+name: Release-Alert
 
 on:  # yamllint disable-line rule:truthy
   workflow_run:
@@ -26,7 +29,7 @@ env:
 
 jobs:
   enqueue:
-    name: Enqueue master SHA
+    name: Enqueue release SHA
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
@@ -47,7 +50,56 @@ jobs:
             fi
           done
 
+      - name: Resolve enqueue target
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
+          WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          enqueue=false
+          sha=""
+          ref=""
+          version=""
+
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            enqueue=true
+            sha="${GITHUB_SHA}"
+            ref="${GITHUB_REF}"
+          else
+            sha="${WORKFLOW_SHA}"
+            ref="refs/heads/${WORKFLOW_BRANCH}"
+            if latest_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest")"; then
+              draft="$(printf '%s' "${latest_json}" | jq -r '.draft')"
+              prerelease="$(printf '%s' "${latest_json}" | jq -r '.prerelease')"
+              tag="$(printf '%s' "${latest_json}" | jq -r '.tag_name')"
+              if [ "${draft}" = "false" ] && [ "${prerelease}" = "false" ] && [ -n "${tag}" ] && [ "${tag}" != "null" ]; then
+                obj_json="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}")"
+                obj_type="$(printf '%s' "${obj_json}" | jq -r '.object.type')"
+                obj_sha="$(printf '%s' "${obj_json}" | jq -r '.object.sha')"
+                if [ "${obj_type}" = "tag" ]; then
+                  obj_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${obj_sha}" --jq .object.sha)"
+                fi
+                if [ "${obj_sha}" = "${sha}" ]; then
+                  enqueue=true
+                  version="${tag}"
+                else
+                  echo "Latest release ${tag} is ${obj_sha}, not this SHA ${sha}; skipping LAN enqueue."
+                fi
+              fi
+            else
+              echo "No GitHub Releases; skipping LAN enqueue."
+            fi
+          fi
+
+          echo "enqueue=${enqueue}" >> "${GITHUB_OUTPUT}"
+          echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
+          echo "ref=${ref}" >> "${GITHUB_OUTPUT}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
       - name: Configure AWS credentials
+        if: steps.target.outputs.enqueue == 'true'
         uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_QUEUE_ROLE_ARN }}
@@ -55,23 +107,19 @@ jobs:
           role-session-name: ansible-pihole-lan-queue
 
       - name: Send deploy message
+        if: steps.target.outputs.enqueue == 'true'
         env:
           QUEUE_URL: ${{ vars.AWS_DEPLOY_QUEUE_URL }}
-          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
-          WORKFLOW_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          SHA: ${{ steps.target.outputs.sha }}
+          REF: ${{ steps.target.outputs.ref }}
+          VERSION: ${{ steps.target.outputs.version }}
         run: |
           set -euo pipefail
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
-            SHA="${GITHUB_SHA}"
-            REF="${GITHUB_REF}"
-          else
-            SHA="${WORKFLOW_SHA}"
-            REF="refs/heads/${WORKFLOW_BRANCH}"
-          fi
           BODY=$(jq -nc \
             --arg repo "${GITHUB_REPOSITORY}" \
-            --arg sha "$SHA" \
-            --arg ref "$REF" \
+            --arg sha "${SHA}" \
+            --arg ref "${REF}" \
             --arg run_id "${GITHUB_RUN_ID}" \
-            '{repo:$repo,sha:$sha,ref:$ref,run_id:$run_id}')
+            --arg version "${VERSION}" \
+            '{repo:$repo,sha:$sha,ref:$ref,run_id:$run_id,version:$version}')
           aws sqs send-message --queue-url "$QUEUE_URL" --message-body "$BODY"
