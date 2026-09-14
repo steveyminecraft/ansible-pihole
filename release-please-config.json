@@ -28,8 +28,7 @@
         },
         {
           "type": "chore",
-          "section": "Chores",
-          "hidden": true
+          "section": "Dependencies and chores"
         },
         {
           "type": "ci",
