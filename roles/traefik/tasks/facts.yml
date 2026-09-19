@@ -1,0 +1,28 @@
+---
+- name: Resolve container engine API socket
+  ansible.builtin.set_fact:
+    traefik_resolved_socket: >-
+      {{
+        traefik_socket
+        if (traefik_socket | string != 'auto')
+        else (
+          traefik_podman_socket
+          if (traefik_podman_socket | string != 'auto')
+          else (
+            (
+              '/run/user/'
+              ~ (traefik_podman_uid | string)
+              ~ '/podman/podman.sock'
+            )
+            if (
+              (traefik_container_runtime | string) == 'podman'
+              and (traefik_podman_rootless | bool)
+            )
+            else (
+              '/run/podman/podman.sock'
+              if ((traefik_container_runtime | string) == 'podman')
+              else '/var/run/docker.sock'
+            )
+          )
+        )
+      }}

@@ -18,13 +18,25 @@
   changed_when: false
   when: pihole_firewall_deploy | default(false) | bool
 
+- name: Compute expected web ports for firewall assert
+  ansible.builtin.set_fact:
+    molecule_expected_http_port: >-
+      {{ (traefik_http_port | default(80))
+         if (traefik_enabled | default(false) | bool)
+         else pihole_webport_http }}
+    molecule_expected_https_port: >-
+      {{ (traefik_https_port | default(443))
+         if (traefik_enabled | default(false) | bool)
+         else pihole_webport_https }}
+  when: pihole_firewall_deploy | default(false) | bool
+
 - name: Assert required ports are open in firewalld
   ansible.builtin.assert:
     that:
       - "'53/tcp' in open_ports.stdout"
       - "'53/udp' in open_ports.stdout"
-      - (pihole_webport_http ~ '/tcp') in open_ports.stdout
-      - (pihole_webport_https ~ '/tcp') in open_ports.stdout
+      - (molecule_expected_http_port | string ~ '/tcp') in open_ports.stdout
+      - (molecule_expected_https_port | string ~ '/tcp') in open_ports.stdout
     fail_msg: "Firewall missing required ports."
   when: pihole_firewall_deploy | default(false) | bool
 

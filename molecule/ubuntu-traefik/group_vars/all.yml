@@ -1,0 +1,20 @@
+---
+# Lab-only Traefik enablement. Certificates are minted in Molecule prepare
+# (self-signed, 2-day). No Let's Encrypt.
+traefik_enabled: true
+traefik_tls_enabled: true
+traefik_tls_mode: supplied
+traefik_tls_remote_src: true
+traefik_tls_cert_src: /etc/ssl/molecule-traefik/tls.crt
+traefik_tls_key_src: /etc/ssl/molecule-traefik/tls.key
+traefik_domain: lab.example.com
+pihole_proxy_enabled: true
+pihole_proxy_hostname: pihole.lab.example.com
+# Pi-hole v6 does not load extra dnsmasq.d address= records by default.
+# HTTP/HTTPS checks use curl --resolve instead of this LAN wildcard.
+pihole_proxy_dns_enabled: false
+nebula_sync_primary_url: "https://{{ hostvars['vagrant-pihole-01'].ansible_host }}"
+nebula_sync_replicas:
+  - url: "https://{{ hostvars['vagrant-pihole-02'].ansible_host }}"
+    password: "{{ pihole_environment_variables.FTLCONF_webserver_api_password }}"
+nebula_sync_client_skip_tls_verification: true

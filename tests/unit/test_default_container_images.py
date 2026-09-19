@@ -37,12 +37,17 @@ class DefaultContainerImagesTests(unittest.TestCase):
         pihole = self.helper.load_defaults("pihole")
         unbound = self.helper.load_defaults("unbound")
         nebula = self.helper.load_defaults("nebula_sync")
+        traefik = self.helper.load_defaults("traefik")
 
         self.assertIn(pihole["pihole_image"], images)
         self.assertIn(unbound["unbound_image_arch_default"], images)
         self.assertTrue(set(unbound["unbound_image_arch_map"].values()) <= images)
         self.assertIn(
             f"{nebula['nebula_sync_image']}:{nebula['nebula_sync_image_tag']}",
+            images,
+        )
+        self.assertIn(
+            f"{traefik['traefik_image']}:{traefik['traefik_version']}",
             images,
         )
 

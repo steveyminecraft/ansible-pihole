@@ -1,0 +1,162 @@
+---
+- name: Ensure Traefik directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ traefik_config_owner }}"
+    group: "{{ traefik_config_group }}"
+    mode: "{{ traefik_config_dir_mode }}"
+  loop:
+    - "{{ traefik_compose_dir }}"
+    - "{{ traefik_dynamic_dir }}"
+    - "{{ traefik_certs_dir }}"
+
+- name: Ensure shared proxy network exists
+  community.docker.docker_network:
+    name: "{{ traefik_network_name }}"
+    state: present
+  when: traefik_manage_network | bool
+
+- name: Ensure ACME storage file exists with restrictive permissions
+  ansible.builtin.file:
+    path: "{{ traefik_acme_json_path }}"
+    state: touch
+    owner: "{{ traefik_config_owner }}"
+    group: "{{ traefik_config_group }}"
+    mode: "{{ traefik_acme_json_mode }}"
+    modification_time: preserve
+    access_time: preserve
+
+- name: Install supplied TLS certificate
+  ansible.builtin.copy:
+    src: "{{ traefik_tls_cert_src }}"
+    dest: "{{ traefik_certs_dir }}/tls.crt"
+    remote_src: "{{ traefik_tls_remote_src | bool }}"
+    owner: "{{ traefik_config_owner }}"
+    group: "{{ traefik_config_group }}"
+    mode: "0640"
+  register: traefik_tls_cert_copy
+  when:
+    - traefik_tls_enabled | bool
+    - traefik_tls_mode == 'supplied'
+
+- name: Install supplied TLS private key
+  ansible.builtin.copy:
+    src: "{{ traefik_tls_key_src }}"
+    dest: "{{ traefik_certs_dir }}/tls.key"
+    remote_src: "{{ traefik_tls_remote_src | bool }}"
+    owner: "{{ traefik_config_owner }}"
+    group: "{{ traefik_config_group }}"
+    mode: "0600"
+  register: traefik_tls_key_copy
+  no_log: true
+  when:
+    - traefik_tls_enabled | bool
+    - traefik_tls_mode == 'supplied'
+
+- name: Remove supplied TLS files when not in supplied mode
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ traefik_certs_dir }}/tls.crt"
+    - "{{ traefik_certs_dir }}/tls.key"
+  when: not ((traefik_tls_enabled | bool) and (traefik_tls_mode == 'supplied'))
+
+- name: Render ACME DNS provider environment file
+  ansible.builtin.copy:
+    dest: "{{ traefik_acme_env_path }}"
+    owner: "{{ traefik_config_owner }}"
+    group: "{{ traefik_config_group }}"
+    mode: "{{ traefik_acme_env_mode }}"
+    content: |
+      {% for key, value in (traefik_acme_environment | default({})).items() %}
+      {{ key }}={{ value }}
+      {% endfor %}
+  register: traefik_acme_env_file
+  no_log: true
+  when:
+    - traefik_tls_enabled | bool
+    - traefik_tls_mode == 'dns01'
+    - (traefik_acme_environment | default({}) | length) > 0
+
+- name: Remove ACME environment file when unused
+  ansible.builtin.file:
+    path: "{{ traefik_acme_env_path }}"
+    state: absent
+  register: traefik_acme_env_removed
+  when: >-
+    not (
+      (traefik_tls_enabled | bool)
+      and (traefik_tls_mode == 'dns01')
+      and ((traefik_acme_environment | default({}) | length) > 0)
+    )
+
+- name: Render Traefik static configuration
+  ansible.builtin.template:
+    src: traefik.yml.j2
+    dest: "{{ traefik_config_path }}"
+    owner: "{{ traefik_config_owner }}"
+    group: "{{ traefik_config_group }}"
+    mode: "{{ traefik_config_file_mode }}"
+  register: traefik_static_template
+
+- name: Render supplied TLS dynamic configuration
+  ansible.builtin.template:
+    src: dynamic-tls.yml.j2
+    dest: "{{ traefik_dynamic_dir }}/tls.yml"
+    owner: "{{ traefik_config_owner }}"
+    group: "{{ traefik_config_group }}"
+    mode: "{{ traefik_config_file_mode }}"
+  register: traefik_dynamic_tls_template
+  when:
+    - traefik_tls_enabled | bool
+    - traefik_tls_mode == 'supplied'
+
+- name: Remove supplied TLS dynamic configuration when unused
+  ansible.builtin.file:
+    path: "{{ traefik_dynamic_dir }}/tls.yml"
+    state: absent
+  register: traefik_dynamic_tls_removed
+  when: not ((traefik_tls_enabled | bool) and (traefik_tls_mode == 'supplied'))
+
+- name: Pull Traefik image
+  community.docker.docker_image_pull:
+    name: "{{ traefik_image }}:{{ traefik_version }}"
+
+- name: Render Traefik Docker Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ traefik_compose_file }}"
+    owner: "{{ traefik_config_owner }}"
+    group: "{{ traefik_config_group }}"
+    mode: "{{ traefik_compose_file_mode }}"
+  register: traefik_compose_template
+
+- name: Start Traefik service
+  vars:
+    _traefik_needs_recreate: >-
+      {{
+        (traefik_compose_template.changed | default(false) | bool)
+        or (traefik_static_template.changed | default(false) | bool)
+        or (traefik_dynamic_tls_template.changed | default(false) | bool)
+        or (traefik_dynamic_tls_removed.changed | default(false) | bool)
+        or (traefik_tls_cert_copy.changed | default(false) | bool)
+        or (traefik_tls_key_copy.changed | default(false) | bool)
+        or (traefik_acme_env_file.changed | default(false) | bool)
+        or (traefik_acme_env_removed.changed | default(false) | bool)
+      }}
+  community.docker.docker_compose_v2:
+    project_src: "{{ traefik_compose_dir }}"
+    files:
+      - "{{ traefik_compose_file }}"
+    state: present
+    pull: missing
+    recreate: "{{ 'always' if _traefik_needs_recreate else 'auto' }}"
+
+- name: Wait for Traefik HTTP entrypoint
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ traefik_http_port }}"
+    timeout: 60
+    delay: 2

@@ -1,0 +1,48 @@
+---
+# Managed by ansible-pihole.
+# The engine API socket bind-mount is security-sensitive. Keep it read-only
+# and never publish that socket on a TCP port.
+networks:
+  {{ traefik_network_name }}:
+    external: true
+
+services:
+  traefik:
+    image: "{{ traefik_image }}:{{ traefik_version }}"
+    container_name: {{ traefik_container_name }}
+    restart: {{ traefik_restart_policy }}
+    security_opt:
+      - "no-new-privileges:true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - {{ traefik_network_name }}
+    ports:
+      - "{{ traefik_http_port }}:80/tcp"
+      - "{{ traefik_https_port }}:443/tcp"
+    volumes:
+      - "{{ traefik_config_path }}:/etc/traefik/traefik.yml:ro"
+      - "{{ traefik_dynamic_dir }}:/etc/traefik/dynamic:ro"
+      - "{{ traefik_resolved_socket }}:/var/run/docker.sock:ro"
+      - "{{ traefik_acme_json_path }}:/data/acme.json"
+{% if (traefik_tls_enabled | bool) and (traefik_tls_mode == 'supplied') %}
+      - "{{ traefik_certs_dir }}:/etc/traefik/certs:ro"
+{% endif %}
+{% if (traefik_tls_enabled | bool) and (traefik_tls_mode == 'dns01') and (traefik_acme_environment | default({}) | length > 0) %}
+    env_file:
+      - "{{ traefik_acme_env_path }}"
+{% endif %}
+{% if traefik_dashboard_enabled | bool %}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "{{ traefik_network_name }}"
+      traefik.http.routers.traefik-dashboard.rule: "Host(`{{ traefik_dashboard_hostname }}`)"
+      traefik.http.routers.traefik-dashboard.entrypoints: "websecure"
+      traefik.http.routers.traefik-dashboard.tls: "true"
+{% if (traefik_tls_enabled | bool) and (traefik_tls_mode == 'dns01') %}
+      traefik.http.routers.traefik-dashboard.tls.certresolver: "{{ traefik_acme_resolver_name }}"
+{% endif %}
+      traefik.http.routers.traefik-dashboard.service: "api@internal"
+      traefik.http.routers.traefik-dashboard.middlewares: "traefik-dashboard-auth"
+      traefik.http.middlewares.traefik-dashboard-auth.basicauth.users: "{{ traefik_dashboard_basicauth_users | join(',') }}"
+{% endif %}

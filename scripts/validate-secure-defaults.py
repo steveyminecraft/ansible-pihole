@@ -25,6 +25,7 @@ def main() -> None:
     docker = load_yaml("roles/docker/defaults/main.yml")
     keepalived = load_yaml("roles/keepalived/defaults/main.yml")
     pihole = load_yaml("roles/pihole/defaults/main.yml")
+    traefik = load_yaml("roles/traefik/defaults/main.yml")
     vagrant = load_yaml("inventory/vagrant.yml")["all"]["vars"]
     vagrant_libvirt = load_yaml("inventory/vagrant_libvirt.yml")["all"]["vars"]
 
@@ -44,6 +45,10 @@ def main() -> None:
         "Pi-hole fallback upstreams must not be silently supplied",
     )
     require(":latest" not in pihole["pihole_image"], "Pi-hole default image must be pinned")
+    require(not traefik["traefik_enabled"], "Traefik must remain opt-in")
+    require(not traefik["traefik_dashboard_enabled"], "Traefik dashboard must default off")
+    require(traefik["traefik_acme_environment"] == {}, "ACME credentials must not have defaults")
+    require(":latest" not in traefik["traefik_version"], "Traefik default image must be pinned")
 
     for name, lab in (("vagrant", vagrant), ("vagrant_libvirt", vagrant_libvirt)):
         require(

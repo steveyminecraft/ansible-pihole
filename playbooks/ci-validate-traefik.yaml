@@ -1,0 +1,122 @@
+---
+- name: Validate Traefik and Pi-hole proxy Compose templates
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    traefik_image: docker.io/library/traefik
+    traefik_version: v3.7.13
+    traefik_container_name: traefik
+    traefik_restart_policy: unless-stopped
+    traefik_network_name: proxy
+    traefik_http_port: 80
+    traefik_https_port: 443
+    traefik_log_level: INFO
+    traefik_dashboard_enabled: false
+    traefik_dashboard_hostname: ""
+    traefik_dashboard_basicauth_users: []
+    traefik_tls_enabled: true
+    traefik_tls_mode: dns01
+    traefik_domain: lab.example.com
+    traefik_acme_email: admin@example.com
+    traefik_acme_resolver_name: letsencrypt
+    traefik_acme_dns_provider: cloudflare
+    traefik_acme_staging: true
+    traefik_acme_wildcard: true
+    traefik_acme_environment:
+      CLOUDFLARE_DNS_API_TOKEN: ci-must-not-render
+    traefik_config_path: /opt/traefik/traefik.yml
+    traefik_dynamic_dir: /opt/traefik/dynamic
+    traefik_certs_dir: /opt/traefik/certs
+    traefik_acme_json_path: /opt/traefik/acme.json
+    traefik_acme_env_path: /opt/traefik/acme.env
+    traefik_resolved_socket: /var/run/docker.sock
+    pihole_container_name: pihole
+    pihole_image: "pihole/pihole:2026.07.2"
+    pihole_dir_loc: /opt/pihole
+    pihole_network_name: dns_net
+    pihole_use_host_network: false
+    pihole_rocky_network_debug: false
+    pihole_docker_dns: []
+    pihole_webport_http: "80"
+    pihole_webport_https: "443"
+    pihole_proxy_enabled: true
+    pihole_proxy_hostname: pihole.lab.example.com
+    pihole_proxy_router_name: pihole
+    pihole_proxy_backend_port: 80
+    ansible_host: 192.0.2.10
+    pihole_container_cap_add:
+      - NET_ADMIN
+    pihole_environment_variables:
+      TZ: UTC
+      DHCP_ACTIVE: false
+      FTLCONF_dns_listeningMode: ALL
+  tasks:
+    - name: Render Traefik static configuration
+      ansible.builtin.set_fact:
+        traefik_static: >-
+          {{
+            lookup(
+              'ansible.builtin.template',
+              playbook_dir ~ '/../roles/traefik/templates/traefik.yml.j2'
+            )
+          }}
+
+    - name: Parse Traefik static configuration
+      ansible.builtin.set_fact:
+        traefik_static_yaml: "{{ traefik_static | from_yaml }}"
+
+    - name: Assert Traefik static security defaults
+      ansible.builtin.assert:
+        that:
+          - traefik_static_yaml.providers.docker.exposedByDefault == false
+          - traefik_static_yaml.providers.docker.watch == true
+          - traefik_static_yaml.api.insecure == false
+          - traefik_static_yaml.api.dashboard == false
+          - traefik_static_yaml.providers.docker.endpoint == 'unix:///var/run/docker.sock'
+          - "'ci-must-not-render' not in traefik_static"
+          - "'CLOUDFLARE_DNS_API_TOKEN' not in traefik_static"
+          - "'tcp://' not in traefik_static"
+
+    - name: Render Traefik Compose configuration
+      ansible.builtin.set_fact:
+        traefik_compose: >-
+          {{
+            lookup(
+              'ansible.builtin.template',
+              playbook_dir ~ '/../roles/traefik/templates/docker-compose.yml.j2'
+            ) | from_yaml
+          }}
+
+    - name: Assert Traefik Compose mounts the engine socket read-only
+      ansible.builtin.assert:
+        that:
+          - >-
+              '/var/run/docker.sock:/var/run/docker.sock:ro'
+              in traefik_compose.services.traefik.volumes
+          - traefik_compose.services.traefik.labels is not defined
+
+    - name: Render Pi-hole Compose with Traefik enabled
+      ansible.builtin.set_fact:
+        pihole_proxy_compose: >-
+          {{
+            lookup(
+              'ansible.builtin.template',
+              playbook_dir ~ '/../roles/pihole/templates/docker-compose.yml.j2',
+              template_vars={'pihole_enable_unbound': true}
+            ) | from_yaml
+          }}
+
+    - name: Assert Pi-hole proxy Compose hides web ports and sets labels
+      ansible.builtin.assert:
+        that:
+          - "'proxy' in pihole_proxy_compose.networks"
+          - "'proxy' in pihole_proxy_compose.services.pihole.networks"
+          - pihole_proxy_compose.services.pihole.labels['traefik.enable'] == 'true'
+          - >-
+              pihole_proxy_compose.services.pihole.labels[
+                'traefik.http.services.pihole.loadbalancer.server.port'
+              ] == '80'
+          - "'53:53/tcp' in pihole_proxy_compose.services.pihole.ports"
+          - "'80:80/tcp' not in pihole_proxy_compose.services.pihole.ports"
+          - "'443:443/tcp' not in pihole_proxy_compose.services.pihole.ports"

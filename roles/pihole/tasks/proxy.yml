@@ -1,0 +1,92 @@
+---
+- name: Assert host-networked Pi-hole does not share Traefik web ports
+  ansible.builtin.assert:
+    that:
+      - (pihole_proxy_backend_port | string) != (traefik_http_port | default(80) | string)
+      - (pihole_proxy_backend_port | string) != (traefik_https_port | default(443) | string)
+    fail_msg: >-
+      Host networking keeps Pi-hole in the host namespace, so it cannot join
+      the Traefik proxy network. Move Pi-hole's web listener off ports
+      {{ traefik_http_port | default(80) }}/{{ traefik_https_port | default(443) }}
+      (for example FTLCONF_webserver_port) and set pihole_proxy_backend_port to
+      that port, or disable pihole_use_host_network. DNS/DHCP take priority
+      over simplifying proxy networking.
+  when:
+    - pihole_proxy_enabled | bool
+    - pihole_use_host_network | default(false) | bool
+
+- name: Resolve LAN DNS target for Traefik hostnames
+  ansible.builtin.set_fact:
+    pihole_proxy_dns_target: >-
+      {{
+        (pihole_vip_ipv4 | string).split('/')[0]
+        if (pihole_vip_ipv4 | default('') | string | length > 0)
+        else (
+          ansible_facts['default_ipv4']['address']
+          | default(ansible_host | default(''))
+        )
+      }}
+  when:
+    - pihole_proxy_dns_enabled | bool
+    - (pihole_proxy_dns_target | default('') | string | length) == 0
+
+- name: Create Pi-hole dnsmasq.d directory
+  ansible.builtin.file:
+    path: "{{ pihole_dir_loc }}/etc/dnsmasq.d"
+    owner: root
+    group: root
+    state: directory
+    mode: "0750"
+
+- name: Publish Traefik hostnames through Pi-hole DNS
+  ansible.builtin.template:
+    src: 99-proxy-dns.conf.j2
+    dest: "{{ pihole_dir_loc }}/etc/dnsmasq.d/99-proxy-dns.conf"
+    owner: root
+    group: root
+    mode: "0640"
+  register: pihole_proxy_dns_template
+  when:
+    - pihole_proxy_dns_enabled | bool
+    - (pihole_proxy_dns_domain | default('') | string | length) > 0
+    - (pihole_proxy_dns_target | default('') | string | length) > 0
+
+- name: Remove Traefik LAN DNS record when disabled
+  ansible.builtin.file:
+    path: "{{ pihole_dir_loc }}/etc/dnsmasq.d/99-proxy-dns.conf"
+    state: absent
+  register: pihole_proxy_dns_removed
+  when: >-
+    not (
+      (pihole_proxy_dns_enabled | bool)
+      and (pihole_proxy_dns_domain | default('') | string | length > 0)
+      and (pihole_proxy_dns_target | default('') | string | length > 0)
+    )
+
+- name: Ensure Traefik dynamic directory exists for host-network routing
+  ansible.builtin.file:
+    path: "{{ traefik_dynamic_dir | default('/opt/traefik/dynamic') }}"
+    owner: "{{ traefik_config_owner | default('root') }}"
+    group: "{{ traefik_config_group | default('root') }}"
+    state: directory
+    mode: "{{ traefik_config_dir_mode | default('0750') }}"
+  when:
+    - pihole_proxy_enabled | bool
+    - pihole_use_host_network | default(false) | bool
+
+- name: Route host-networked Pi-hole through Traefik file provider
+  ansible.builtin.template:
+    src: dynamic-pihole-host.yml.j2
+    dest: "{{ traefik_dynamic_dir | default('/opt/traefik/dynamic') }}/pihole.yml"
+    owner: "{{ traefik_config_owner | default('root') }}"
+    group: "{{ traefik_config_group | default('root') }}"
+    mode: "{{ traefik_config_file_mode | default('0640') }}"
+  when:
+    - pihole_proxy_enabled | bool
+    - pihole_use_host_network | default(false) | bool
+
+- name: Remove host-network Pi-hole Traefik file when unused
+  ansible.builtin.file:
+    path: "{{ traefik_dynamic_dir | default('/opt/traefik/dynamic') }}/pihole.yml"
+    state: absent
+  when: not ((pihole_proxy_enabled | bool) and (pihole_use_host_network | default(false) | bool))

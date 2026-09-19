@@ -11,7 +11,7 @@ Visual overview: [Unit tests map](diagrams/ansible-pihole-unit-tests.png) and
 
 | Layer | Where it runs | What it proves | Gap |
 |-------|---------------|----------------|-----|
-| **GitHub CI** | Every PR (code paths) | Lint, syntax, check-mode bootstrap + `update-pihole`, compose validation, script unit tests, inventory structure, **Molecule `docker-ci` smoke** | No functional HA failover on hosted runners |
+| **GitHub CI** | Every PR (code paths) | Lint, syntax, check-mode bootstrap + `update-pihole`, compose validation (Pi-hole modes + Traefik templates), script unit tests, inventory structure, **Molecule `docker-ci` smoke** | No functional HA failover on hosted runners |
 | **Molecule** | Local / self-hosted | Full Vagrant HA bootstrap, rolling update, post-update verify | HA scenarios not in default GitHub matrix (needs Vagrant) |
 | **AWS remote** | Scheduled + label + manual | Ephemeral EC2 → production playbooks → teardown | Cost; amd64-only on schedule/label |
 | **Manual** | Production change windows | VIP failover, per-node DNS, Nebula Sync | Operator-driven |
@@ -29,7 +29,7 @@ Visual overview: [Unit tests map](diagrams/ansible-pihole-unit-tests.png) and
 |-----|---------|
 | PR title check | Conventional commit format on PR titles |
 | Lint | `ansible-lint`, `yamllint`, Molecule YAML schema smoke |
-| Ansible tests (Ubuntu matrix) | Syntax + check-mode for `bootstrap-pihole.yaml`, `update-pihole.yaml`; `ci-validate-pihole-modes.yaml` |
+| Ansible tests (Ubuntu matrix) | Syntax + check-mode for `bootstrap-pihole.yaml`, `update-pihole.yaml`; `ci-validate-pihole-modes.yaml`; `ci-validate-traefik.yaml` |
 | Policy & script validation | Python unit tests, `validate-secure-defaults.py`, `validate-inventory.py`, image pin/upstream checks, legacy variable lint |
 | Molecule docker smoke | `molecule test -s docker-ci` — docker role on docker driver (no Vagrant) |
 | Security | CodeQL, Trivy filesystem + pinned container images |
@@ -51,11 +51,13 @@ python scripts/check-legacy-inventory-vars.py
 
 ## Molecule (local integration)
 
-Six scenarios under `molecule/`:
+Molecule scenarios under `molecule/`:
 
 | Scenario | Path | Focus |
 |----------|------|-------|
 | `ubuntu` | `molecule/ubuntu/` | Ubuntu 24.04 HA — bootstrap, verify, rolling `update-pihole`, re-verify |
+| `ubuntu-traefik` | `molecule/ubuntu-traefik/` | Ubuntu 24.04 HA with Traefik — supplied TLS, HTTP→HTTPS, whoami discovery |
+| `ubuntu-traefik-http` | `molecule/ubuntu-traefik-http/` | Ubuntu 24.04 HA with Traefik — TLS off, HTTP UI |
 | `ubuntu-26.04` | `molecule/ubuntu-26.04/` | Ubuntu 26.04 — same HA + update sequence |
 | `default` | `molecule/default/` | Rocky-style lab box (**parked on libvirt** — see below) |
 | `docker` | `molecule/docker/` | Docker role focus (Vagrant — local) |
@@ -84,7 +86,12 @@ Sequence: dependency → syntax → create (Vagrant) → prepare → converge �
 **side_effect** (`update-pihole`) → verify → destroy.
 
 Shared verify logic: `molecule/common/verify_ha.yml` and tasks under
-`molecule/common/verify/`.
+`molecule/common/verify/`. `verify/proxy.yml` always asserts HTTP and HTTPS
+to Pi-hole when Traefik is off (no Traefik container, Pi-hole still publishes
+80/443). The enabled HTTPS path (HTTP→HTTPS redirect, HTTPS UI, whoami) runs in
+`molecule test -s ubuntu-traefik` with supplied lab certificates. HTTP-only
+Traefik is `molecule test -s ubuntu-traefik-http`. GitHub CI does not issue
+real Let's Encrypt certificates.
 
 **Helpers:**
 

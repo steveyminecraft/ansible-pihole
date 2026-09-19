@@ -19,6 +19,7 @@
 | `inventory/vagrant_libvirt.yml` | Yes | Same topology on libvirt (`192.168.121.0/24`) |
 | `inventory/ci/` | Yes | Localhost-only vars for CI syntax/check-mode |
 | `tests/remote/inventories/example-lab-ha.yml` | Yes | Dual-node HA template for remote functional tests |
+| `tests/remote/inventories/example-traefik.yml` | Yes | Single-node Traefik opt-in template (no live ACME secrets) |
 | `tests/remote/inventories/example-aws.yml` | Yes | Single-node AWS-style template (HA off) |
 
 Production inventory is **never** checked in. Start from

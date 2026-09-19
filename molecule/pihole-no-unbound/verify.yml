@@ -52,3 +52,6 @@
             'FTLCONF_dns_upstreams=1.1.1.1;1.0.0.1'
             in pihole_no_unbound_compose.services.pihole.environment
           - pihole_no_unbound_dns.stdout | trim | length > 0
+
+    - name: Verify Traefik remains disabled
+      ansible.builtin.import_tasks: ../common/verify/proxy.yml

@@ -1,0 +1,30 @@
+---
+- name: Verify optional Traefik reverse proxy
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Inspect Traefik container
+      community.docker.docker_container_info:
+        name: "{{ traefik_container_name | default('traefik') }}"
+      register: remote_traefik_container
+      when: traefik_enabled | default(false) | bool
+
+    - name: Assert Traefik is running
+      ansible.builtin.assert:
+        that:
+          - remote_traefik_container.exists | default(false)
+          - remote_traefik_container.container.State.Running | default(false)
+      when: traefik_enabled | default(false) | bool
+
+    - name: Inspect proxy network
+      community.docker.docker_network_info:
+        name: "{{ traefik_network_name | default('proxy') }}"
+      register: remote_proxy_network
+      when: traefik_enabled | default(false) | bool
+
+    - name: Assert proxy network exists
+      ansible.builtin.assert:
+        that:
+          - remote_proxy_network.exists | default(false)
+      when: traefik_enabled | default(false) | bool

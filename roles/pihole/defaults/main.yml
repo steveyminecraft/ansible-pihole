@@ -89,6 +89,17 @@ pihole_environment_variables:
 
 pihole_webport_http: "{{ lookup('ansible.builtin.vars', 'webport_http', default='80') }}"
 pihole_webport_https: "{{ lookup('ansible.builtin.vars', 'webport_https', default='443') }}"
+
+# Follows traefik_enabled when the Traefik role (or inventory) defines it.
+pihole_proxy_enabled: "{{ lookup('ansible.builtin.vars', 'traefik_enabled', default=false) | bool }}"
+pihole_proxy_hostname: "pihole.{{ lookup('ansible.builtin.vars', 'traefik_domain', default='lab.example.com') }}"
+pihole_proxy_router_name: pihole
+pihole_proxy_backend_port: 80
+# Optional LAN DNS for Traefik hostnames. Public DNS is not modified.
+pihole_proxy_dns_enabled: "{{ pihole_proxy_enabled }}"
+pihole_proxy_dns_domain: "{{ lookup('ansible.builtin.vars', 'traefik_domain', default='lab.example.com') }}"
+# Empty means: keepalived VIP when present, otherwise the host IPv4.
+pihole_proxy_dns_target: ""
 # Compose paths
 pihole_compose_file: "{{ pihole_compose_dir }}/docker-compose.yml"
 

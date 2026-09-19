@@ -1,0 +1,71 @@
+---
+# Opt-in reverse proxy. Existing Pi-hole deploys stay unchanged while this is false.
+traefik_enabled: false
+
+# Pinned on purpose — bump this variable to upgrade.
+traefik_image: docker.io/library/traefik
+traefik_version: v3.7.13
+traefik_container_name: traefik
+traefik_restart_policy: unless-stopped
+
+# This collection deploys rootful Docker Compose, not Podman. Traefik still uses
+# the Docker-compatible API. Override the runtime/socket only if the host is
+# actually running Podman.
+traefik_container_runtime: docker
+traefik_socket: auto
+# User-spec alias. Prefer traefik_socket; both accept "auto" or an absolute path.
+traefik_podman_socket: "{{ traefik_socket }}"
+traefik_podman_rootless: false
+# Used only for rootless Podman auto socket paths. Never hard-code UID 1000.
+traefik_podman_uid: "{{ ansible_facts['user_uid'] | default(ansible_facts['effective_user_id'] | default('')) }}"
+
+traefik_network_name: proxy
+traefik_manage_network: true
+
+traefik_compose_dir: /opt/traefik
+traefik_compose_file: "{{ traefik_compose_dir }}/docker-compose.yml"
+traefik_config_path: "{{ traefik_compose_dir }}/traefik.yml"
+traefik_dynamic_dir: "{{ traefik_compose_dir }}/dynamic"
+traefik_certs_dir: "{{ traefik_compose_dir }}/certs"
+traefik_acme_json_path: "{{ traefik_compose_dir }}/acme.json"
+traefik_acme_env_path: "{{ traefik_compose_dir }}/acme.env"
+traefik_config_owner: root
+traefik_config_group: root
+traefik_config_dir_mode: "0750"
+traefik_compose_file_mode: "0600"
+traefik_config_file_mode: "0640"
+traefik_acme_json_mode: "0600"
+traefik_acme_env_mode: "0600"
+
+traefik_http_port: 80
+traefik_https_port: 443
+traefik_log_level: INFO
+
+# Dashboard is off and must never use Traefik's insecure API.
+traefik_dashboard_enabled: false
+traefik_dashboard_hostname: ""
+# List of htpasswd user:hash lines. Required when the dashboard is enabled.
+traefik_dashboard_basicauth_users: []
+
+traefik_tls_enabled: true
+# dns01 | supplied | internal_acme (not implemented yet)
+traefik_tls_mode: dns01
+traefik_domain: lab.example.com
+traefik_acme_email: ""
+traefik_acme_resolver_name: letsencrypt
+traefik_acme_dns_provider: ""
+traefik_acme_staging: false
+traefik_acme_wildcard: true
+# DNS provider credentials. Source from Ansible Vault. Never commit values.
+# Example: { CLOUDFLARE_DNS_API_TOKEN: "{{ vault_cloudflare_token }}" }
+traefik_acme_environment: {}
+
+# Supplied-certificate mode. Both must be set; this role will not mint a
+# self-signed stand-in.
+traefik_tls_cert_src: ""
+traefik_tls_key_src: ""
+traefik_tls_remote_src: false
+
+# Remove the Traefik compose project when the feature is later disabled.
+# Persistent ACME/cert files and the shared proxy network are left in place.
+traefik_remove_on_disable: true

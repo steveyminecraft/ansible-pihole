@@ -92,7 +92,7 @@ If Docker tasks fail on a first run, reboot the host and re-run.
 Roles include (among others):
 
 - [`bootstrap`](roles/bootstrap/tasks/main.yml): SSH key from GitHub (`github_user_for_ssh_key`), optional password lock, aliases, timezone, hostname, packages such as firewalld on Debian/Ubuntu.
-- [`updates`](roles/updates/tasks/main.yml), [`sshd`](roles/sshd/tasks/main.yml), [`docker`](roles/docker/tasks/main.yml), [`unbound`](roles/unbound/tasks/main.yml), [`pihole`](roles/pihole/tasks/main.yml), [`keepalived`](roles/keepalived/tasks/main.yml), [`start_keepalived`](roles/start_keepalived/tasks/main.yml) / [`stop_keepalived`](roles/stop_keepalived/tasks/main.yml) as used in the play (FQCN prefix `steveyminecraft.pihole.` in playbooks).
+- [`updates`](roles/updates/tasks/main.yml), [`sshd`](roles/sshd/tasks/main.yml), [`docker`](roles/docker/tasks/main.yml), [`unbound`](roles/unbound/tasks/main.yml), [`traefik`](roles/traefik/tasks/main.yml) (opt-in), [`pihole`](roles/pihole/tasks/main.yml), [`keepalived`](roles/keepalived/tasks/main.yml), [`start_keepalived`](roles/start_keepalived/tasks/main.yml) / [`stop_keepalived`](roles/stop_keepalived/tasks/main.yml) as used in the play (FQCN prefix `steveyminecraft.pihole.` in playbooks).
 
 On RedHat/Rocky hosts the Docker role installs `kernel-modules-extra` by default for Docker/netfilter support. If a real host already has the needed modules and `/boot` is too tight for kernel package changes, opt out in inventory:
 
@@ -188,6 +188,121 @@ When Unbound is disabled, the Pi-hole role removes the managed Unbound
 container, Pi-hole is not attached to the shared Unbound network, and the role
 requires either `pihole_upstream_resolvers` or an explicit
 `pihole_environment_variables.FTLCONF_dns_upstreams` value.
+
+## Optional Traefik reverse proxy
+
+Traefik is **disabled by default**. Existing Pi-hole web ports, DNS, and DHCP
+behaviour do not change until you set `traefik_enabled: true`.
+
+This collection deploys **rootful Docker Compose**, not Podman. Traefik uses
+the Docker-compatible API over a local Unix socket. That socket is
+security-sensitive (root-equivalent on the host). This role never exposes it
+over TCP.
+
+```text
+                     LAN
+                      │
+                DNS resolves
+            service.lab.example.com
+                      │
+                      ▼
+             ┌─────────────────┐
+             │     Traefik     │
+             │ :80  → HTTPS    │
+             │ :443 TLS        │
+             └────────┬────────┘
+                      │
+                proxy network
+                      │
+        ┌─────────────┼─────────────┐
+        │             │             │
+        ▼             ▼             ▼
+     Pi-hole       Homepage      Future app
+    web :80         :3000          :xxxx
+```
+
+### Requirements
+
+- Docker API socket on the host (default `/var/run/docker.sock`)
+- A DNS zone you control if you use Let's Encrypt DNS-01
+- Provider-specific ACME credentials in Ansible Vault (`traefik_acme_environment`)
+- LAN DNS that points `*.your.domain` (or each hostname) at the Traefik host
+  or keepalived VIP — not at a public home IP
+
+### Basic example
+
+```yaml
+traefik_enabled: true
+traefik_domain: home.example.com
+traefik_acme_email: admin@example.com
+traefik_acme_dns_provider: cloudflare
+traefik_acme_environment:
+  CLOUDFLARE_DNS_API_TOKEN: "{{ vault_cloudflare_token }}"
+```
+
+Pi-hole is then published at `https://pihole.home.example.com` (`pihole_proxy_hostname`).
+HTTP on port 80 redirects permanently to HTTPS. Traefik is pinned to
+`traefik_image`/`traefik_version` (currently `docker.io/library/traefik:v3.7.13`).
+
+TLS modes:
+
+- `dns01` — Let's Encrypt DNS-01 (default). Can request `domain` plus `*.domain`.
+- `supplied` — you provide `traefik_tls_cert_src` and `traefik_tls_key_src`.
+- `internal_acme` — not implemented; the role fails rather than minting a
+  self-signed certificate and calling that finished.
+
+Containers are **not** exposed unless they set `traefik.enable=true`.
+`exposedByDefault` is false.
+
+When Traefik is enabled, Pi-hole keeps DNS 53 (and DHCP 67 if configured) on the
+host and stops publishing 80/443 so Traefik can bind them. Host-networked
+Pi-hole is not converted to bridge networking; that mode requires moving
+Pi-hole's web port off 80/443 and setting `pihole_proxy_backend_port`.
+
+If you use Nebula Sync, point `nebula_sync_*_url` at the HTTPS hostname (or
+another reachable API URL) after the web port is no longer published on the
+host.
+
+Optional LAN wildcard DNS through Pi-hole (off the public internet):
+
+```yaml
+pihole_proxy_dns_enabled: true
+pihole_proxy_dns_domain: home.example.com
+# empty → keepalived VIP when set, otherwise the host IPv4
+pihole_proxy_dns_target: ""
+```
+
+### Adding another application
+
+1. Attach the container to the shared `proxy` network (default `traefik_network_name`).
+2. Set Traefik labels, including an explicit backend port.
+3. Create LAN DNS for the hostname (or rely on the optional wildcard).
+
+```yaml
+# Example: Homepage (or any other labelled container)
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:<pinned-tag>
+    networks:
+      - proxy
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "proxy"
+      traefik.http.routers.homepage.rule: "Host(`home.example.com`)"
+      traefik.http.routers.homepage.entrypoints: "websecure"
+      traefik.http.routers.homepage.tls: "true"
+      traefik.http.routers.homepage.tls.certresolver: "letsencrypt"
+      traefik.http.services.homepage.loadbalancer.server.port: "3000"
+```
+
+Starting that container is enough for Traefik to route it. Removing it drops
+the route. You do not restart Traefik or rerun Ansible for discovery.
+
+The dashboard stays off (`traefik_dashboard_enabled: false`). If you enable it,
+it is only reachable through an authenticated HTTPS router.
+
+See [`roles/traefik/README.md`](roles/traefik/README.md) and
+[`docs/architecture.md`](docs/architecture.md).
 
 By default the Unbound role chooses a pinned image from
 `unbound_image_arch_map` using the target host architecture:
@@ -285,7 +400,7 @@ Nebula Sync defaults `nebula_sync_use_secret_files: true` so `PRIMARY` and `REPL
 
 ### Playbook tags
 
-Roles are tagged (e.g. `pihole`, `docker`, `unbound`, `ha`, `stopkeepalived`, `startkeepalived`; `sync.yaml` uses `nebulasync`, `nebula`, `sync`). Limit execution, for example:
+Roles are tagged (e.g. `pihole`, `docker`, `unbound`, `traefik`, `ha`, `stopkeepalived`, `startkeepalived`; `sync.yaml` uses `nebulasync`, `nebula`, `sync`). Limit execution, for example:
 
 ```bash
 ansible-playbook -i your/inventory.yml playbooks/bootstrap-pihole.yaml --tags pihole
@@ -331,7 +446,9 @@ instances, lab VMs, or Raspberry Pi hardware.
 
 | Scenario | Path | Platforms |
 |----------|------|-----------|
-| `ubuntu` | [`molecule/ubuntu/`](molecule/ubuntu/) | Ubuntu 24.04 (`bento/ubuntu-24.04`); HA bootstrap, verify, rolling `update-pihole`, post-update verify |
+| `ubuntu` | [`molecule/ubuntu/`](molecule/ubuntu/) | Ubuntu 24.04 (`bento/ubuntu-24.04`); HA bootstrap, verify, rolling `update-pihole`, post-update verify (Traefik off, HTTP+HTTPS on Pi-hole) |
+| `ubuntu-traefik` | [`molecule/ubuntu-traefik/`](molecule/ubuntu-traefik/) | Ubuntu 24.04 HA with Traefik enabled (supplied lab TLS; HTTP redirect + HTTPS UI) |
+| `ubuntu-traefik-http` | [`molecule/ubuntu-traefik-http/`](molecule/ubuntu-traefik-http/) | Ubuntu 24.04 HA with Traefik enabled, TLS off (HTTP UI) |
 | `ubuntu-26.04` | [`molecule/ubuntu-26.04/`](molecule/ubuntu-26.04/) | Ubuntu 26.04 — VirtualBox: `konstruktoid/ubuntu-26.04` (Bento); libvirt: `cloud-image/ubuntu-26.04`; same HA + update sequence as `ubuntu` |
 | `default` | [`molecule/default/`](molecule/default/) | Rocky-style box — **parked on libvirt** until 10 GiB disk fix is re-smoked (wrong box `virtual_size` → dracut; see [docs/testing.md](docs/testing.md#parked-default-rocky--libvirt)) |
 | `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
@@ -341,6 +458,8 @@ Examples:
 
 ```bash
 molecule test -s ubuntu
+molecule test -s ubuntu-traefik
+molecule test -s ubuntu-traefik-http
 molecule test -s ubuntu-26.04
 molecule test -s nebula-sync-migration
 molecule converge -s ubuntu    # iterate without full test sequence

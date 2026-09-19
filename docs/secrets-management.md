@@ -10,6 +10,7 @@ and [backup-and-restore.md](backup-and-restore.md) for pre-change backups.
 | Pi-hole Web/API password | `pihole_environment_variables.FTLCONF_webserver_api_password` | Pi-hole container, Nebula Sync API auth |
 | Nebula Sync primary credential | `nebula_sync_primary_password` | Nebula Sync → primary Pi-hole |
 | Nebula Sync replica credentials | `nebula_sync_replicas[*].password` | Nebula Sync → each replica |
+| Traefik ACME DNS credentials | `traefik_acme_environment` | Let's Encrypt DNS-01 (only when `traefik_enabled`) |
 
 Nebula Sync passwords usually match the Pi-hole API password on each node when
 all instances share one operator credential. They can differ if you rotate per
@@ -86,6 +87,8 @@ After deploy, the collection enforces restrictive modes on disk:
 - Pi-hole compose file — root-owned, mode `0600`.
 - Nebula Sync secret files — mode `0400` when `nebula_sync_use_secret_files: true`
   (default).
+- Traefik `acme.json` and `acme.env` — root-owned, mode `0600`. Provider tokens
+  are never written into `traefik.yml`.
 
 ## Nebula Sync secret delivery
 

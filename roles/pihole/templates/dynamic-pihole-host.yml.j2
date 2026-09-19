@@ -1,0 +1,28 @@
+---
+# Used only when Pi-hole runs with host networking. Labels cannot attach
+# host-network containers to the Docker proxy network, so Traefik reaches
+# Pi-hole through the host gateway instead.
+http:
+  routers:
+    {{ pihole_proxy_router_name }}:
+      rule: "Host(`{{ pihole_proxy_hostname }}`){% if (ansible_host | default('') | string | length) > 0 %} || Host(`{{ ansible_host }}`){% endif %}"
+      entryPoints:
+{% if traefik_tls_enabled | default(true) | bool %}
+        - websecure
+{% else %}
+        - web
+{% endif %}
+      service: {{ pihole_proxy_router_name }}
+{% if traefik_tls_enabled | default(true) | bool %}
+{% if (traefik_tls_mode | default('dns01')) == 'dns01' %}
+      tls:
+        certResolver: {{ traefik_acme_resolver_name | default('letsencrypt') }}
+{% else %}
+      tls: {}
+{% endif %}
+{% endif %}
+  services:
+    {{ pihole_proxy_router_name }}:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:{{ pihole_proxy_backend_port }}"
