@@ -35,6 +35,20 @@ class StopContainersRoleTests(unittest.TestCase):
             stop["community.docker.docker_container"]["state"], "stopped"
         )
 
+    def test_docker_api_tasks_skip_check_mode(self) -> None:
+        tasks = {
+            task["name"]: task
+            for task in load_yaml(TASKS)
+            if isinstance(task, dict) and "name" in task
+        }
+        for name in (
+            "Inspect stack containers",
+            "Stop running stack containers on drained node",
+        ):
+            when = tasks[name].get("when")
+            blob = yaml.dump(when)
+            self.assertIn("ansible_check_mode", blob, msg=name)
+
     def test_defaults_include_pihole_and_traefik(self) -> None:
         defaults = load_yaml(DEFAULTS)
         blob = yaml.dump(defaults["stop_containers_names"])

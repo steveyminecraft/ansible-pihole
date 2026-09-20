@@ -9,7 +9,9 @@
     name: "{{ item }}"
   loop: "{{ stop_containers_names }}"
   register: stop_containers_info
-  when: stop_containers_docker_sock.stat.exists | default(false) | bool
+  when:
+    - not ansible_check_mode
+    - stop_containers_docker_sock.stat.exists | default(false) | bool
 
 - name: Stop running stack containers on drained node
   community.docker.docker_container:
@@ -19,6 +21,7 @@
   loop_control:
     label: "{{ item.item | default(item) }}"
   when:
+    - not ansible_check_mode
     - stop_containers_docker_sock.stat.exists | default(false) | bool
     - not (item.skipped | default(false) | bool)
     - item.exists | default(false) | bool

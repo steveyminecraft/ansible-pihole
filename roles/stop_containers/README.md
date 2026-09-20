@@ -16,6 +16,7 @@ container names are ignored.
 
 The role checks for `/var/run/docker.sock`, inspects each name in
 `stop_containers_names`, and stops containers that exist and are running.
+Docker API tasks are skipped in `--check` mode.
 
 Default names: Pi-hole, Traefik, Unbound, and Nebula Sync (when those variables
 are set; otherwise `pihole`, `traefik`, `unbound`, `nebula`).
