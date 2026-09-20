@@ -1,4 +1,20 @@
 ---
+- name: Stat Pi-hole dnsmasq.d directory
+  ansible.builtin.stat:
+    path: "{{ pihole_dir_loc }}/etc/dnsmasq.d"
+  register: pihole_dnsmasq_d_stat
+
+- name: Assert dnsmasq.d is traversable by FTL
+  ansible.builtin.assert:
+    that:
+      - pihole_dnsmasq_d_stat.stat.exists | default(false)
+      - pihole_dnsmasq_d_stat.stat.isdir | default(false)
+      - (pihole_dnsmasq_d_stat.stat.mode | default('')) == '0755'
+    fail_msg: >-
+      {{ pihole_dir_loc }}/etc/dnsmasq.d must be mode 0755 so Pi-hole FTL
+      (UID 1000) can read custom dnsmasq config. Found mode
+      {{ pihole_dnsmasq_d_stat.stat.mode | default('missing') }}.
+
 - name: Check if Pi-hole container is running
   ansible.builtin.command: docker ps --filter "name={{ pihole_container_name }}" --format "{{ '{{' }}.Names{{ '}}' }}"
   register: pihole_status
