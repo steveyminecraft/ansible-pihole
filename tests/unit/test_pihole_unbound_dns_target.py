@@ -97,6 +97,21 @@ class PiholeUnboundDnsTargetTests(unittest.TestCase):
             "172.18.0.2",
         )
 
+    def test_unbound_tasks_start_stopped_container_before_present_fact(self) -> None:
+        tasks = yaml.safe_load(UNBOUND_TASKS.read_text(encoding="utf-8"))
+        names = [task.get("name") for task in tasks]
+        start = "Start Unbound container when it exists but is stopped"
+        present = "Set fact if Unbound is running"
+        self.assertIn(start, names)
+        self.assertIn(present, names)
+        self.assertLess(names.index(start), names.index(present))
+        start_task = next(task for task in tasks if task.get("name") == start)
+        argv = start_task["ansible.builtin.command"]["argv"]
+        self.assertEqual(argv[0:2], ["docker", "start"])
+        when = yaml.dump(start_task.get("when"))
+        self.assertIn("pihole_unbound_running.rc == 0", when)
+        self.assertIn("true", when)
+
 
 if __name__ == "__main__":
     unittest.main()

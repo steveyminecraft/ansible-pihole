@@ -47,6 +47,22 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
                 self.assertLess(drain, stop)
                 self.assertLess(stop, updates)
 
+    def test_update_pihole_ensures_unbound_before_pihole(self) -> None:
+        roles = [role["role"] for role in load_yaml(UPDATE_PIHOLE)[0]["roles"]]
+        updates = roles.index("steveyminecraft.pihole.updates")
+        unbound = roles.index("steveyminecraft.pihole.unbound")
+        pihole = roles.index("steveyminecraft.pihole.pihole")
+        self.assertLess(updates, unbound)
+        self.assertLess(unbound, pihole)
+        unbound_role = next(
+            role
+            for role in load_yaml(UPDATE_PIHOLE)[0]["roles"]
+            if role["role"] == "steveyminecraft.pihole.unbound"
+        )
+        when = yaml.dump(unbound_role.get("when"))
+        self.assertIn("pihole_enable_unbound", when)
+        self.assertIn("ansible_check_mode", when)
+
     def test_update_pihole_playbook_ha_safety_flags(self) -> None:
         first_play = load_yaml(UPDATE_PIHOLE)[0]
         self.assertTrue(first_play.get("any_errors_fatal"))

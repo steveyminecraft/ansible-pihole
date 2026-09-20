@@ -5,8 +5,7 @@
   serial: 1
   any_errors_fatal: true
   vars:
-    # Ensure inventory expressions that reference unbound_* resolve even when
-    # this play does not include the unbound role (molecule side_effect).
+    # unbound_* defaults also cover molecule side_effect inventories.
     unbound_container_name: unbound
     unbound_port: 5335
     unbound_network_name: dns_net
@@ -19,6 +18,11 @@
       tags: [stopcontainers, drain, container]
     - role: steveyminecraft.pihole.updates
       tags: [updates, system]
+    - role: steveyminecraft.pihole.unbound
+      tags: [unbound, dns]
+      when:
+        - not ansible_check_mode
+        - pihole_enable_unbound | default(true) | bool
     - role: steveyminecraft.pihole.traefik
       tags: [traefik, proxy]
       when: not ansible_check_mode

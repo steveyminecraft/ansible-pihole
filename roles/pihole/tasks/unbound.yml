@@ -6,6 +6,28 @@
   changed_when: false
   failed_when: false
 
+- name: Start Unbound container when it exists but is stopped
+  ansible.builtin.command:
+    argv:
+      - docker
+      - start
+      - "{{ unbound_container_name | default('unbound') }}"
+  when:
+    - not ansible_check_mode
+    - pihole_unbound_running.rc == 0
+    - (pihole_unbound_running.stdout | trim) != 'true'
+  changed_when: true
+
+- name: Re-check Unbound running state after start
+  ansible.builtin.command:
+    cmd: docker inspect -f '{{ "{{" }}.State.Running{{ "}}" }}' "{{ unbound_container_name | default('unbound') }}"
+  register: pihole_unbound_running
+  changed_when: false
+  failed_when: false
+  when:
+    - not ansible_check_mode
+    - pihole_unbound_running.rc == 0
+
 - name: Set fact if Unbound is running
   ansible.builtin.set_fact:
     pihole_unbound_present: "{{ (pihole_unbound_running.rc == 0) and (pihole_unbound_running.stdout | trim == 'true') }}"

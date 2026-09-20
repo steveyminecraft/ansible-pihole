@@ -49,7 +49,8 @@ linked runbooks in order:
 
 4. Observe the per-node drain/resume sequence:
    - stop keepalived on the current node so the VIP can move away before changes
-   - apply OS updates and Pi-hole role changes
+   - stop Pi-hole and Traefik containers so host 80/443 can be rebound
+   - apply OS updates, ensure Unbound is up, then Traefik and Pi-hole role changes
    - wait for the local Pi-hole DNS listener on `127.0.0.1:53` for up to 180 seconds
    - run `dig +short @127.0.0.1 <health-qname>` and require at least one IPv4 answer
    - when Unbound is deployed, run `dig` from inside the Pi-hole container to the Unbound target and require at least one IPv4 answer

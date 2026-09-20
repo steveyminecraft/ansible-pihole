@@ -54,6 +54,8 @@ class StopContainersRoleTests(unittest.TestCase):
         blob = yaml.dump(defaults["stop_containers_names"])
         self.assertIn("pihole_container_name", blob)
         self.assertIn("traefik_container_name", blob)
+        self.assertNotIn("unbound", blob)
+        self.assertNotIn("nebula", blob)
 
     def test_role_has_galaxy_readme(self) -> None:
         readme = ROOT / "roles" / "stop_containers" / "README.md"

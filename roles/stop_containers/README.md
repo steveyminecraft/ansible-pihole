@@ -18,8 +18,9 @@ The role checks for `/var/run/docker.sock`, inspects each name in
 `stop_containers_names`, and stops containers that exist and are running.
 Docker API tasks are skipped in `--check` mode.
 
-Default names: Pi-hole, Traefik, Unbound, and Nebula Sync (when those variables
-are set; otherwise `pihole`, `traefik`, `unbound`, `nebula`).
+Default names: Pi-hole and Traefik only. Unbound stays up so Pi-hole still has
+an upstream; `update-pihole.yaml` also runs the unbound role to make sure it is
+answering before DNS health gates. Nebula Sync is not stopped.
 
 ## Drain/resume pattern
 
