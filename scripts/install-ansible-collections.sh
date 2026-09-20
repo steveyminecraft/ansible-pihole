@@ -20,8 +20,10 @@ fi
 rm -rf "$COL/ansible_collections/steveyminecraft/pihole"
 # --no-cache avoids the ansible-galaxy response-cache corruption bug
 # (KeyError: 'results') that surfaces under concurrent CI runs.
-ansible-galaxy collection install "${artifact}" -p "$COL" --force --no-cache
+"$ROOT/scripts/ansible-galaxy-collection-install.sh" \
+  "${artifact}" -p "$COL" --force --no-cache
 
 if [[ -f "$ROOT/collections/requirements.yml" ]]; then
-  ansible-galaxy collection install -r "$ROOT/collections/requirements.yml" -p "$COL" --no-cache
+  "$ROOT/scripts/ansible-galaxy-collection-install.sh" \
+    -r "$ROOT/collections/requirements.yml" -p "$COL" --no-cache
 fi
