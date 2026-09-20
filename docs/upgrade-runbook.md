@@ -69,6 +69,7 @@ touched.
 
 | Gate | When it runs | Failure behavior |
 |------|--------------|------------------|
+| Peer DNS before drain | Before keepalived/Pi-hole/Traefik stop, when another inventory host exists | TCP/53 must answer on at least one other `ansible_host`; otherwise the node is not drained |
 | Drain current node | Before package and Pi-hole changes | keepalived is stopped when present; the VIP should move to the other node |
 | Local DNS listener | After updates, before keepalived resumes | waits up to 180 seconds for `127.0.0.1:53`; failure leaves the node drained |
 | Local Pi-hole DNS | After listener is open | `dig +short @127.0.0.1 <health-qname>` must return an IPv4 line; failure leaves the node drained |

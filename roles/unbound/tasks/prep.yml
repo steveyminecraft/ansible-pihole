@@ -48,6 +48,11 @@
     state: directory
     mode: '0755'
 
+- name: Stat existing Unbound root.hints
+  ansible.builtin.stat:
+    path: "{{ unbound_root_hints_host_path }}"
+  register: unbound_root_hints_stat
+
 - name: Download root.hints for Unbound
   ansible.builtin.get_url:
     url: "{{ unbound_root_hints_url }}"
@@ -56,6 +61,10 @@
     group: "{{ ansible_user }}"
     mode: "0644"
     force: false
+  register: unbound_root_hints_download
+  failed_when: >-
+    unbound_root_hints_download is failed
+    and not unbound_root_hints_stat.stat.exists
 
 - name: Check if external docker network exists
   ansible.builtin.command:
