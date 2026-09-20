@@ -1,8 +1,8 @@
 ---
 # Running installs: stop stack containers after VIP drain and before
 # package updates / Traefik bind. Missing names are ignored.
+# Only stop containers that would hold host 80/443. Unbound is brought up by
+# the unbound role on update; Nebula Sync is not managed by update-pihole.
 stop_containers_names:
   - "{{ pihole_container_name | default('pihole') }}"
   - "{{ traefik_container_name | default('traefik') }}"
-  - "{{ unbound_container_name | default('unbound') }}"
-  - "{{ nebula_sync_container_name | default('nebula') }}"
