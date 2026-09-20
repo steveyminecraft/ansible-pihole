@@ -63,6 +63,7 @@ class DefaultContainerImagesTests(unittest.TestCase):
 
         self.assertTrue(set(self.helper.default_images()) <= images)
         self.assertIn("pihole/pihole:2026.06.0", images)
+        self.assertIn("pihole/pihole:2026.07.2", images)
 
     def test_image_key_preserves_image_tag_for_code_scanning_category(self) -> None:
         self.assertEqual(
