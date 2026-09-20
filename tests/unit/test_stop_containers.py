@@ -41,6 +41,13 @@ class StopContainersRoleTests(unittest.TestCase):
         self.assertIn("pihole_container_name", blob)
         self.assertIn("traefik_container_name", blob)
 
+    def test_role_has_galaxy_readme(self) -> None:
+        readme = ROOT / "roles" / "stop_containers" / "README.md"
+        self.assertTrue(readme.is_file(), "Galaxy import requires roles/stop_containers/README.md")
+        text = readme.read_text(encoding="utf-8")
+        self.assertIn("stop_containers", text)
+        self.assertIn("stop_keepalived", text)
+
 
 if __name__ == "__main__":
     unittest.main()
