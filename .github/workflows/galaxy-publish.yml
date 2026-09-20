@@ -106,7 +106,8 @@ jobs:
 
           # --no-cache avoids the ansible-galaxy response-cache corruption
           # bug (KeyError: 'results') seen under concurrent CI runs.
-          ansible-galaxy collection install "${artifact}" -p collections --force --no-cache
+          "${GITHUB_WORKSPACE}/scripts/ansible-galaxy-collection-install.sh" \
+            "${artifact}" -p collections --force --no-cache
           test -d collections/ansible_collections/ansible/posix
 
           installed="${consumer_root}/collections/ansible_collections/steveyminecraft/pihole"
