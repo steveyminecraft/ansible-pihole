@@ -36,7 +36,7 @@
     owner: root
     group: root
     state: directory
-    mode: "0750"
+    mode: "0755"
 
 - name: Publish Traefik hostnames through Pi-hole DNS
   ansible.builtin.template:
@@ -44,7 +44,7 @@
     dest: "{{ pihole_dir_loc }}/etc/dnsmasq.d/99-proxy-dns.conf"
     owner: root
     group: root
-    mode: "0640"
+    mode: "0644"
   register: pihole_proxy_dns_template
   when:
     - pihole_proxy_dns_enabled | bool

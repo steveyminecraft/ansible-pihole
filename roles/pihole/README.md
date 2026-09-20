@@ -25,6 +25,10 @@ shared `proxy` network, applies Traefik labels, and stops publishing host TCP
 80/443. DNS and DHCP publish behaviour is otherwise unchanged. See
 [roles/traefik/README.md](../traefik/README.md).
 
+The bind-mounted `etc/dnsmasq.d` directory is created at mode `0755` and
+role-written files at `0644`. Pi-hole FTL 2026.09.0+ runs as UID 1000 and
+cannot start DNS if that volume is `0750`/`0640` `root:root`.
+
 Deploy Pi-hole in Docker (Pi-hole v6) with optional Unbound upstream integration.
 
 Sourced from [docker-pihole](https://github.com/steveyminecraft/docker-pihole) with ansible-pihole compatibility changes applied in this collection.

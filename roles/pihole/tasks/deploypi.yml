@@ -7,6 +7,30 @@
     state: directory
     mode: '0750'
 
+# FTL 2026.09.0+ (UID 1000) cannot traverse root:root 0750 bind-mounts.
+- name: Ensure Pi-hole dnsmasq.d is readable by FTL
+  ansible.builtin.file:
+    path: "{{ pihole_dir_loc }}/etc/dnsmasq.d"
+    owner: root
+    group: root
+    state: directory
+    mode: "0755"
+
+- name: Find Pi-hole dnsmasq.d config files
+  ansible.builtin.find:
+    paths: "{{ pihole_dir_loc }}/etc/dnsmasq.d"
+    file_type: file
+  register: pihole_dnsmasq_d_files
+
+# Intentionally 0644: FTL UID 1000 must read every conf in this bind-mount.
+- name: Ensure dnsmasq.d config files are readable by FTL
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "0644"
+  loop: "{{ pihole_dnsmasq_d_files.files }}"
+  loop_control:
+    label: "{{ item.path }}"
+
 - name: Deploy Docker Compose file
   no_log: true
   ansible.builtin.template:

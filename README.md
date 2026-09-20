@@ -277,6 +277,10 @@ pihole_proxy_dns_domain: home.example.com
 pihole_proxy_dns_target: ""
 ```
 
+That writes `etc/dnsmasq.d/99-proxy-dns.conf` at mode `0644` in a `0755`
+directory. Do not tighten those modes: FTL 2026.09.0+ runs as UID 1000 and will
+not bind port 53 if it cannot read `/etc/dnsmasq.d`.
+
 ### Adding another application
 
 1. Attach the container to the shared `proxy` network (default `traefik_network_name`).
