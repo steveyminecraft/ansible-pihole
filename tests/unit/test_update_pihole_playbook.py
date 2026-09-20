@@ -91,6 +91,67 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
         self.assertGreater(side_effect_index, verify_indices[0])
         self.assertLess(side_effect_index, verify_indices[-1])
 
+    def test_update_pihole_requires_peer_dns_before_drain(self) -> None:
+        first_play = load_yaml(UPDATE_PIHOLE)[0]
+        pre_tasks = first_play.get("pre_tasks") or []
+        self.assertTrue(pre_tasks, "update-pihole must probe peer DNS before draining")
+
+        def named(items):
+            found = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                if "name" in item:
+                    found.append(item)
+                found.extend(named(item.get("block") or []))
+            return found
+
+        tasks = named(pre_tasks)
+        names = [task["name"] for task in tasks]
+        self.assertIn("Collect peer DNS addresses before drain", names)
+        self.assertIn("Probe peer DNS listeners before drain", names)
+        self.assertIn("Refuse to drain the last healthy DNS node", names)
+        self.assertLess(
+            names.index("Collect peer DNS addresses before drain"),
+            names.index("Probe peer DNS listeners before drain"),
+        )
+        self.assertLess(
+            names.index("Probe peer DNS listeners before drain"),
+            names.index("Refuse to drain the last healthy DNS node"),
+        )
+
+        collect = next(
+            task for task in tasks if task["name"] == "Collect peer DNS addresses before drain"
+        )
+        fact = yaml.dump(collect["ansible.builtin.set_fact"])
+        self.assertIn("groups['all']", fact)
+        self.assertIn("inventory_hostname", fact)
+        self.assertIn("ansible_host", fact)
+
+        probe = next(
+            task for task in tasks if task["name"] == "Probe peer DNS listeners before drain"
+        )
+        wait_for = probe["ansible.builtin.wait_for"]
+        self.assertEqual(wait_for["port"], 53)
+        self.assertTrue(probe.get("ignore_errors"))
+        probe_when = yaml.dump(probe.get("when"))
+        self.assertIn("ansible_check_mode", probe_when)
+
+        refuse = next(
+            task for task in tasks if task["name"] == "Refuse to drain the last healthy DNS node"
+        )
+        that = yaml.dump(refuse["ansible.builtin.assert"]["that"])
+        self.assertIn("rejectattr('failed')", that)
+        self.assertIn("last healthy", refuse["ansible.builtin.assert"]["fail_msg"].lower())
+
+        roles = [role["role"] for role in first_play["roles"]]
+        self.assertEqual(roles[0], "steveyminecraft.pihole.stop_keepalived")
+
+    def test_bootstrap_does_not_require_peer_dns_before_first_install(self) -> None:
+        bootstrap = load_yaml(ROOT / "playbooks" / "bootstrap-pihole.yaml")[0]
+        blob = yaml.dump(bootstrap.get("pre_tasks") or [])
+        self.assertNotIn("Refuse to drain the last healthy DNS node", blob)
+
 
 class PiholeComposeTemplateTests(unittest.TestCase):
     @classmethod

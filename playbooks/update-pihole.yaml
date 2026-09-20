@@ -11,6 +11,46 @@
     unbound_network_name: dns_net
     pihole_update_health_qname: >-
       {{ pihole_verify_qname | default(pihole_unbound_verify_qname | default('cloudflare.com')) }}
+  pre_tasks:
+    - name: Collect peer DNS addresses before drain
+      tags: [drain, ha]
+      ansible.builtin.set_fact:
+        pihole_update_peer_dns_hosts: >-
+          {{
+            groups['all']
+            | reject('equalto', inventory_hostname)
+            | map('extract', hostvars, 'ansible_host')
+            | select('defined')
+            | list
+          }}
+
+    - name: Probe peer DNS listeners before drain
+      tags: [drain, ha]
+      ansible.builtin.wait_for:
+        host: "{{ item }}"
+        port: 53
+        timeout: 5
+        state: started
+      loop: "{{ pihole_update_peer_dns_hosts }}"
+      register: pihole_update_peer_dns
+      ignore_errors: true
+      changed_when: false
+      when:
+        - not ansible_check_mode
+        - pihole_update_peer_dns_hosts | length > 0
+
+    - name: Refuse to drain the last healthy DNS node
+      tags: [drain, ha]
+      ansible.builtin.assert:
+        that:
+          - pihole_update_peer_dns.results | rejectattr('failed') | list | length > 0
+        fail_msg: >-
+          Refusing to drain {{ inventory_hostname }}: no other inventory
+          ansible_host answered TCP/53. Repair the peer before draining
+          the last healthy DNS node.
+      when:
+        - not ansible_check_mode
+        - pihole_update_peer_dns_hosts | length > 0
   roles:
     - role: steveyminecraft.pihole.stop_keepalived
       tags: [stopkeepalived, drain, ha]
