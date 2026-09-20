@@ -1,14 +1,14 @@
 namespace: steveyminecraft
 name: pihole
-version: 1.8.7
+version: 1.9.0
 readme: README.md
 authors:
   - steveyminecraft
 description: >-
-  Deploy Pi-hole with Docker, optional Unbound, optional Traefik, keepalived HA, and Nebula Sync.
-  Supported on Ubuntu, Debian, and Raspberry Pi OS. Rocky Linux and Red Hat
-  Enterprise Linux are deprecated (existing EL task paths remain). Includes
-  playbooks for bootstrap, updates, and configuration sync.
+  Deploy Pi-hole with Docker, optional Unbound, optional Traefik, keepalived HA,
+  and Nebula Sync. Supported on Ubuntu, Debian, and Raspberry Pi OS. Rocky Linux
+  and Red Hat Enterprise Linux are deprecated (existing EL task paths remain).
+  Includes playbooks for bootstrap, updates, and configuration sync.
 license:
   - Apache-2.0
 tags:
