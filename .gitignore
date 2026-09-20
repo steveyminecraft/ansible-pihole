@@ -182,6 +182,7 @@ cython_debug/
 steveyminecraft-pihole-*.tar.gz
 inventory/inventory.yaml
 inventory/rnet.yml
+inventory/tls/
 
 # graphify knowledge vault (local only — see docs/knowledge-vault.md)
 graphify-out/
