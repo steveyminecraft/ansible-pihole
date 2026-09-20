@@ -16,7 +16,7 @@ ROLLING_PLAYBOOKS = (
     ROOT / "playbooks" / "bootstrap-pihole.yaml",
     ROOT / "playbooks" / "keepalived.yaml",
 )
-UBUNTU_MOLECULE = ROOT / "molecule" / "ubuntu" / "molecule.yml"
+UBUNTU_MOLECULE = ROOT / "molecule" / "default" / "molecule.yml"
 COMPOSE_TEMPLATE = ROOT / "roles" / "pihole" / "templates" / "docker-compose.yml.j2"
 PIHOLE_DEFAULTS = ROOT / "roles" / "pihole" / "defaults" / "main.yml"
 
@@ -53,7 +53,7 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
         self.assertIn("until", vip_task)
         self.assertIn("pihole_ha_mode", str(vip_task.get("when")))
 
-    def test_ubuntu_molecule_exercises_update_side_effect(self) -> None:
+    def test_default_molecule_exercises_update_side_effect(self) -> None:
         sequence = load_yaml(UBUNTU_MOLECULE)["scenario"]["test_sequence"]
         side_effect_index = sequence.index("side_effect")
         verify_indices = [index for index, step in enumerate(sequence) if step == "verify"]

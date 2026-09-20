@@ -1,0 +1,8 @@
+---
+# Lab-only Traefik over HTTP. TLS redirect is off so port 80 serves Pi-hole.
+traefik_enabled: true
+traefik_tls_enabled: false
+traefik_domain: lab.example.com
+pihole_proxy_enabled: true
+pihole_proxy_hostname: pihole.lab.example.com
+pihole_proxy_dns_enabled: false

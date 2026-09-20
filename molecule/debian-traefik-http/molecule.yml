@@ -1,8 +1,5 @@
 ---
-# Molecule scenario: Ubuntu 26.04 + full stack (see converge.yml).
-# VirtualBox: konstruktoid/ubuntu-26.04 (Bento build).
-# Libvirt: cloud-image/ubuntu-26.04 — must be the amd64 provider box pre-installed
-# (this Vagrant lacks vm.box_architecture; arm64 box hangs with no DHCP/SSH).
+# Molecule scenario: Debian 12 HA with Traefik HTTP-only (TLS off).
 dependency:
   name: shell
   command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
@@ -10,7 +7,7 @@ driver:
   name: vagrant
 platforms:
   - name: vagrant-pihole-01
-    box: "konstruktoid/ubuntu-26.04"
+    box: "bento/debian-12"
     hostname: vagrant-pihole-01
     interfaces:
       - network_name: private_network
@@ -19,7 +16,7 @@ platforms:
     memory: 2048
     cpus: 4
   - name: vagrant-pihole-02
-    box: "konstruktoid/ubuntu-26.04"
+    box: "bento/debian-12"
     hostname: vagrant-pihole-02
     interfaces:
       - network_name: private_network
@@ -33,12 +30,11 @@ provisioner:
   connection_options:
     ansible_ssh_user: vagrant
     ansible_password: vagrant
-    ansible_ssh_private_key_file: ${HOME}/.vagrant.d/insecure_private_key
-    ansible_ssh_common_args: "-F /dev/null -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     ansible_become: true
   inventory:
     links:
       hosts: ../../inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}
+      group_vars: group_vars
   playbooks:
     create: create.yml
     prepare: prepare.yml
@@ -53,7 +49,7 @@ provisioner:
 verifier:
   name: ansible
 scenario:
-  name: ubuntu-26.04
+  name: debian-traefik-http
   test_sequence:
     - dependency
     - syntax

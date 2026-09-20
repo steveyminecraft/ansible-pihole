@@ -25,7 +25,7 @@
 
 If this PR touches keepalived, VIP failover, rolling updates (`update-pihole.yaml`), or HA verification:
 
-- [ ] Ran `molecule test -s ubuntu` locally (or noted why not — e.g. no Vagrant box)
+- [ ] Ran `molecule test -s default` locally (or noted why not — e.g. no Vagrant box)
 - [ ] Updated [failover testing](docs/failover-testing.md) / runbooks if operator steps changed
 
 ## Scope and risk

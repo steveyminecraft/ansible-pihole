@@ -1,0 +1,58 @@
+# Managed by ansible-pihole. Do not edit on the host.
+#
+# Security: Traefik talks to the container engine through a Unix socket.
+# That socket is privileged (equivalent to root on the host for Docker/Podman).
+# This role mounts a local socket only. Do not expose the API over TCP.
+---
+log:
+  level: "{{ traefik_log_level }}"
+
+api:
+  dashboard: {{ traefik_dashboard_enabled | bool | lower }}
+  insecure: false
+
+entryPoints:
+  web:
+    address: ":80"
+{% if traefik_tls_enabled | bool %}
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+{% endif %}
+  websecure:
+    address: ":443"
+{% if (traefik_tls_enabled | bool) and (traefik_tls_mode == 'dns01') and (traefik_acme_wildcard | bool) %}
+    http:
+      tls:
+        certResolver: {{ traefik_acme_resolver_name }}
+        domains:
+          - main: {{ traefik_domain }}
+            sans:
+              - "*.{{ traefik_domain }}"
+{% endif %}
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    watch: true
+    network: "{{ traefik_network_name }}"
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+{% if (traefik_tls_enabled | bool) and (traefik_tls_mode == 'dns01') %}
+
+certificatesResolvers:
+  {{ traefik_acme_resolver_name }}:
+    acme:
+      email: "{{ traefik_acme_email }}"
+      storage: /data/acme.json
+{% if traefik_acme_staging | bool %}
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+{% endif %}
+      dnsChallenge:
+        provider: "{{ traefik_acme_dns_provider }}"
+{% endif %}

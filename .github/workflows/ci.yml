@@ -191,6 +191,7 @@ jobs:
           ansible-playbook -i inventory/ci/ci.yml playbooks/update-pihole.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.yml playbooks/keepalived.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.yml playbooks/sync.yaml --syntax-check
+          ansible-playbook playbooks/ci-validate-traefik.yaml --syntax-check
 
 
       # 2) Minimal roles only (inventory/ci/ci.yml defines group `ci` for this play)
@@ -204,6 +205,9 @@ jobs:
 
       - name: Validate Pi-hole Compose modes
         run: ansible-playbook playbooks/ci-validate-pihole-modes.yaml
+
+      - name: Validate Traefik proxy templates
+        run: ansible-playbook playbooks/ci-validate-traefik.yaml
 
   ci-safety-checks:
     name: Policy & script validation (PR)
@@ -242,9 +246,10 @@ jobs:
           import yaml
 
           required = {
-              "molecule/ubuntu/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
-              "molecule/ubuntu-26.04/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/default/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/debian/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/debian-traefik/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/debian-traefik-http/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/nebula-sync-migration/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/pihole-no-unbound/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/docker-ci/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],

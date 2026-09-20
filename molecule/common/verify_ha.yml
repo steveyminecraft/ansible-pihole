@@ -41,6 +41,9 @@
     - name: Verify prerequisites
       ansible.builtin.import_tasks: verify/prerequisites.yml
 
+    - name: Verify Traefik proxy contract
+      ansible.builtin.import_tasks: verify/proxy.yml
+
     - name: Verify VRRP failover and failback
       ansible.builtin.import_tasks: verify/failover.yml
 

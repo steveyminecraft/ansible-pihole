@@ -8,6 +8,7 @@ Repository and CI map: [Repository map](diagrams/ansible-pihole-repo-map.png) (s
 
 - `steveyminecraft.pihole.docker`
 - `steveyminecraft.pihole.unbound` (optional upstream resolver)
+- `steveyminecraft.pihole.traefik` (optional reverse proxy, off by default)
 - `steveyminecraft.pihole.pihole`
 - `steveyminecraft.pihole.keepalived` (VIP failover)
 - `steveyminecraft.pihole.nebula_sync` (configuration replication)
@@ -16,9 +17,14 @@ Repository and CI map: [Repository map](diagrams/ansible-pihole-repo-map.png) (s
 
 1. Docker and network prerequisites are configured.
 2. Unbound (optional) is deployed to shared Docker network `dns_net`.
-3. Pi-hole is deployed and points upstream at Unbound when present.
-4. Keepalived manages a virtual IP and checks functional DNS health.
-5. Nebula Sync replicates Pi-hole config between nodes.
+3. Traefik (optional) is deployed to a reusable Docker network `proxy` and
+   consumes the local Docker API socket. It is not deployed unless
+   `traefik_enabled` is true.
+4. Pi-hole is deployed and points upstream at Unbound when present. When Traefik
+   is enabled, Pi-hole also joins `proxy` and is routed by labels.
+5. Keepalived manages a virtual IP and checks functional DNS health.
+6. Nebula Sync replicates Pi-hole config between nodes.
+
 
 ## Health and failover
 
@@ -36,3 +42,6 @@ Repository and CI map: [Repository map](diagrams/ansible-pihole-repo-map.png) (s
 - Pi-hole compose files are rendered root-owned with `0600`.
 - Nebula Sync defaults to secret-file mode (`PRIMARY_FILE`, `REPLICAS_FILE`).
 - Unbound host publishing is disabled by default.
+- Traefik is opt-in (`traefik_enabled: false`). The Docker API socket is mounted
+  read-only into Traefik and is never published over TCP. ACME DNS credentials
+  are written to a `0600` env file and are not rendered into `traefik.yml`.

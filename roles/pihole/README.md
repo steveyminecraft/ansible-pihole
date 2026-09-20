@@ -1,5 +1,9 @@
 # pihole
 
+Supported targets are Ubuntu, Debian, and Raspberry Pi OS. Rocky Linux and
+Red Hat Enterprise Linux are deprecated; existing RedHat-family tasks remain
+in this release.
+
 Set `pihole_enable_unbound: false` for a Pi-hole-only deployment and provide
 explicit upstreams:
 
@@ -15,6 +19,11 @@ the shared Unbound network.
 
 The default Pi-hole image is pinned. Override `pihole_image` deliberately when
 testing or upgrading to another release.
+
+When `traefik_enabled` is true (collection Traefik role), this role joins the
+shared `proxy` network, applies Traefik labels, and stops publishing host TCP
+80/443. DNS and DHCP publish behaviour is otherwise unchanged. See
+[roles/traefik/README.md](../traefik/README.md).
 
 Deploy Pi-hole in Docker (Pi-hole v6) with optional Unbound upstream integration.
 

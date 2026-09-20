@@ -7,7 +7,7 @@
 #
 # Examples:
 #   ./scripts/molecule-vagrant
-#   VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s ubuntu
+#   VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s default
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -56,26 +56,27 @@ echo ""
 echo "  export VAGRANT_DEFAULT_PROVIDER=$provider"
 echo "  export MOLECULE_VAGRANT_INVENTORY=$inventory"
 echo "  cd \"$repo_root\""
-echo "  molecule test -s ubuntu"
+echo "  molecule test -s default"
 echo ""
 echo "One line (same effect):"
 echo ""
-echo "  cd \"$repo_root\" && VAGRANT_DEFAULT_PROVIDER=$provider MOLECULE_VAGRANT_INVENTORY=$inventory molecule test -s ubuntu"
+echo "  cd \"$repo_root\" && VAGRANT_DEFAULT_PROVIDER=$provider MOLECULE_VAGRANT_INVENTORY=$inventory molecule test -s default"
 echo ""
 echo "Using this helper instead of manual exports:"
 echo ""
-echo "  cd \"$repo_root\" && VAGRANT_DEFAULT_PROVIDER=$provider ./scripts/molecule-vagrant test -s ubuntu"
+echo "  cd \"$repo_root\" && VAGRANT_DEFAULT_PROVIDER=$provider ./scripts/molecule-vagrant test -s default"
 echo ""
-echo "Other scenario (Rocky, etc.): replace -s ubuntu with -s default"
+echo "Debian (closer to Raspberry Pi OS): replace -s default with -s debian"
+echo "Traefik on Debian: -s debian-traefik or -s debian-traefik-http"
 echo ""
 
-read -r -p "Run \`molecule test -s ubuntu\` now with this provider? [y/N] " run_now
+read -r -p "Run \`molecule test -s default\` now with this provider? [y/N] " run_now
 case "${run_now,,}" in
   y|yes)
     cd "$repo_root"
     export VAGRANT_DEFAULT_PROVIDER="$provider"
     export MOLECULE_VAGRANT_INVENTORY="$inventory"
-    exec molecule test -s ubuntu
+    exec molecule test -s default
     ;;
   *)
     exit 0

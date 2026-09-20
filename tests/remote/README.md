@@ -60,6 +60,7 @@ Pi-hole image updates are tracked separately by
 - Platform coverage:
   - `one-arch` (Ubuntu 26.04 on one architecture selected by inputs)
   - `all-archs` (Ubuntu 26.04 on AMD64 and ARM64)
+  - `phase-two-pi-os-arm` (Raspberry Pi OS ARM: Debian 12 arm64 stand-in, or `AWS_PI_OS_AMI_ID`)
 - Deployment scenarios:
   - `pihole-unbound`
   - `pihole-upstream-only`
@@ -81,6 +82,7 @@ Repository secrets:
 - `AWS_TEST_SSH_PRIVATE_KEY`
 - `AWS_TEST_PIHOLE_API_PASSWORD`
 - optional `AWS_TEST_ANSIBLE_VAULT_PASSWORD`
+- optional `AWS_PI_OS_AMI_ID` (phase-two Raspberry Pi OS AMI; Debian 12 arm64 if unset)
 
 The workflow uses OIDC role assumption (`id-token: write`) and does not require
 static AWS API keys.

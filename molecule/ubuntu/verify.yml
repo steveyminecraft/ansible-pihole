@@ -1,3 +1,0 @@
----
-- name: Run shared HA / DNS verification playbook
-  import_playbook: ../common/verify_ha.yml

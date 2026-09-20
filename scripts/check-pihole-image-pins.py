@@ -16,6 +16,7 @@ MIRROR_PATHS = (
     "inventory/ci/group_vars/all.yml",
     "playbooks/ci-bootstrap.yaml",
     "playbooks/ci-validate-pihole-modes.yaml",
+    "playbooks/ci-validate-traefik.yaml",
 )
 
 PIHOLE_IMAGE_LINE = re.compile(

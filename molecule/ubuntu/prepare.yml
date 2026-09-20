@@ -1,3 +1,0 @@
----
-- name: Molecule prepare (shared)
-  import_playbook: ../common/prepare.yml

@@ -3,7 +3,7 @@
 # Not used in production — keeps Pi-hole/HA playbooks from failing on missing vault data.
 pihole_ha_mode: false
 pihole_compose_dir: /opt/pihole
-pihole_image: "pihole/pihole:2026.07.2"
+pihole_image: "pihole/pihole:2026.09.0"
 pihole_environment_variables:
   TZ: Etc/UTC
   FTLCONF_webserver_api_password: ci-check-mode-secret

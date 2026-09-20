@@ -1,5 +1,5 @@
 ---
-# Molecule scenario: Ubuntu 24.04 + full stack (see converge.yml).
+# Molecule scenario: Debian 12 HA with Traefik (supplied TLS, HTTP+HTTPS).
 dependency:
   name: shell
   # Roles and released collection dependencies are installed by the shared script.
@@ -8,8 +8,9 @@ driver:
   name: vagrant
 platforms:
   # Private IP in molecule.yml matches VirtualBox; libvirt uses .121.x (see Vagrantfile + inventory).
+  # libvirt guests use debian/bookworm64 — bento/debian-12 has no libvirt provider.
   - name: vagrant-pihole-01
-    box: "bento/ubuntu-24.04"
+    box: "bento/debian-12"
     hostname: vagrant-pihole-01
     interfaces:
       - network_name: private_network
@@ -18,7 +19,7 @@ platforms:
     memory: 2048
     cpus: 4
   - name: vagrant-pihole-02
-    box: "bento/ubuntu-24.04"
+    box: "bento/debian-12"
     hostname: vagrant-pihole-02
     interfaces:
       - network_name: private_network
@@ -36,6 +37,7 @@ provisioner:
   inventory:
     links:
       hosts: ../../inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}
+      group_vars: group_vars
   playbooks:
     create: create.yml
     prepare: prepare.yml
@@ -50,7 +52,7 @@ provisioner:
 verifier:
   name: ansible
 scenario:
-  name: ubuntu
+  name: debian-traefik
   test_sequence:
     - dependency
     - syntax

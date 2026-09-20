@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 # required for PR alert comparison.
 LEGACY_CODE_SCANNING_IMAGES = (
     "pihole/pihole:2026.06.0",
+    "pihole/pihole:2026.07.2",
 )
 
 
@@ -43,12 +44,14 @@ def default_images() -> list[str]:
     pihole = load_defaults("pihole")
     unbound = load_defaults("unbound")
     nebula = load_defaults("nebula_sync")
+    traefik = load_defaults("traefik")
 
     images = {
         pihole["pihole_image"],
         unbound["unbound_image_arch_default"],
         *unbound["unbound_image_arch_map"].values(),
         f"{nebula['nebula_sync_image']}:{nebula['nebula_sync_image_tag']}",
+        f"{traefik['traefik_image']}:{traefik['traefik_version']}",
     }
     return sorted(images)
 

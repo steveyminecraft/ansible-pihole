@@ -1,0 +1,434 @@
+---
+- name: Inspect Traefik container
+  community.docker.docker_container_info:
+    name: "{{ traefik_container_name | default('traefik') }}"
+  register: molecule_traefik_container
+
+- name: Assert Traefik is absent when the feature is disabled
+  ansible.builtin.assert:
+    that:
+      - not (molecule_traefik_container.exists | default(false))
+    fail_msg: >-
+      Traefik must not be deployed while traefik_enabled is false.
+  when: not (traefik_enabled | default(false) | bool)
+
+- name: Read published Pi-hole ports
+  ansible.builtin.command:
+    argv:
+      - docker
+      - port
+      - "{{ pihole_container_name | default('pihole') }}"
+  register: molecule_pihole_published_ports
+  changed_when: false
+  when: not (pihole_use_host_network | default(false) | bool)
+
+- name: Assert Pi-hole still publishes web ports when Traefik is disabled
+  ansible.builtin.assert:
+    that:
+      - "'53/tcp' in molecule_pihole_published_ports.stdout"
+      - "'53/udp' in molecule_pihole_published_ports.stdout"
+      - "'80/tcp' in molecule_pihole_published_ports.stdout"
+      - "'443/tcp' in molecule_pihole_published_ports.stdout"
+    fail_msg: >-
+      With Traefik disabled, Pi-hole must keep publishing DNS and web ports.
+      Published: {{ molecule_pihole_published_ports.stdout | default('') }}
+  when:
+    - not (traefik_enabled | default(false) | bool)
+    - not (pihole_use_host_network | default(false) | bool)
+
+- name: Check Pi-hole HTTP without Traefik
+  ansible.builtin.command:
+    argv:
+      - curl
+      - -sS
+      - -L
+      - --max-time
+      - "15"
+      - "http://127.0.0.1:{{ pihole_webport_http | default(80) }}/"
+  register: molecule_pihole_direct_http
+  changed_when: false
+  when: not (traefik_enabled | default(false) | bool)
+
+- name: Assert Pi-hole HTTP responds without Traefik
+  ansible.builtin.assert:
+    that:
+      - molecule_pihole_direct_http.rc == 0
+      - >-
+          ('pi.hole' in (molecule_pihole_direct_http.stdout | lower))
+          or ('pihole' in (molecule_pihole_direct_http.stdout | lower))
+          or ('<html' in (molecule_pihole_direct_http.stdout | lower))
+    fail_msg: HTTP to Pi-hole on port {{ pihole_webport_http | default(80) }} failed.
+  when: not (traefik_enabled | default(false) | bool)
+
+- name: Check Pi-hole HTTPS without Traefik
+  ansible.builtin.command:
+    argv:
+      - curl
+      - -sS
+      - -k
+      - -L
+      - --max-time
+      - "15"
+      - "https://127.0.0.1:{{ pihole_webport_https | default(443) }}/"
+  register: molecule_pihole_direct_https
+  changed_when: false
+  when: not (traefik_enabled | default(false) | bool)
+
+- name: Assert Pi-hole HTTPS responds without Traefik
+  ansible.builtin.assert:
+    that:
+      - molecule_pihole_direct_https.rc == 0
+      - >-
+          ('pi.hole' in (molecule_pihole_direct_https.stdout | lower))
+          or ('pihole' in (molecule_pihole_direct_https.stdout | lower))
+          or ('<html' in (molecule_pihole_direct_https.stdout | lower))
+    fail_msg: HTTPS to Pi-hole on port {{ pihole_webport_https | default(443) }} failed.
+  when: not (traefik_enabled | default(false) | bool)
+
+- name: Assert Traefik is running when enabled
+  ansible.builtin.assert:
+    that:
+      - molecule_traefik_container.exists | default(false)
+      - molecule_traefik_container.container.State.Running | default(false)
+    fail_msg: Traefik container is not running.
+  when: traefik_enabled | default(false) | bool
+
+- name: Inspect shared proxy network
+  community.docker.docker_network_info:
+    name: "{{ traefik_network_name | default('proxy') }}"
+  register: molecule_proxy_network
+  when: traefik_enabled | default(false) | bool
+
+- name: Assert proxy network exists
+  ansible.builtin.assert:
+    that:
+      - molecule_proxy_network.exists | default(false)
+    fail_msg: Shared Traefik proxy network is missing.
+  when: traefik_enabled | default(false) | bool
+
+- name: Assert Pi-hole publishes DNS and not web ports when Traefik is enabled
+  ansible.builtin.assert:
+    that:
+      - "'53/tcp' in molecule_pihole_published_ports.stdout"
+      - "'53/udp' in molecule_pihole_published_ports.stdout"
+      - "'80/tcp' not in molecule_pihole_published_ports.stdout"
+      - "'443/tcp' not in molecule_pihole_published_ports.stdout"
+    fail_msg: >-
+      With Traefik enabled, Pi-hole should publish DNS only. Web ports belong
+      on Traefik. Published: {{ molecule_pihole_published_ports.stdout | default('') }}
+  when:
+    - traefik_enabled | default(false) | bool
+    - not (pihole_use_host_network | default(false) | bool)
+
+- name: Read published Traefik ports
+  ansible.builtin.command:
+    argv:
+      - docker
+      - port
+      - "{{ traefik_container_name | default('traefik') }}"
+  register: molecule_traefik_published_ports
+  changed_when: false
+  when: traefik_enabled | default(false) | bool
+
+- name: Assert Traefik publishes HTTP and HTTPS
+  ansible.builtin.assert:
+    that:
+      - "'80/tcp' in molecule_traefik_published_ports.stdout"
+      - "'443/tcp' in molecule_traefik_published_ports.stdout"
+    fail_msg: >-
+      Traefik should publish 80/tcp and 443/tcp.
+      Published: {{ molecule_traefik_published_ports.stdout | default('') }}
+  when: traefik_enabled | default(false) | bool
+
+- name: Inspect Pi-hole container labels
+  community.docker.docker_container_info:
+    name: "{{ pihole_container_name | default('pihole') }}"
+  register: molecule_pihole_container
+  when:
+    - traefik_enabled | default(false) | bool
+    - not (pihole_use_host_network | default(false) | bool)
+
+- name: Assert Pi-hole Traefik labels
+  ansible.builtin.assert:
+    that:
+      - molecule_pihole_container.container.Config.Labels['traefik.enable'] | default('') == 'true'
+      - >-
+          molecule_pihole_container.container.Config.Labels['traefik.docker.network']
+          | default('') == (traefik_network_name | default('proxy'))
+      - >-
+          'loadbalancer.server.port' in (
+            molecule_pihole_container.container.Config.Labels.keys() | list | join(' ')
+          )
+      - >-
+          (traefik_network_name | default('proxy'))
+          in (molecule_pihole_container.container.NetworkSettings.Networks | default({})).keys()
+    fail_msg: Pi-hole is missing explicit Traefik routing labels.
+  when:
+    - traefik_enabled | default(false) | bool
+    - not (pihole_use_host_network | default(false) | bool)
+
+- name: Resolve Pi-hole proxy hostname via local DNS
+  ansible.builtin.command:
+    argv:
+      - dig
+      - +short
+      - +time=2
+      - +tries=2
+      - "@{{ ansible_host }}"
+      - "{{ pihole_proxy_hostname }}"
+  register: molecule_pihole_proxy_dns
+  changed_when: false
+  failed_when: false
+  retries: 10
+  delay: 2
+  until: >-
+    molecule_pihole_proxy_dns.stdout_lines
+    | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+    | list
+    | length > 0
+  when:
+    - traefik_enabled | default(false) | bool
+    - molecule_verify_proxy_dns | default(false) | bool
+
+- name: Assert proxy hostname resolves to an IPv4
+  ansible.builtin.assert:
+    that:
+      - molecule_pihole_proxy_dns.stdout_lines
+        | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+        | list
+        | length > 0
+    fail_msg: >-
+      {{ pihole_proxy_hostname }} did not resolve through Pi-hole.
+      stdout={{ molecule_pihole_proxy_dns.stdout | default('') }}
+  when:
+    - traefik_enabled | default(false) | bool
+    - molecule_verify_proxy_dns | default(false) | bool
+    - molecule_pihole_proxy_dns.stdout_lines | default([]) | length > 0
+
+- name: Check Pi-hole HTTP through Traefik
+  ansible.builtin.command:
+    argv:
+      - curl
+      - -sS
+      - -L
+      - --max-time
+      - "15"
+      - "--resolve"
+      - "{{ pihole_proxy_hostname }}:{{ traefik_http_port | default(80) }}:127.0.0.1"
+      - "http://{{ pihole_proxy_hostname }}:{{ traefik_http_port | default(80) }}/"
+  register: molecule_pihole_http_plain
+  changed_when: false
+  retries: 20
+  delay: 3
+  until: >-
+    molecule_pihole_http_plain.rc == 0
+    and (
+      ('pi.hole' in (molecule_pihole_http_plain.stdout | lower))
+      or ('pihole' in (molecule_pihole_http_plain.stdout | lower))
+      or ('<html' in (molecule_pihole_http_plain.stdout | lower))
+    )
+  when:
+    - traefik_enabled | default(false) | bool
+    - not (traefik_tls_enabled | default(true) | bool)
+
+- name: Assert HTTP through Traefik reaches Pi-hole
+  ansible.builtin.assert:
+    that:
+      - molecule_pihole_http_plain.rc == 0
+      - >-
+          ('pi.hole' in (molecule_pihole_http_plain.stdout | lower))
+          or ('pihole' in (molecule_pihole_http_plain.stdout | lower))
+          or ('<html' in (molecule_pihole_http_plain.stdout | lower))
+    fail_msg: >-
+      HTTP through Traefik did not reach the Pi-hole web interface.
+      stdout={{ molecule_pihole_http_plain.stdout | default('') }}
+  when:
+    - traefik_enabled | default(false) | bool
+    - not (traefik_tls_enabled | default(true) | bool)
+
+- name: Check HTTP to HTTPS redirect for Pi-hole
+  ansible.builtin.command:
+    argv:
+      - curl
+      - -sS
+      - -I
+      - --max-time
+      - "10"
+      - "--resolve"
+      - "{{ pihole_proxy_hostname }}:{{ traefik_http_port | default(80) }}:127.0.0.1"
+      - "http://{{ pihole_proxy_hostname }}:{{ traefik_http_port | default(80) }}/"
+  register: molecule_pihole_http_redirect
+  changed_when: false
+  when:
+    - traefik_enabled | default(false) | bool
+    - traefik_tls_enabled | default(true) | bool
+
+- name: Assert HTTP redirects to HTTPS
+  ansible.builtin.assert:
+    that:
+      - molecule_pihole_http_redirect.rc == 0
+      - molecule_pihole_http_redirect.stdout is search('HTTP/.* 30[18]')
+      - "'https://' in (molecule_pihole_http_redirect.stdout | lower)"
+    fail_msg: >-
+      Expected HTTP 301/308 redirect to HTTPS.
+      {{ molecule_pihole_http_redirect.stdout | default('') }}
+  when:
+    - traefik_enabled | default(false) | bool
+    - traefik_tls_enabled | default(true) | bool
+
+- name: Check HTTPS reaches Pi-hole through Traefik
+  ansible.builtin.command:
+    argv:
+      - curl
+      - -sS
+      - -k
+      - -L
+      - --max-time
+      - "15"
+      - "--resolve"
+      - "{{ pihole_proxy_hostname }}:{{ traefik_https_port | default(443) }}:127.0.0.1"
+      - "https://{{ pihole_proxy_hostname }}:{{ traefik_https_port | default(443) }}/"
+  register: molecule_pihole_https
+  changed_when: false
+  retries: 20
+  delay: 3
+  until: >-
+    molecule_pihole_https.rc == 0
+    and (
+      ('pi.hole' in (molecule_pihole_https.stdout | lower))
+      or ('pihole' in (molecule_pihole_https.stdout | lower))
+      or ('<html' in (molecule_pihole_https.stdout | lower))
+    )
+  when:
+    - traefik_enabled | default(false) | bool
+    - traefik_tls_enabled | default(true) | bool
+
+- name: Assert HTTPS proxy response is from Pi-hole
+  ansible.builtin.assert:
+    that:
+      - molecule_pihole_https.rc == 0
+      - >-
+          ('pi.hole' in (molecule_pihole_https.stdout | lower))
+          or ('pihole' in (molecule_pihole_https.stdout | lower))
+          or ('<html' in (molecule_pihole_https.stdout | lower))
+    fail_msg: >-
+      HTTPS through Traefik did not reach the Pi-hole web interface.
+      stdout={{ molecule_pihole_https.stdout | default('') }}
+  when:
+    - traefik_enabled | default(false) | bool
+    - traefik_tls_enabled | default(true) | bool
+
+- name: Set whoami discovery URL for TLS vs HTTP-only
+  ansible.builtin.set_fact:
+    molecule_whoami_host: "whoami.{{ traefik_domain | default('lab.example.com') }}"
+    molecule_whoami_port: >-
+      {{
+        (traefik_https_port | default(443))
+        if (traefik_tls_enabled | default(true) | bool)
+        else (traefik_http_port | default(80))
+      }}
+    molecule_whoami_scheme: "{{ 'https' if (traefik_tls_enabled | default(true) | bool) else 'http' }}"
+    molecule_whoami_labels: >-
+      {{
+        {
+          'traefik.enable': 'true',
+          'traefik.docker.network': traefik_network_name | default('proxy'),
+          'traefik.http.routers.molecule-whoami.rule':
+            'Host(`whoami.' ~ (traefik_domain | default('lab.example.com')) ~ '`)',
+          'traefik.http.routers.molecule-whoami.entrypoints':
+            ('websecure' if (traefik_tls_enabled | default(true) | bool) else 'web'),
+          'traefik.http.services.molecule-whoami.loadbalancer.server.port': '80',
+        } | combine(
+          {'traefik.http.routers.molecule-whoami.tls': 'true'}
+          if (traefik_tls_enabled | default(true) | bool) else {}
+        )
+      }}
+  when: traefik_enabled | default(false) | bool
+
+- name: Start temporary whoami container for dynamic discovery
+  community.docker.docker_container:
+    name: molecule-whoami
+    image: "{{ traefik_whoami_image | default('docker.io/traefik/whoami:v1.11.0') }}"
+    state: started
+    restart_policy: "no"
+    networks:
+      - name: "{{ traefik_network_name | default('proxy') }}"
+    labels: "{{ molecule_whoami_labels }}"
+  when: traefik_enabled | default(false) | bool
+
+- name: Wait for Traefik to discover whoami without a restart
+  ansible.builtin.command:
+    argv: "{{ molecule_whoami_curl_argv }}"
+  vars:
+    molecule_whoami_curl_argv: >-
+      {{
+        ['curl', '-sS']
+        + (['-k'] if molecule_whoami_scheme == 'https' else [])
+        + [
+            '--max-time', '5',
+            '--resolve',
+            molecule_whoami_host ~ ':' ~ (molecule_whoami_port | string) ~ ':127.0.0.1',
+            molecule_whoami_scheme ~ '://' ~ molecule_whoami_host ~ ':' ~ (molecule_whoami_port | string) ~ '/',
+          ]
+      }}
+  register: molecule_whoami_https
+  changed_when: false
+  retries: 20
+  delay: 3
+  until: >-
+    molecule_whoami_https.rc == 0
+    and (
+      'Hostname:' in molecule_whoami_https.stdout
+      or 'whoami' in (molecule_whoami_https.stdout | lower)
+    )
+  when: traefik_enabled | default(false) | bool
+
+- name: Assert whoami was discovered dynamically
+  ansible.builtin.assert:
+    that:
+      - molecule_whoami_https.rc == 0
+      - "'Hostname:' in molecule_whoami_https.stdout or 'whoami' in (molecule_whoami_https.stdout | lower)"
+    fail_msg: >-
+      Traefik did not discover the labelled whoami container without a restart.
+      stdout={{ molecule_whoami_https.stdout | default('') }}
+  when: traefik_enabled | default(false) | bool
+
+- name: Remove temporary whoami container
+  community.docker.docker_container:
+    name: molecule-whoami
+    state: absent
+  when: traefik_enabled | default(false) | bool
+
+- name: Wait for Traefik to drop the whoami route
+  ansible.builtin.command:
+    argv: "{{ molecule_whoami_removed_argv }}"
+  vars:
+    molecule_whoami_removed_argv: >-
+      {{
+        ['curl', '-sS']
+        + (['-k'] if molecule_whoami_scheme == 'https' else [])
+        + [
+            '--max-time', '5',
+            '-o', '/dev/null',
+            '-w', '%{http_code}',
+            '--resolve',
+            molecule_whoami_host ~ ':' ~ (molecule_whoami_port | string) ~ ':127.0.0.1',
+            molecule_whoami_scheme ~ '://' ~ molecule_whoami_host ~ ':' ~ (molecule_whoami_port | string) ~ '/',
+          ]
+      }}
+  register: molecule_whoami_removed
+  changed_when: false
+  retries: 15
+  delay: 2
+  until: molecule_whoami_removed.stdout | trim in ['404', '000']
+  failed_when: false
+  when: traefik_enabled | default(false) | bool
+
+- name: Assert whoami route disappeared without restarting Traefik
+  ansible.builtin.assert:
+    that:
+      - (molecule_whoami_removed.stdout | default('') | trim) in ['404', '000']
+    fail_msg: >-
+      Traefik still routed whoami after the container was removed.
+      status={{ molecule_whoami_removed.stdout | default('') }}
+  when: traefik_enabled | default(false) | bool

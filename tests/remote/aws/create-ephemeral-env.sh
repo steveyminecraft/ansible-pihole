@@ -82,13 +82,40 @@ resolve_ubuntu_ami() {
     --output text
 }
 
-if [[ "${AWS_OS_FAMILY}" != "ubuntu" ]]; then
-  echo "Unsupported AWS_OS_FAMILY: ${AWS_OS_FAMILY} (only ubuntu is supported for AWS remote tests)" >&2
-  exit 2
-fi
+# Debian wiki: /aws/service/debian/release/<ver>/latest/<arch>
+resolve_debian_ami() {
+  local version="${1:-12}"
+  local arch="${2:-amd64}"
+  aws ssm get-parameter \
+    --region "${AWS_REGION}" \
+    --name "/aws/service/debian/release/${version}/latest/${arch}" \
+    --query 'Parameter.Value' \
+    --output text
+}
 
-ubuntu_version="${AWS_OS_VERSION:-26.04}"
-ami_id="$(resolve_ubuntu_ami "${ubuntu_version}" "${arch_suffix}")"
+case "${AWS_OS_FAMILY}" in
+  ubuntu)
+    ami_id="$(resolve_ubuntu_ami "${AWS_OS_VERSION:-26.04}" "${arch_suffix}")"
+    ;;
+  debian)
+    ami_id="$(resolve_debian_ami "${AWS_OS_VERSION:-12}" "${arch_suffix}")"
+    ;;
+  pi-os)
+    # Phase 2: Raspberry Pi OS on ARM. There is no public Pi OS AMI on AWS, so
+    # AWS_PI_OS_AMI_ID (optional secret) wins; otherwise Debian 12 ARM64 is the
+    # closest published stand-in until a Pi OS AMI is registered.
+    if [[ -n "${AWS_PI_OS_AMI_ID:-}" ]]; then
+      ami_id="${AWS_PI_OS_AMI_ID}"
+    else
+      echo "Phase 2 stand-in: Debian 12 ${arch_suffix} (set AWS_PI_OS_AMI_ID for Raspberry Pi OS)" >&2
+      ami_id="$(resolve_debian_ami "${AWS_OS_VERSION:-12}" "${arch_suffix}")"
+    fi
+    ;;
+  *)
+    echo "Unsupported AWS_OS_FAMILY: ${AWS_OS_FAMILY} (ubuntu, debian, or pi-os)" >&2
+    exit 2
+    ;;
+esac
 
 if [[ -z "${ami_id}" || "${ami_id}" == "None" ]]; then
   echo "Unable to resolve AMI for ${AWS_OS_FAMILY} ${AWS_OS_VERSION:-default} (${arch_suffix})." >&2

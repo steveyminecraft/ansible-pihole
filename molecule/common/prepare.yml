@@ -4,6 +4,44 @@
   hosts: all
   gather_facts: true
   tasks:
+    - name: Check whether Ubuntu archive DNS is hijacked to RFC1918
+      ansible.builtin.command: getent ahostsv4 us.archive.ubuntu.com
+      register: ubuntu_archive_dns
+      changed_when: false
+      failed_when: false
+      when: ansible_facts['distribution'] == 'Ubuntu'
+
+    # Some lab resolvers rewrite archive.ubuntu.com to an internal cache that
+    # returns HTTP 503, so apt update hangs. Pin Canonical's public mirrors only
+    # in that case (DoH: 91.189.91.81).
+    - name: Pin public Ubuntu mirrors when lab DNS hijacks them
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} MOLECULE UBUNTU ARCHIVE"
+        block: |
+          91.189.91.81 us.archive.ubuntu.com archive.ubuntu.com
+          91.189.91.81 security.ubuntu.com
+      when:
+        - ansible_facts['distribution'] == 'Ubuntu'
+        - ubuntu_archive_dns.stdout | default('') is search('172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.|192\.168\.')
+
+    - name: Check whether Debian archive DNS is hijacked to RFC1918
+      ansible.builtin.command: getent ahostsv4 deb.debian.org
+      register: debian_archive_dns
+      changed_when: false
+      failed_when: false
+      when: ansible_facts['distribution'] in ['Debian', 'Raspbian']
+
+    - name: Pin public Debian mirrors when lab DNS hijacks them
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} MOLECULE DEBIAN ARCHIVE"
+        block: |
+          151.101.2.132 deb.debian.org security.debian.org
+      when:
+        - ansible_facts['distribution'] in ['Debian', 'Raspbian']
+        - debian_archive_dns.stdout | default('') is search('172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.|192\.168\.')
+
     - name: Install Python and DNS tools (Debian/Ubuntu)
       ansible.builtin.apt:
         name:
@@ -14,6 +52,8 @@
           - dnsutils
           - iproute2
           - sqlite3
+          - curl
+          - openssl
         update_cache: true
         state: present
       when: ansible_facts['os_family'] == 'Debian'
@@ -27,6 +67,8 @@
           - bind-utils
           - iproute
           - sqlite
+          - curl
+          - openssl
         state: present
       when: ansible_facts['os_family'] == 'RedHat'
 
@@ -41,3 +83,46 @@
         - dnf-makecache.service
       failed_when: false
       when: ansible_facts['os_family'] == 'RedHat'
+
+    - name: Create lab Traefik certificate directory
+      ansible.builtin.file:
+        path: "{{ traefik_tls_cert_src | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+      when:
+        - traefik_enabled | default(false) | bool
+        - traefik_tls_enabled | default(true) | bool
+        - (traefik_tls_mode | default('dns01')) == 'supplied'
+        - (traefik_tls_cert_src | default('') | string | length) > 0
+
+    - name: Generate lab Traefik certificate
+      vars:
+        molecule_traefik_domain: "{{ traefik_domain | default('lab.example.com') }}"
+        molecule_traefik_proxy_host: "{{ pihole_proxy_hostname | default('pihole.lab.example.com') }}"
+      ansible.builtin.command:
+        argv:
+          - openssl
+          - req
+          - -x509
+          - -nodes
+          - -newkey
+          - rsa:2048
+          - -keyout
+          - "{{ traefik_tls_key_src }}"
+          - -out
+          - "{{ traefik_tls_cert_src }}"
+          - -days
+          - "2"
+          - -subj
+          - "/CN={{ molecule_traefik_domain }}"
+          - -addext
+          - "subjectAltName=DNS:{{ molecule_traefik_domain }},DNS:*.{{ molecule_traefik_domain }},DNS:{{ molecule_traefik_proxy_host }}"
+        creates: "{{ traefik_tls_cert_src }}"
+      when:
+        - traefik_enabled | default(false) | bool
+        - traefik_tls_enabled | default(true) | bool
+        - (traefik_tls_mode | default('dns01')) == 'supplied'
+        - (traefik_tls_cert_src | default('') | string | length) > 0
+        - (traefik_tls_key_src | default('') | string | length) > 0

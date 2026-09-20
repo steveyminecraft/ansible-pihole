@@ -5,39 +5,37 @@ Vagrant.configure("2") do |config|
   # Molecule converges over SSH; disable default share (libvirt NFS needs host sudo).
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
-  provider_name = ENV.fetch("VAGRANT_DEFAULT_PROVIDER", "virtualbox")
-  use_cloud_image = %w[libvirt kvm].include?(provider_name)
-
-  # VirtualBox: Bento-style box (stable, like bento/ubuntu-24.04). Libvirt: cloud-image only.
-  # IMPORTANT (libvirt/x86_64): this Vagrant lacks vm.box_architecture. Vagrant Cloud can
-  # resolve cloud-image/ubuntu-26.04 to arm64 (100% CPU hang, no DHCP/SSH). Pin the locally
-  # installed amd64 box (v0 from scripts/ensure-cloud-image-amd64.sh / direct .box add) and
-  # keep box_check_update false so Vagrant does not replace it.
-  config.ssh.insert_key = false if use_cloud_image
-
+  # --- Network (two subnets) ------------------------------------------------
+  # VirtualBox host-only defaults: 192.168.56.0/24
+  # libvirt (vagrant-libvirt + network "vagrant-56"): typically 192.168.121.0/24
+  # If your libvirt network uses another range, change ip_libvirt and use
+  # inventory/vagrant_libvirt.yml (or edit subnet there to match).
   vm_settings = {
-    box: use_cloud_image ? "cloud-image/ubuntu-26.04" : "konstruktoid/ubuntu-26.04",
-    # Local amd64 add registers as version "0"; VirtualBox uses konstruktoid 0.0.2.
-    box_version: use_cloud_image ? "0" : "0.0.2",
+    # bento/debian-12 has no libvirt provider on Vagrant Cloud.
+    box: "bento/debian-12",
+    box_libvirt: "debian/bookworm64",
     memory: 4096,
-    cpus: 2,
+    cpus: 4,
     machines: [
-      { name: "vagrant-pihole-01", mac: "52:54:00:56:00:06",
+      { name: "vagrant-pihole-01", mac: "52:54:00:56:00:04",
         ip_virtualbox: "192.168.56.4", ip_libvirt: "192.168.121.4" },
-      { name: "vagrant-pihole-02", mac: "52:54:00:56:00:07",
+      { name: "vagrant-pihole-02", mac: "52:54:00:56:00:05",
         ip_virtualbox: "192.168.56.5", ip_libvirt: "192.168.121.5" }
     ]
   }
+
+  # --- PLUGINS ---------------------------------------------------------------
 
   if Vagrant.has_plugin?("vagrant-vbguest")
     config.vbguest.auto_update = false
   end
 
+  # --- MACHINES --------------------------------------------------------------
+
   vm_settings[:machines].each do |machine|
     config.vm.define machine[:name] do |node|
       node.vm.hostname         = machine[:name]
       node.vm.box              = vm_settings[:box]
-      node.vm.box_version      = vm_settings[:box_version] if vm_settings[:box_version]
       node.vm.box_check_update = false
 
       node.vm.provider "virtualbox" do |v, o|
@@ -51,13 +49,11 @@ Vagrant.configure("2") do |config|
         v.customize ["modifyvm", :id, "--graphicscontroller", "vboxsvga"]
         v.customize ["modifyvm", :id, "--accelerate-3d", "off"]
         v.customize ["modifyvm", :id, "--vram", "32"]
-        v.customize ["modifyvm", :id, "--nic1", "nat"]
-        v.customize ["modifyvm", :id, "--cableconnected1", "on"]
-        v.customize ["modifyvm", :id, "--nictype1", "82540EM"]
       end
 
       if Vagrant.has_plugin?("vagrant-libvirt")
         node.vm.provider "libvirt" do |l, o|
+          o.vm.box = vm_settings[:box_libvirt]
           l.memory = vm_settings[:memory]
           l.cpus   = vm_settings[:cpus]
           l.driver = "kvm"

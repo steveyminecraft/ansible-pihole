@@ -1,0 +1,75 @@
+---
+- name: Assert Traefik TLS mode is supported
+  ansible.builtin.assert:
+    that:
+      - traefik_tls_mode in ['dns01', 'supplied', 'internal_acme']
+    fail_msg: >-
+      traefik_tls_mode must be dns01, supplied, or internal_acme.
+      Got '{{ traefik_tls_mode }}'.
+
+- name: Assert internal ACME mode is not implemented
+  ansible.builtin.assert:
+    that:
+      - traefik_tls_mode != 'internal_acme'
+    fail_msg: >-
+      internal_acme is reserved for a future private-CA flow. Use dns01
+      (Let's Encrypt DNS-01) or supplied certificates.
+
+- name: Assert Traefik socket is not a TCP Docker/Podman API endpoint
+  ansible.builtin.assert:
+    that:
+      - not (traefik_resolved_socket | string is match('^tcp://'))
+      - "'0.0.0.0' not in (traefik_resolved_socket | string)"
+    fail_msg: >-
+      Traefik must use a local Unix socket for the container API.
+      Do not expose Docker or Podman over unauthenticated TCP.
+
+- name: Assert rootless Podman UID is known
+  ansible.builtin.assert:
+    that:
+      - (traefik_podman_uid | string | length) > 0
+    fail_msg: >-
+      Set traefik_podman_uid from Ansible facts or inventory. Do not assume UID 1000.
+  when:
+    - (traefik_container_runtime | string) == 'podman'
+    - traefik_podman_rootless | bool
+    - (traefik_socket | string) == 'auto'
+    - (traefik_podman_socket | string) == 'auto'
+
+- name: Assert DNS-01 ACME settings
+  ansible.builtin.assert:
+    that:
+      - (traefik_acme_email | string | length) > 0
+      - (traefik_acme_dns_provider | string | length) > 0
+      - (traefik_domain | string | length) > 0
+      - "'@' in (traefik_acme_email | string)"
+    fail_msg: >-
+      DNS-01 mode requires traefik_domain, traefik_acme_email, and
+      traefik_acme_dns_provider. Put provider tokens in
+      traefik_acme_environment from Ansible Vault.
+  when:
+    - traefik_tls_enabled | bool
+    - traefik_tls_mode == 'dns01'
+
+- name: Assert supplied TLS certificate paths
+  ansible.builtin.assert:
+    that:
+      - (traefik_tls_cert_src | string | length) > 0
+      - (traefik_tls_key_src | string | length) > 0
+    fail_msg: >-
+      supplied TLS mode requires traefik_tls_cert_src and traefik_tls_key_src.
+      This role will not generate an untrusted self-signed certificate.
+  when:
+    - traefik_tls_enabled | bool
+    - traefik_tls_mode == 'supplied'
+
+- name: Assert dashboard is authenticated over HTTPS
+  ansible.builtin.assert:
+    that:
+      - (traefik_dashboard_hostname | string | length) > 0
+      - (traefik_dashboard_basicauth_users | default([]) | length) > 0
+    fail_msg: >-
+      When traefik_dashboard_enabled is true, set traefik_dashboard_hostname
+      and traefik_dashboard_basicauth_users. The insecure dashboard/API is not
+      supported.
+  when: traefik_dashboard_enabled | bool

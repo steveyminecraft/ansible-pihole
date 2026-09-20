@@ -97,6 +97,23 @@
 - name: Deploy Pi-hole container
   ansible.builtin.include_tasks: deploypi.yml
 
+- name: Configure optional Traefik integration
+  ansible.builtin.include_tasks: proxy.yml
+
+- name: Reload Pi-hole DNS after Traefik LAN DNS changes
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ pihole_container_name }}"
+      - pihole
+      - restartdns
+  changed_when: true
+  when:
+    - not ansible_check_mode
+    - (pihole_proxy_dns_template.changed | default(false) | bool)
+      or (pihole_proxy_dns_removed.changed | default(false) | bool)
+
 - name: Configure firewall
   ansible.builtin.include_tasks: firewall.yml
   when: pihole_firewall_deploy | bool

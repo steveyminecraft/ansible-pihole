@@ -17,6 +17,9 @@
       tags: [stopkeepalived, drain, ha]
     - role: steveyminecraft.pihole.updates
       tags: [updates, system]
+    - role: steveyminecraft.pihole.traefik
+      tags: [traefik, proxy]
+      when: not ansible_check_mode
     - role: steveyminecraft.pihole.pihole
       tags: [pihole, dns]
       when: not ansible_check_mode

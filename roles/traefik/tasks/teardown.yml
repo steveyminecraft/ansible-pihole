@@ -1,0 +1,15 @@
+---
+- name: Stat Traefik compose file
+  ansible.builtin.stat:
+    path: "{{ traefik_compose_file }}"
+  register: traefik_compose_stat
+
+- name: Remove Traefik compose project
+  community.docker.docker_compose_v2:
+    project_src: "{{ traefik_compose_dir }}"
+    files:
+      - "{{ traefik_compose_file }}"
+    state: absent
+  when:
+    - traefik_remove_on_disable | bool
+    - traefik_compose_stat.stat.exists | default(false)

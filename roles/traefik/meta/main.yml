@@ -1,0 +1,29 @@
+---
+galaxy_info:
+  namespace: steveyminecraft
+  role_name: traefik
+  author: steveyminecraft
+  description: Optional Traefik reverse proxy for Docker-backed Pi-hole hosts
+  issue_tracker_url: https://github.com/steveyminecraft/ansible-pihole/issues
+  license: MIT
+  min_ansible_version: "2.20"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bookworm
+    - name: EL
+      versions:
+        - "9"
+        - "10"
+  galaxy_tags:
+    - traefik
+    - proxy
+    - docker
+    - tls
+    - pihole
+
+dependencies: []

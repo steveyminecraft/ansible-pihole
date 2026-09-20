@@ -24,6 +24,8 @@
     - role: steveyminecraft.pihole.unbound
       tags: [unbound, dns]
       when: pihole_enable_unbound | default(true) | bool
+    - role: steveyminecraft.pihole.traefik
+      tags: [traefik, proxy]
     - role: steveyminecraft.pihole.pihole
       tags: [pihole, dns]
   post_tasks:

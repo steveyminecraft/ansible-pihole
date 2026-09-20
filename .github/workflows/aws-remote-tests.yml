@@ -25,6 +25,7 @@ on:
         options:
           - one-arch
           - all-archs
+          - phase-two-pi-os-arm
       arch:
         description: "CPU architecture for single profile"
         type: choice
@@ -85,26 +86,31 @@ jobs:
           scenario = (os.environ.get("INPUT_SCENARIO") or "pihole-unbound").strip()
           skip_update = (os.environ.get("INPUT_SKIP_UPDATE") or "false").strip().lower()
 
+          def row(os_family, os_version, arch, ssh_user):
+              return {
+                  "os_family": os_family,
+                  "os_version": os_version,
+                  "arch": arch,
+                  "ssh_user": ssh_user,
+              }
+
           if event in ("schedule", "pull_request"):
               profile = "one-arch"
               scenario = "pihole-unbound"
               skip_update = "false"
-              matrix = [{
-                  "os_family": "ubuntu",
-                  "os_version": "26.04",
-                  "arch": "amd64",
-              }]
+              matrix = [row("ubuntu", "26.04", "amd64", "ubuntu")]
+          elif profile == "phase-two-pi-os-arm":
+              # Raspberry Pi OS ARM. AWS uses Debian 12 arm64 until a Pi OS AMI
+              # is supplied via AWS_PI_OS_AMI_ID.
+              matrix = [row("pi-os", "12", "arm64", "admin")]
           elif profile in ("all-archs", "full"):
               matrix = [
-                  {"os_family": "ubuntu", "os_version": "26.04", "arch": "amd64"},
-                  {"os_family": "ubuntu", "os_version": "26.04", "arch": "arm64"},
+                  row("ubuntu", "26.04", "amd64", "ubuntu"),
+                  row("ubuntu", "26.04", "arm64", "ubuntu"),
               ]
           else:
-              matrix = [{
-                  "os_family": "ubuntu",
-                  "os_version": "26.04",
-                  "arch": (os.environ.get("INPUT_ARCH") or "amd64").strip(),
-              }]
+              arch = (os.environ.get("INPUT_ARCH") or "amd64").strip()
+              matrix = [row("ubuntu", "26.04", arch, "ubuntu")]
 
           print(f"matrix={json.dumps({'include': matrix})}")
           print(f"scenario={scenario}")
@@ -112,7 +118,7 @@ jobs:
           PY
 
   aws-remote-tests:
-    name: Ubuntu ${{ matrix.os_version }} / ${{ matrix.arch }}
+    name: ${{ matrix.os_family }} ${{ matrix.os_version }} / ${{ matrix.arch }}
     needs: prepare-matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 90
@@ -134,7 +140,8 @@ jobs:
       AWS_INSTANCE_TYPE: ${{ matrix.arch == 'arm64' && vars.AWS_TEST_INSTANCE_TYPE_ARM64 || vars.AWS_TEST_INSTANCE_TYPE_AMD64 }}
       AWS_TEST_PREFIX: ansible-pihole-remote
       AWS_INVENTORY_TEMPLATE: tests/remote/inventories/aws-ephemeral-template.yml
-      GITHUB_USER_FOR_SSH_KEY: ubuntu
+      GITHUB_USER_FOR_SSH_KEY: ${{ matrix.ssh_user }}
+      AWS_PI_OS_AMI_ID: ${{ secrets.AWS_PI_OS_AMI_ID }}
       PIHOLE_API_PASSWORD: ${{ secrets.AWS_TEST_PIHOLE_API_PASSWORD }}
     steps:
       - name: Configure ephemeral file paths
@@ -263,7 +270,7 @@ jobs:
           print("| Field | Value |")
           print("|---|---|")
           print(f"| Scenario | `{os.environ.get('AWS_TEST_SCENARIO', '')}` |")
-          print(f"| OS / Arch | Ubuntu `{os.environ.get('AWS_OS_VERSION', '')}` / `{os.environ.get('AWS_ARCH', '')}` |")
+          print(f"| OS / Arch | `{os.environ.get('AWS_OS_FAMILY', '')}` `{os.environ.get('AWS_OS_VERSION', '')}` / `{os.environ.get('AWS_ARCH', '')}` |")
           print(f"| Region | `{os.environ.get('AWS_REGION', '')}` |")
           print(f"| Instance IDs | `{', '.join(metadata.get('instance_ids', []))}` |")
           print(f"| Cleanup verified | `{cleanup.get('cleanup_verified', False)}` |")

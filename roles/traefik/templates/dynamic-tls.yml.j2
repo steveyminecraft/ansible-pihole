@@ -1,0 +1,11 @@
+---
+# Supplied certificates. ACME is not used in this mode.
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/tls.crt
+      keyFile: /etc/traefik/certs/tls.key
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/tls.crt
+        keyFile: /etc/traefik/certs/tls.key
