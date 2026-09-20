@@ -1,0 +1,8 @@
+---
+# Running installs: stop stack containers after VIP drain and before
+# package updates / Traefik bind. Missing names are ignored.
+stop_containers_names:
+  - "{{ pihole_container_name | default('pihole') }}"
+  - "{{ traefik_container_name | default('traefik') }}"
+  - "{{ unbound_container_name | default('unbound') }}"
+  - "{{ nebula_sync_container_name | default('nebula') }}"
