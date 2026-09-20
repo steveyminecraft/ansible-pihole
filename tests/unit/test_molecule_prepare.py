@@ -26,7 +26,25 @@ class MoleculePrepareTests(unittest.TestCase):
         )
         self.assertIn("91.189.91.81", pin["ansible.builtin.blockinfile"]["block"])
         when = " ".join(str(item) for item in pin["when"])
+        self.assertIn("Ubuntu", when)
         self.assertIn("172\\.(1[6-9]|2[0-9]|3[0-1])\\.", when)
+        apt_index = names.index("Install Python and DNS tools (Debian/Ubuntu)")
+        self.assertLess(names.index(pin["name"]), apt_index)
+
+    def test_debian_prepare_pins_debian_mirrors_on_rfc1918_dns(self) -> None:
+        plays = yaml.safe_load(PREPARE.read_text(encoding="utf-8"))
+        tasks = plays[0]["tasks"]
+        names = [task["name"] for task in tasks]
+        self.assertIn("Check whether Debian archive DNS is hijacked to RFC1918", names)
+        self.assertIn("Pin public Debian mirrors when lab DNS hijacks them", names)
+        pin = next(
+            task
+            for task in tasks
+            if task["name"] == "Pin public Debian mirrors when lab DNS hijacks them"
+        )
+        self.assertIn("deb.debian.org", pin["ansible.builtin.blockinfile"]["block"])
+        when = " ".join(str(item) for item in pin["when"])
+        self.assertIn("Debian", when)
         apt_index = names.index("Install Python and DNS tools (Debian/Ubuntu)")
         self.assertLess(names.index(pin["name"]), apt_index)
 

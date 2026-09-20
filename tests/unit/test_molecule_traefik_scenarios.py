@@ -17,11 +17,11 @@ def load_yaml(path: Path):
 
 class MoleculeTraefikScenarioTests(unittest.TestCase):
     def test_https_scenario_enables_supplied_tls(self) -> None:
-        cfg = load_yaml(ROOT / "molecule" / "ubuntu-traefik" / "molecule.yml")
+        cfg = load_yaml(ROOT / "molecule" / "debian-traefik" / "molecule.yml")
         vars_all = load_yaml(
-            ROOT / "molecule" / "ubuntu-traefik" / "group_vars" / "all.yml"
+            ROOT / "molecule" / "debian-traefik" / "group_vars" / "all.yml"
         )
-        self.assertEqual(cfg["scenario"]["name"], "ubuntu-traefik")
+        self.assertEqual(cfg["scenario"]["name"], "debian-traefik")
         self.assertTrue(vars_all["traefik_enabled"])
         self.assertTrue(vars_all["traefik_tls_enabled"])
         self.assertEqual(vars_all["traefik_tls_mode"], "supplied")
@@ -29,11 +29,11 @@ class MoleculeTraefikScenarioTests(unittest.TestCase):
         self.assertTrue(vars_all["nebula_sync_primary_url"].startswith("https://"))
 
     def test_http_scenario_disables_tls(self) -> None:
-        cfg = load_yaml(ROOT / "molecule" / "ubuntu-traefik-http" / "molecule.yml")
+        cfg = load_yaml(ROOT / "molecule" / "debian-traefik-http" / "molecule.yml")
         vars_all = load_yaml(
-            ROOT / "molecule" / "ubuntu-traefik-http" / "group_vars" / "all.yml"
+            ROOT / "molecule" / "debian-traefik-http" / "group_vars" / "all.yml"
         )
-        self.assertEqual(cfg["scenario"]["name"], "ubuntu-traefik-http")
+        self.assertEqual(cfg["scenario"]["name"], "debian-traefik-http")
         self.assertTrue(vars_all["traefik_enabled"])
         self.assertFalse(vars_all["traefik_tls_enabled"])
         self.assertNotIn("traefik_tls_mode", vars_all)

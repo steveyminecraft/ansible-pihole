@@ -28,11 +28,21 @@
 
 # Free 127.0.0.1:53 / avoid stub on 127.0.0.53 fighting Docker-published Pi-hole DNS.
 # Not gated on pihole_firewall_deploy — firewalld and resolved are separate concerns.
+# Official Debian (and some Pi OS) images have no systemd-resolved; skip rather than fail.
+- name: Check whether systemd-resolved config exists
+  ansible.builtin.stat:
+    path: /etc/systemd/resolved.conf
+  register: pihole_resolved_conf_stat
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
+
 - name: Configure systemd-resolved for Pi-hole (Debian family)
   when:
     - ansible_facts['os_family'] == 'Debian'
     - ansible_facts['distribution'] in ['Ubuntu', 'Debian']
     - pihole_configure_systemd_resolved | default(true) | bool
+    - pihole_resolved_conf_stat.stat.exists | default(false)
 
   block:
     - name: Disable stub listener

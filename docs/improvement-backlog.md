@@ -103,7 +103,7 @@ Local graphify setup is valuable; graph quality can be improved.
   - `molecule/docker-ci` scenario (docker driver) + CI job `molecule-docker-smoke`.
 
 - [x] **PR template checkbox for HA changes**
-  - "Ran `molecule test -s ubuntu` locally" in `.github/pull_request_template.md`.
+  - "Ran `molecule test -s default` locally" in `.github/pull_request_template.md`.
 
 ---
 
@@ -112,7 +112,7 @@ Local graphify setup is valuable; graph quality can be improved.
 | Layer | Runs today | Gap |
 |-------|------------|-----|
 | GitHub CI | Lint, syntax, check-mode bootstrap + update-pihole, compose validation, **`docker-ci` Molecule smoke** | No functional HA failover (local Molecule only) |
-| Molecule | 6 scenarios locally; full HA + update on `ubuntu` / `ubuntu-26.04` | HA not in GitHub CI — requires local Vagrant |
+| Molecule | `default` (Ubuntu 24.04) + `debian` HA locally | HA not in GitHub CI — requires local Vagrant |
 | AWS remote | Single-node bootstrap + optional `update-pihole` | Scheduled 1st/15th + PR label; dual-node AWS HA out of scope |
 
 ## Suggested first issues

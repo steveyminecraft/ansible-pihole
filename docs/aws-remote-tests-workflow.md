@@ -65,7 +65,7 @@ the PR head commit. Re-runs on new pushes while the label remains.
 | Input | Purpose |
 |---|---|
 | `scenario` | `pihole-unbound` or `pihole-upstream-only` |
-| `platform_coverage` | `one-arch` or `all-archs` |
+| `platform_coverage` | `one-arch`, `all-archs`, or `phase-two-pi-os-arm` |
 | `arch` | For `one-arch` only: `amd64` or `arm64` |
 | `skip_update` | Skip the update playbook |
 | `aws_region` | Optional override; defaults to `AWS_TEST_REGION` repository secret |
@@ -89,7 +89,8 @@ This job turns your manual inputs into a JSON matrix for job 2.
 |---|---|
 | `one-arch` + amd64 | 1 job: Ubuntu 26.04 amd64 |
 | `one-arch` + arm64 | 1 job: Ubuntu 26.04 arm64 |
-| `all-archs` | 2 jobs: amd64 + arm64 |
+| `all-archs` | 2 jobs: Ubuntu 26.04 amd64 + arm64 |
+| `phase-two-pi-os-arm` | 1 job: Raspberry Pi OS ARM (Debian 12 arm64 stand-in, or `AWS_PI_OS_AMI_ID`) |
 
 It also passes through **scenario** and **skip_update**. Region is resolved in job 2 directly from `github.event.inputs.aws_region` or `secrets.AWS_TEST_REGION` (Actions redacts secret-bearing job outputs to empty, so region must not cross the job boundary via outputs).
 
@@ -108,6 +109,7 @@ Runs once per matrix row (in parallel when `full`).
 | `AWS_TEST_INSTANCE_TYPE_*` | repo variable | e.g. `t3.small` |
 | `AWS_TEST_SSH_PRIVATE_KEY` | repo secret | SSH to the new host |
 | `AWS_TEST_PIHOLE_API_PASSWORD` | repo secret | Pi-hole API password in inventory |
+| `AWS_PI_OS_AMI_ID` | optional secret | Phase 2 Raspberry Pi OS AMI; Debian 12 arm64 if unset |
 
 **Step sequence:**
 
@@ -169,7 +171,7 @@ does not justify the incremental confidence over local Molecule:
 
 Local Molecule already exercises full failover and failback on same-subnet Vagrant
 boxes. AWS remote stays **single-node smoke**; full HA coverage is **local Molecule
-only** (`molecule test -s ubuntu`).
+only** (`molecule test -s default`).
 
 The `ha` scenario in `tests/remote/run.sh` exists for ad-hoc manual experimentation
 only — **no default workflow** (scheduled, RC, or PR label) invokes it, and there
@@ -183,7 +185,7 @@ See [Testing guide — HA testing scope](testing.md#ha-testing-scope).
 
 Each run gets a **fresh** host:
 
-1. Resolve Ubuntu 26.04 AMI from SSM (`/aws/service/canonical/ubuntu/server/26.04/...`)
+1. Resolve AMI from SSM (`ubuntu` 26.04 Canonical, `debian`/`pi-os` Debian 12, or `AWS_PI_OS_AMI_ID`)
 2. Create a **new security group** tagged `Project=ansible-pihole`, `Ephemeral=true`
 3. Open SSH (22) and DNS (53) from `AWS_SSH_CIDR`
 4. **RunInstances** with your key pair in the build-ci subnet

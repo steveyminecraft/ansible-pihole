@@ -1,5 +1,5 @@
 ---
-# Molecule scenario: Ubuntu 24.04 HA with Traefik HTTP-only (TLS off).
+# Molecule scenario: Debian 12 HA with Traefik HTTP-only (TLS off).
 dependency:
   name: shell
   command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh
@@ -7,7 +7,7 @@ driver:
   name: vagrant
 platforms:
   - name: vagrant-pihole-01
-    box: "bento/ubuntu-24.04"
+    box: "bento/debian-12"
     hostname: vagrant-pihole-01
     interfaces:
       - network_name: private_network
@@ -16,7 +16,7 @@ platforms:
     memory: 2048
     cpus: 4
   - name: vagrant-pihole-02
-    box: "bento/ubuntu-24.04"
+    box: "bento/debian-12"
     hostname: vagrant-pihole-02
     interfaces:
       - network_name: private_network
@@ -49,7 +49,7 @@ provisioner:
 verifier:
   name: ansible
 scenario:
-  name: ubuntu-traefik-http
+  name: debian-traefik-http
   test_sequence:
     - dependency
     - syntax

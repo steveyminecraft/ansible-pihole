@@ -6,7 +6,9 @@ authors:
   - steveyminecraft
 description: >-
   Deploy Pi-hole with Docker, optional Unbound, optional Traefik, keepalived HA, and Nebula Sync.
-  Includes playbooks for bootstrap, updates, and configuration sync.
+  Supported on Ubuntu, Debian, and Raspberry Pi OS. Rocky Linux and Red Hat
+  Enterprise Linux are deprecated (existing EL task paths remain). Includes
+  playbooks for bootstrap, updates, and configuration sync.
 license:
   - Apache-2.0
 tags:

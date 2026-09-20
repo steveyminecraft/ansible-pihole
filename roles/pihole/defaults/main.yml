@@ -73,6 +73,7 @@ pihole_container_cap_add:
 
 # When true on Debian/Ubuntu, disable systemd-resolved stub DNS so host port 53 can be used
 # by Docker (Pi-hole publish). Independent of firewalld — do not tie this to pihole_firewall_deploy.
+# Tasks no-op when /etc/systemd/resolved.conf is absent (Debian/bookworm, some Pi OS images).
 pihole_configure_systemd_resolved: true
 pihole_environment_variables:
   # Set the appropriate timezone for your location (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones), e.g:

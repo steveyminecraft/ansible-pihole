@@ -4,8 +4,8 @@
 # Examples:
 #   ./scripts/molecule-test-all
 #   VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-test-all
-#   ./scripts/molecule-test-all ubuntu ubuntu-26.04
-#   ./scripts/molecule-test-all --ubuntu-only
+#   ./scripts/molecule-test-all default debian
+#   ./scripts/molecule-test-all --debian-only
 #   ./scripts/molecule-test-all --list
 set -euo pipefail
 
@@ -44,40 +44,41 @@ collect_scenarios() {
   printf '%s\n' "${found[@]}" | sort
 }
 
-collect_ubuntu_scenarios() {
+collect_debian_scenarios() {
   local scenario
-  local -a ubuntu=()
+  local -a debian=()
 
   for scenario in "$@"; do
-    if [[ "$scenario" == ubuntu* ]]; then
-      ubuntu+=("$scenario")
+    if [[ "$scenario" == debian* ]]; then
+      debian+=("$scenario")
     fi
   done
 
-  if [[ ${#ubuntu[@]} -eq 0 ]]; then
+  if [[ ${#debian[@]} -eq 0 ]]; then
     return 1
   fi
 
-  printf '%s\n' "${ubuntu[@]}"
+  printf '%s\n' "${debian[@]}"
 }
 
 print_usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/molecule-test-all [--list] [--ubuntu-only] [scenario ...]
+  ./scripts/molecule-test-all [--list] [--debian-only] [scenario ...]
 
 Options:
   --list         Print discovered scenarios and exit.
-  --ubuntu-only  Run all scenarios whose names start with "ubuntu".
+  --debian-only  Run all scenarios whose names start with "debian".
   -h, --help     Show help.
 
 If no scenarios are passed, all scenarios in molecule/* are tested.
+The default HA scenario is Ubuntu 24.04 (molecule test / -s default).
 EOF
 }
 
 declare -a selected=()
 list_only=false
-ubuntu_only=false
+debian_only=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -85,8 +86,8 @@ while [[ $# -gt 0 ]]; do
       list_only=true
       shift
       ;;
-    --ubuntu-only)
-      ubuntu_only=true
+    --debian-only)
+      debian_only=true
       shift
       ;;
     -h|--help)
@@ -112,8 +113,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if $ubuntu_only && [[ ${#selected[@]} -gt 0 ]]; then
-  echo "Do not combine --ubuntu-only with explicit scenario names." >&2
+if $debian_only && [[ ${#selected[@]} -gt 0 ]]; then
+  echo "Do not combine --debian-only with explicit scenario names." >&2
   print_usage >&2
   exit 2
 fi
@@ -121,8 +122,8 @@ fi
 mapfile -t all_scenarios < <(collect_scenarios)
 
 if $list_only; then
-  if $ubuntu_only; then
-    collect_ubuntu_scenarios "${all_scenarios[@]}" || true
+  if $debian_only; then
+    collect_debian_scenarios "${all_scenarios[@]}" || true
   else
     printf '%s\n' "${all_scenarios[@]}"
   fi
@@ -133,9 +134,9 @@ if [[ ${#selected[@]} -eq 0 ]]; then
   selected=("${all_scenarios[@]}")
 fi
 
-if $ubuntu_only; then
-  if ! mapfile -t selected < <(collect_ubuntu_scenarios "${all_scenarios[@]}"); then
-    echo "No Ubuntu scenarios found (expected names starting with 'ubuntu')." >&2
+if $debian_only; then
+  if ! mapfile -t selected < <(collect_debian_scenarios "${all_scenarios[@]}"); then
+    echo "No Debian scenarios found (expected names starting with 'debian')." >&2
     exit 1
   fi
 fi
@@ -154,6 +155,12 @@ for scenario in "${selected[@]}"; do
   if [[ ! -f "molecule/$scenario/molecule.yml" ]]; then
     echo "Skipping unknown scenario: $scenario" >&2
     failed+=("$scenario (missing)")
+    continue
+  fi
+
+  if [[ "$scenario" == "docker-ci" && ! -S /var/run/docker.sock ]]; then
+    echo "SKIP: docker-ci (no Docker socket; this smoke is for hosted CI)"
+    echo ""
     continue
   fi
 

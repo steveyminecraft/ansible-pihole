@@ -13,7 +13,7 @@ Visual overview: [Unit tests map](diagrams/ansible-pihole-unit-tests.png) and
 |-------|---------------|----------------|-----|
 | **GitHub CI** | Every PR (code paths) | Lint, syntax, check-mode bootstrap + `update-pihole`, compose validation (Pi-hole modes + Traefik templates), script unit tests, inventory structure, **Molecule `docker-ci` smoke** | No functional HA failover on hosted runners |
 | **Molecule** | Local / self-hosted | Full Vagrant HA bootstrap, rolling update, post-update verify | HA scenarios not in default GitHub matrix (needs Vagrant) |
-| **AWS remote** | Scheduled + label + manual | Ephemeral EC2 → production playbooks → teardown | Cost; amd64-only on schedule/label |
+| **AWS remote** | Scheduled + label + manual | Ephemeral EC2 → production playbooks → teardown | Cost; schedule is Ubuntu amd64. **Phase 2** Pi OS ARM is manual (`phase-two-pi-os-arm`) |
 | **Manual** | Production change windows | VIP failover, per-node DNS, Nebula Sync | Operator-driven |
 
 ---
@@ -55,11 +55,10 @@ Molecule scenarios under `molecule/`:
 
 | Scenario | Path | Focus |
 |----------|------|-------|
-| `ubuntu` | `molecule/ubuntu/` | Ubuntu 24.04 HA — bootstrap, verify, rolling `update-pihole`, re-verify |
-| `ubuntu-traefik` | `molecule/ubuntu-traefik/` | Ubuntu 24.04 HA with Traefik — supplied TLS, HTTP→HTTPS, whoami discovery |
-| `ubuntu-traefik-http` | `molecule/ubuntu-traefik-http/` | Ubuntu 24.04 HA with Traefik — TLS off, HTTP UI |
-| `ubuntu-26.04` | `molecule/ubuntu-26.04/` | Ubuntu 26.04 — same HA + update sequence |
-| `default` | `molecule/default/` | Rocky-style lab box (**parked on libvirt** — see below) |
+| `default` | `molecule/default/` | Ubuntu 24.04 HA — bootstrap, verify, rolling `update-pihole`, re-verify |
+| `debian` | `molecule/debian/` | Debian 12 HA — closer to Raspberry Pi OS |
+| `debian-traefik` | `molecule/debian-traefik/` | Debian 12 HA with Traefik — supplied TLS, HTTP→HTTPS, whoami discovery |
+| `debian-traefik-http` | `molecule/debian-traefik-http/` | Debian 12 HA with Traefik — TLS off, HTTP UI |
 | `docker` | `molecule/docker/` | Docker role focus (Vagrant — local) |
 | `docker-ci` | `molecule/docker-ci/` | Docker role on docker driver (hosted CI smoke) |
 | `pihole-no-unbound` | `molecule/pihole-no-unbound/` | Pi-hole-only DNS bootstrap + update |
@@ -74,12 +73,12 @@ molecule test -s docker-ci
 Runs in GitHub Actions on code-changing PRs. Exercises docker role `debian_repo`
 tasks inside a docker-driver Molecule container — not a full in-container
 `docker.service` start (that path stays on local Vagrant scenarios).
-Full HA still requires local `molecule test -s ubuntu` (see PR template checkbox).
+Full HA still requires local `molecule test -s default` (see PR template checkbox).
 
 **Typical HA run:**
 
 ```bash
-molecule test -s ubuntu
+molecule test -s default
 ```
 
 Sequence: dependency → syntax → create (Vagrant) → prepare → converge → verify →
@@ -89,51 +88,40 @@ Shared verify logic: `molecule/common/verify_ha.yml` and tasks under
 `molecule/common/verify/`. `verify/proxy.yml` always asserts HTTP and HTTPS
 to Pi-hole when Traefik is off (no Traefik container, Pi-hole still publishes
 80/443). The enabled HTTPS path (HTTP→HTTPS redirect, HTTPS UI, whoami) runs in
-`molecule test -s ubuntu-traefik` with supplied lab certificates. HTTP-only
-Traefik is `molecule test -s ubuntu-traefik-http`. GitHub CI does not issue
+`molecule test -s debian-traefik` with supplied lab certificates. HTTP-only
+Traefik is `molecule test -s debian-traefik-http`. GitHub CI does not issue
 real Let's Encrypt certificates.
 
 **Helpers:**
 
 ```bash
-./scripts/molecule-vagrant test -s ubuntu
-./scripts/molecule-test-all --ubuntu-only
+./scripts/molecule-vagrant test -s default
+./scripts/molecule-test-all --debian-only
 ```
 
 See [README — Molecule integration tests](../README.md#molecule-integration-tests) for provider notes (VirtualBox vs libvirt, ARM64, box selection).
 
-### Parked: `default` (Rocky / libvirt)
+---
 
-**Status (2026-07-23):** root causes fixed in-tree (disk `virtual_size`, NM `multi-connect` for mgmt+private NICs, `vagrant-56` DHCP host reservations for `.4`/`.5`). Re-run `./scripts/ensure-rockylinux10-amd64.sh` then `molecule test -s default` on libvirt; delete stale 5G volumes first if any remain.
+## Test phases
 
-| Check | Result |
-|-------|--------|
-| Box | Official CDN `Rocky-10-Vagrant-Libvirt.latest.x86_64` (Vagrant Cloud often picks `libvirt/arm64` → 404; pin CDN URL / `ensure-rockylinux10-amd64.sh`) |
-| Host NICs / dnsmasq | Fine for Ubuntu scenarios; Rocky MACs never leased because guest never booted far enough |
-| Guest disk size | **Bug:** `metadata.json` had `virtual_size: 5` but `qemu-img` reports **10 GiB**; vagrant-libvirt created a **5G** `vda` while GPT/root XFS needs 10 GiB |
-| Symptom | Domain runs, SeaBIOS boots kernel, **dracut emergency** (`/run/initramfs/rdsosreport.txt`), **0 TX** on virtio NICs → Vagrant SSH wait / create hang (rc=143) |
-| QEMU smoke (`-cpu host`) | **5G** overlay: stuck in `dracut-initqueue`. **10G** overlay: reaches `multi-user.target` and `localhost login:` |
-| NM inject | Still required (CDN box has empty `system-connections`); irrelevant until root mounts |
+| Phase | What | Where it runs |
+|-------|------|----------------|
+| **1 (now)** | Ubuntu 24.04 HA (`default`) plus Debian 12 HA (`debian`, `debian-traefik`, `debian-traefik-http`) | Local Molecule / libvirt |
+| **2** | **Raspberry Pi OS on ARM** | AWS remote `phase-two-pi-os-arm` (manual), then real Pi hardware |
 
-**Root cause:** truncated guest disk from wrong box `virtual_size`, not bridge/DHCP config.
+Phase 1 is the default local gate. Debian 12 is the closest Vagrant stand-in for
+Raspberry Pi OS (Debian ARM). Rocky/RHEL is deprecated; Molecule no longer
+covers EL, but the RedHat-family role tasks remain in this release.
 
-**Fix staged:**
-1. `scripts/ensure-rockylinux10-amd64.sh` — rewrite `metadata.json` `virtual_size` from `qemu-img` + NM inject
-2. `molecule/default/Vagrantfile` — `libvirt.machine_virtual_size = 10`
+**Phase 2 — Raspberry Pi OS ARM:** AWS has no public Raspberry Pi OS AMI. Manual
+workflow dispatch with `platform_coverage: phase-two-pi-os-arm` launches
+**Debian 12 arm64** (Graviton) unless secret `AWS_PI_OS_AMI_ID` is set to a
+registered Pi OS AMI. SSH user is `admin` for the Debian stand-in (`pi` on a
+real Pi OS image). Hardware path: [`tests/remote/inventories/example-pi.yml`](../tests/remote/inventories/example-pi.yml).
+This profile is **not** on the twice-monthly schedule.
 
-**Unpark checklist (this host):**
-```bash
-sudo service libvirtd restart   # if qemu:///system is down
-./scripts/ensure-rockylinux10-amd64.sh
-# delete any rockylinux*_box.img / default_vagrant-pihole-*.img pool vols, then:
-sg libvirt -c 'source env/bin/activate
-  export VAGRANT_DEFAULT_PROVIDER=libvirt MOLECULE_VAGRANT_INVENTORY=vagrant_libvirt.yml LIBVIRT_DEFAULT_URI=qemu:///system
-  molecule destroy -s default
-  molecule create -s default'
-```
-Confirm DHCP leases for Rocky MACs and SSH, then full `molecule test -s default`.
-
-**Also fine on libvirt today:** `ubuntu`, `ubuntu-26.04`, `nebula-sync-migration`, `pihole-no-unbound`.
+Scheduled/label AWS remote tests stay Ubuntu 26.04 amd64 (phase 1 smoke).
 
 ---
 
@@ -144,12 +132,12 @@ primary outage) is validated only in the **local Molecule HA lab** — same-subn
 Vagrant boxes where two nodes can share a virtual IP:
 
 ```bash
-molecule test -s ubuntu
+molecule test -s default
 ```
 
 Shared verify logic (`molecule/common/verify_ha.yml`) exercises VIP DNS, keepalived
-state, and post-update HA checks. The `ubuntu-26.04` scenario follows the same
-pattern on Ubuntu 26.04.
+state, and post-update HA checks. The `debian` scenario follows the same
+pattern on Debian 12.
 
 | Layer | HA coverage | Why |
 |-------|-------------|-----|
@@ -175,7 +163,7 @@ exceeds benefit:
 The `ha` scenario in `tests/remote/run.sh` remains for ad-hoc experimentation only;
 no scheduled, RC, or PR-label workflow will invoke dual-node AWS HA.
 
-**Gate for HA-touching PRs:** the PR template checkbox ("Ran `molecule test -s ubuntu`
+**Gate for HA-touching PRs:** the PR template checkbox ("Ran `molecule test -s default`
 locally") remains the required attestation when changes touch keepalived, VIP
 failover, rolling updates, or HA verification. CI and AWS remote tests do not
 substitute for that run.
@@ -201,7 +189,7 @@ Flow: OIDC → launch EC2 → `bootstrap-pihole.yaml` → verify → optional `u
 **Manual dispatch highlights:**
 
 - `scenario`: `pihole-unbound` or `pihole-upstream-only`
-- `platform_coverage`: `one-arch` or `all-archs`
+- `platform_coverage`: `one-arch`, `all-archs`, or `phase-two-pi-os-arm`
 - `skip_update`: skip rolling update playbook
 
 ---

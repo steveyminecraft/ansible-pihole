@@ -29,6 +29,7 @@ only for a routed topology.
 On RedHat-family hosts, `keepalived_t` remains enforcing by default. Setting
 `keepalived_selinux_permissive: true` is a compatibility escape hatch that
 weakens SELinux enforcement; prefer correcting labels, ports, capabilities, or
-a narrowly scoped policy.
+a narrowly scoped policy. Rocky/RHEL is deprecated (see the collection README)
+but these tasks are still present.
 
 Part of the `steveyminecraft.pihole` collection.

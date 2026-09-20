@@ -9,7 +9,7 @@
       register: ubuntu_archive_dns
       changed_when: false
       failed_when: false
-      when: ansible_facts['os_family'] == 'Debian'
+      when: ansible_facts['distribution'] == 'Ubuntu'
 
     # Some lab resolvers rewrite archive.ubuntu.com to an internal cache that
     # returns HTTP 503, so apt update hangs. Pin Canonical's public mirrors only
@@ -22,8 +22,25 @@
           91.189.91.81 us.archive.ubuntu.com archive.ubuntu.com
           91.189.91.81 security.ubuntu.com
       when:
-        - ansible_facts['os_family'] == 'Debian'
+        - ansible_facts['distribution'] == 'Ubuntu'
         - ubuntu_archive_dns.stdout | default('') is search('172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.|192\.168\.')
+
+    - name: Check whether Debian archive DNS is hijacked to RFC1918
+      ansible.builtin.command: getent ahostsv4 deb.debian.org
+      register: debian_archive_dns
+      changed_when: false
+      failed_when: false
+      when: ansible_facts['distribution'] in ['Debian', 'Raspbian']
+
+    - name: Pin public Debian mirrors when lab DNS hijacks them
+      ansible.builtin.blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} MOLECULE DEBIAN ARCHIVE"
+        block: |
+          151.101.2.132 deb.debian.org security.debian.org
+      when:
+        - ansible_facts['distribution'] in ['Debian', 'Raspbian']
+        - debian_archive_dns.stdout | default('') is search('172\.(1[6-9]|2[0-9]|3[0-1])\.|10\.|192\.168\.')
 
     - name: Install Python and DNS tools (Debian/Ubuntu)
       ansible.builtin.apt:

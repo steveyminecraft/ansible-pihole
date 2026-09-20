@@ -153,6 +153,7 @@ Other permissions on the same role (artifacts S3, Secrets Manager under `/build/
 | `AWS_TEST_INSTANCE_TYPE_AMD64` / `_ARM64` | Variable | Instance size per architecture |
 | `AWS_TEST_SSH_PRIVATE_KEY` | Secret | Private half of the EC2 key pair |
 | `AWS_TEST_PIHOLE_API_PASSWORD` | Secret | Pi-hole Web/API password for Ansible |
+| `AWS_PI_OS_AMI_ID` | Secret (optional) | Phase 2 Raspberry Pi OS AMI; Debian 12 arm64 stand-in if unset |
 | `AWS_TEST_ANSIBLE_VAULT_PASSWORD` | Secret (optional) | Encrypts password in generated inventory |
 
 A reference copy of the Pi-hole password may also exist in AWS Secrets Manager (`/build/ansible-pihole/pihole-api-password`) for operator lookup; CI uses the GitHub secret, not Secrets Manager.

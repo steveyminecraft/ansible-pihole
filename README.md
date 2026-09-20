@@ -10,6 +10,11 @@ your own inventory (YAML or INI) with your hosts and variables.
 
 For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker-pi-hole
 
+> **Notice:** Going forward, supported targets are Ubuntu, Debian, and Raspberry
+> Pi OS (Debian ARM). Rocky Linux and Red Hat Enterprise Linux are
+> **deprecated**. The existing RedHat-family tasks still run in this release;
+> they are not being rewritten. Plan to move those hosts to Debian or Ubuntu.
+
 ## Controller setup (your laptop or CI)
 
 - **ansible-core 2.20 or 2.21**. The normal developer environment uses 2.21
@@ -69,7 +74,7 @@ package, networking, diagnostics, user, daemon, and NAT task files under
 
 ## Base setup (targets)
 
-- Targets can be **Raspberry Pi OS** (as originally documented) or other Linux distros supported by the roles (Molecule uses Ubuntu 24.04, Ubuntu 26.04, and Rocky-style images).
+- Targets can be **Raspberry Pi OS** (Debian ARM) or Ubuntu/Debian. Molecule `default` is Ubuntu 24.04; `debian` is Debian 12 (closer to Pi OS). Raspberry Pi OS ARM is **phase two** (AWS remote / hardware). Rocky/RHEL task paths still exist but are deprecated (see the notice above).
 - The [openssh_keypair](https://docs.ansible.com/ansible/latest/collections/community/crypto/openssh_keypair_module.html) collection module is pulled in via `collections/requirements.yml`.
 - **Headless Pi** (if applicable): enable SSH, configure user and networking, set static IPs (DHCP reservation is enough).
 - **Inventory:** define hosts and group vars (see examples in [`inventory/vagrant.yml`](inventory/vagrant.yml) for lab-style vars such as `pihole_*`, `nebula_sync_*`, VIPs). There is no single checked-in “production” inventory filename; use `-i` pointing at your file.
@@ -94,7 +99,7 @@ Roles include (among others):
 - [`bootstrap`](roles/bootstrap/tasks/main.yml): SSH key from GitHub (`github_user_for_ssh_key`), optional password lock, aliases, timezone, hostname, packages such as firewalld on Debian/Ubuntu.
 - [`updates`](roles/updates/tasks/main.yml), [`sshd`](roles/sshd/tasks/main.yml), [`docker`](roles/docker/tasks/main.yml), [`unbound`](roles/unbound/tasks/main.yml), [`traefik`](roles/traefik/tasks/main.yml) (opt-in), [`pihole`](roles/pihole/tasks/main.yml), [`keepalived`](roles/keepalived/tasks/main.yml), [`start_keepalived`](roles/start_keepalived/tasks/main.yml) / [`stop_keepalived`](roles/stop_keepalived/tasks/main.yml) as used in the play (FQCN prefix `steveyminecraft.pihole.` in playbooks).
 
-On RedHat/Rocky hosts the Docker role installs `kernel-modules-extra` by default for Docker/netfilter support. If a real host already has the needed modules and `/boot` is too tight for kernel package changes, opt out in inventory:
+On RedHat/Rocky hosts the Docker role still installs `kernel-modules-extra` by default for Docker/netfilter support. If a real host already has the needed modules and `/boot` is too tight for kernel package changes, opt out in inventory:
 
 ```yaml
 docker_install_kernel_modules_extra: false
@@ -408,7 +413,7 @@ ansible-playbook -i your/inventory.yml playbooks/bootstrap-pihole.yaml --tags pi
 
 ## Molecule integration tests
 
-Two Vagrant VMs run the real playbooks (see [`molecule/ubuntu/converge.yml`](molecule/ubuntu/converge.yml) and [`molecule/default/converge.yml`](molecule/default/converge.yml)).
+Two Vagrant VMs run the real playbooks (see [`molecule/default/converge.yml`](molecule/default/converge.yml) and [`molecule/debian/converge.yml`](molecule/debian/converge.yml)).
 
 ### Layout
 
@@ -446,28 +451,28 @@ instances, lab VMs, or Raspberry Pi hardware.
 
 | Scenario | Path | Platforms |
 |----------|------|-----------|
-| `ubuntu` | [`molecule/ubuntu/`](molecule/ubuntu/) | Ubuntu 24.04 (`bento/ubuntu-24.04`); HA bootstrap, verify, rolling `update-pihole`, post-update verify (Traefik off, HTTP+HTTPS on Pi-hole) |
-| `ubuntu-traefik` | [`molecule/ubuntu-traefik/`](molecule/ubuntu-traefik/) | Ubuntu 24.04 HA with Traefik enabled (supplied lab TLS; HTTP redirect + HTTPS UI) |
-| `ubuntu-traefik-http` | [`molecule/ubuntu-traefik-http/`](molecule/ubuntu-traefik-http/) | Ubuntu 24.04 HA with Traefik enabled, TLS off (HTTP UI) |
-| `ubuntu-26.04` | [`molecule/ubuntu-26.04/`](molecule/ubuntu-26.04/) | Ubuntu 26.04 — VirtualBox: `konstruktoid/ubuntu-26.04` (Bento); libvirt: `cloud-image/ubuntu-26.04`; same HA + update sequence as `ubuntu` |
-| `default` | [`molecule/default/`](molecule/default/) | Rocky-style box — **parked on libvirt** until 10 GiB disk fix is re-smoked (wrong box `virtual_size` → dracut; see [docs/testing.md](docs/testing.md#parked-default-rocky--libvirt)) |
+| `default` | [`molecule/default/`](molecule/default/) | **Ubuntu 24.04** (`bento/ubuntu-24.04`); HA bootstrap, verify, rolling `update-pihole`, post-update verify (Traefik off, HTTP+HTTPS on Pi-hole) |
+| `debian` | [`molecule/debian/`](molecule/debian/) | Debian 12 — closer to Raspberry Pi OS; same HA + update sequence. VirtualBox: `bento/debian-12`. libvirt: `debian/bookworm64` (`bento/debian-12` has no libvirt provider) |
+| `debian-traefik` | [`molecule/debian-traefik/`](molecule/debian-traefik/) | Debian 12 HA with Traefik enabled (supplied lab TLS; HTTP redirect + HTTPS UI) |
+| `debian-traefik-http` | [`molecule/debian-traefik-http/`](molecule/debian-traefik-http/) | Debian 12 HA with Traefik enabled, TLS off (HTTP UI) |
 | `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
 | `pihole-no-unbound` | [`molecule/pihole-no-unbound/`](molecule/pihole-no-unbound/) | Runs bootstrap and update workflows with Pi-hole-only DNS |
 
 Examples:
 
 ```bash
-molecule test -s ubuntu
-molecule test -s ubuntu-traefik
-molecule test -s ubuntu-traefik-http
-molecule test -s ubuntu-26.04
+molecule test                 # default = Ubuntu 24.04 HA
+molecule test -s default
+molecule test -s debian
+molecule test -s debian-traefik
+molecule test -s debian-traefik-http
 molecule test -s nebula-sync-migration
-molecule converge -s ubuntu    # iterate without full test sequence
+molecule converge -s default    # iterate without full test sequence
 ```
 
 ### VirtualBox vs libvirt and inventory
 
-Private guest IPs depend on the provider (see scenario `Vagrantfile`s such as [`molecule/ubuntu/Vagrantfile`](molecule/ubuntu/Vagrantfile) and [`molecule/ubuntu-26.04/Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile)):
+Private guest IPs depend on the provider (see scenario `Vagrantfile`s such as [`molecule/default/Vagrantfile`](molecule/default/Vagrantfile) and [`molecule/debian/Vagrantfile`](molecule/debian/Vagrantfile)):
 
 - **VirtualBox** — typically `192.168.56.0/24` → [`inventory/vagrant.yml`](inventory/vagrant.yml)
 - **libvirt** — typically `192.168.121.0/24` → [`inventory/vagrant_libvirt.yml`](inventory/vagrant_libvirt.yml)
@@ -477,10 +482,14 @@ Molecule links inventory via `inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.ym
 ```bash
 export VAGRANT_DEFAULT_PROVIDER=libvirt
 export MOLECULE_VAGRANT_INVENTORY=vagrant_libvirt.yml
-molecule test -s ubuntu
+molecule test -s default
 ```
 
-**`ubuntu-26.04`:** do not use `cloud-image/ubuntu-26.04` on VirtualBox (vmwgfx DRM errors). The scenario [`Vagrantfile`](molecule/ubuntu-26.04/Vagrantfile) selects **`konstruktoid/ubuntu-26.04`** (Bento build) for VirtualBox and **`cloud-image/ubuntu-26.04`** only for libvirt. After changing boxes, run `molecule destroy -s ubuntu-26.04` then `molecule test -s ubuntu-26.04`.
+**Phase two (Raspberry Pi OS ARM)** is not a local Vagrant scenario. Use AWS
+remote `platform_coverage: phase-two-pi-os-arm` (Debian 12 arm64 stand-in, or a
+real Pi OS AMI via `AWS_PI_OS_AMI_ID`) or hardware listed under
+[`tests/remote/inventories/example-pi.yml`](tests/remote/inventories/example-pi.yml).
+See [Testing guide](docs/testing.md#test-phases).
 
 ### ARM64 local testing
 
@@ -493,11 +502,11 @@ networking behavior are part of the test surface.
 
 ### Helper: `scripts/molecule-vagrant`
 
-- **Interactive:** `./scripts/molecule-vagrant` — choose VirtualBox or libvirt, copy the printed exports/commands, or confirm to run `molecule test -s ubuntu`.
+- **Interactive:** `./scripts/molecule-vagrant` — choose VirtualBox or libvirt, copy the printed exports/commands, or confirm to run `molecule test -s default`.
 - **Non-interactive:** forwards to `molecule` and sets `MOLECULE_VAGRANT_INVENTORY` from `VAGRANT_DEFAULT_PROVIDER` when unset:
 
 ```bash
-VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s ubuntu
+VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s default
 ```
 
 ### Helper: `scripts/molecule-test-all`
@@ -506,9 +515,9 @@ Run all discovered Molecule scenarios in `molecule/*` (or pass a subset):
 
 ```bash
 ./scripts/molecule-test-all
-./scripts/molecule-test-all ubuntu ubuntu-26.04
+./scripts/molecule-test-all default debian
 ./scripts/molecule-test-all pihole-no-unbound
-./scripts/molecule-test-all --ubuntu-only
+./scripts/molecule-test-all --debian-only
 VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-test-all
 ./scripts/molecule-test-all --list
 ```

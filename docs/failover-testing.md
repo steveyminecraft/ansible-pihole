@@ -13,10 +13,10 @@ verification and change recording.
 Run:
 
 ```bash
-molecule test -s ubuntu
+molecule test -s default
 ```
 
-The `ubuntu` and `ubuntu-26.04` scenarios run a full test sequence:
+The `default` (Ubuntu 24.04) and `debian` (Debian 12) scenarios run a full test sequence:
 
 1. **Converge** — bootstrap the HA stack
 2. **Verify** — baseline HA / DNS checks (`verify_ha.yml`)

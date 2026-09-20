@@ -5,28 +5,15 @@ Vagrant.configure("2") do |config|
   # Molecule converges over SSH; disable default share (libvirt NFS needs host sudo).
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
-  provider_name = ENV.fetch("VAGRANT_DEFAULT_PROVIDER", "virtualbox")
-  use_libvirt = %w[libvirt kvm].include?(provider_name)
-
-  # VirtualBox: 192.168.56.0/24 — libvirt (vagrant-56): 192.168.121.0/24 by default here;
-  # override ip_libvirt if your KVM network differs. Match inventory file to provider.
-  #
-  # Libvirt/x86_64: this Vagrant (2.3.x) lacks vm.box_architecture and may request
-  # rockylinux/10 libvirt/arm64 from Vagrant Cloud (404). Pin the official Rocky
-  # CDN x86_64 libvirt box URL so amd64 is used regardless of Cloud arch selection.
-  #
-  # Boot: SeaBIOS is fine (hybrid GPT + i386-pc GRUB). The historical "no DHCP"
-  # hang was a 5GiB disk from wrong box metadata (real image is 10GiB) — see
-  # machine_virtual_size below and scripts/ensure-rockylinux10-amd64.sh.
-  rocky_libvirt_amd64_url = ENV.fetch(
-    "ROCKY10_LIBVIRT_AMD64_BOX_URL",
-    "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-Vagrant-Libvirt.latest.x86_64.vagrant.libvirt.box"
-  )
-
+  # --- Network (two subnets) ------------------------------------------------
+  # VirtualBox host-only defaults: 192.168.56.0/24
+  # libvirt (vagrant-libvirt + network "vagrant-56"): typically 192.168.121.0/24
+  # If your libvirt network uses another range, change ip_libvirt and use
+  # inventory/vagrant_libvirt.yml (or edit subnet there to match).
   vm_settings = {
-    box: "rockylinux/10",
+    box: "bento/ubuntu-24.04",
     memory: 4096,
-    cpus: 2,
+    cpus: 4,
     machines: [
       { name: "vagrant-pihole-01", mac: "52:54:00:56:00:04",
         ip_virtualbox: "192.168.56.4", ip_libvirt: "192.168.121.4" },
@@ -34,24 +21,6 @@ Vagrant.configure("2") do |config|
         ip_virtualbox: "192.168.56.5", ip_libvirt: "192.168.121.5" }
     ]
   }
-
-  ### DEFINE SCRIPT ###
-  # Official Vagrant insecure public keys (matches ~/.vagrant.d/insecure_private_key*):
-  # https://github.com/hashicorp/vagrant/blob/main/keys/vagrant.pub
-  $script = <<~'VAGRANT_SCRIPT'
-    echo I am provisioning...
-    date > /etc/vagrant_provisioned_at
-    install -d -m 700 -o vagrant -g vagrant /home/vagrant/.ssh
-    AUTH=/home/vagrant/.ssh/authorized_keys
-    touch "$AUTH"
-    chown vagrant:vagrant "$AUTH"
-    chmod 600 "$AUTH"
-    KEY_RSA='ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key'
-    KEY_ED25519='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN1YdxBpNlzxDqfJyw/QKow1F+wvG9hXGoqiysfJOn5Y vagrant insecure public key'
-    grep -qxF "$KEY_RSA" "$AUTH" || echo "$KEY_RSA" >> "$AUTH"
-    grep -qxF "$KEY_ED25519" "$AUTH" || echo "$KEY_ED25519" >> "$AUTH"
-    chown vagrant:vagrant "$AUTH"
-  VAGRANT_SCRIPT
 
   # --- PLUGINS ---------------------------------------------------------------
 
@@ -66,9 +35,6 @@ Vagrant.configure("2") do |config|
       node.vm.hostname         = machine[:name]
       node.vm.box              = vm_settings[:box]
       node.vm.box_check_update = false
-      if use_libvirt
-        node.vm.box_url = rocky_libvirt_amd64_url
-      end
 
       node.vm.provider "virtualbox" do |v, o|
         v.memory = vm_settings[:memory]
@@ -88,17 +54,7 @@ Vagrant.configure("2") do |config|
           l.memory = vm_settings[:memory]
           l.cpus   = vm_settings[:cpus]
           l.driver = "kvm"
-          # Avoid libvirt "CPU vendor specified without CPU model" on domain redefine
-          # (host-model can emit vendor without model on some QEMU/libvirt combos).
-          l.cpu_mode = "host-passthrough"
           l.management_network_keep = true
-          # CDN box disk is 10GiB; box metadata.json wrongly says 5. Without this
-          # (or scripts/ensure-rockylinux10-amd64.sh metadata fix) vagrant-libvirt
-          # creates a 5G volume → root XFS past EOF → dracut emergency → no DHCP.
-          l.machine_virtual_size = 10
-          # Prefer virtio NICs (Rocky libvirt box). NM DHCP profiles are injected
-          # into the box by scripts/ensure-rockylinux10-amd64.sh (empty
-          # system-connections otherwise → no first-boot DHCP / SSH hang).
           o.vm.network "private_network",
                        ip: machine[:ip_libvirt],
                        netmask: "255.255.255.0",
@@ -109,7 +65,9 @@ Vagrant.configure("2") do |config|
         end
       end
 
-      node.vm.provision "shell", inline: $script
+      node.vm.provision "shell",
+                        inline: "date | tee /etc/vagrant_provisioned_at && ip -4 addr show || true",
+                        privileged: true
 
       node.trigger.after :destroy do |trigger|
         trigger.info = "Removing known_hosts entry for #{machine[:name]}"
