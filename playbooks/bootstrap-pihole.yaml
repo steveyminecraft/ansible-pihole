@@ -11,6 +11,8 @@
   roles:
     - role: steveyminecraft.pihole.stop_keepalived
       tags: [stopkeepalived, drain, ha]
+    - role: steveyminecraft.pihole.stop_containers
+      tags: [stopcontainers, drain, container]
     - role: steveyminecraft.pihole.bootstrap
       tags: [bootstrap, system]
     - role: steveyminecraft.pihole.updates

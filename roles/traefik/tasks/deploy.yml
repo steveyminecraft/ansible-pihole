@@ -133,6 +133,23 @@
     mode: "{{ traefik_compose_file_mode }}"
   register: traefik_compose_template
 
+# Running installs still publish Pi-hole :80/:443. Traefik starts before the
+# Pi-hole compose rewrite, so stop that container when it is holding the host
+# UI ports. Fresh installs have no Pi-hole container yet.
+- name: Inspect existing Pi-hole container before Traefik bind
+  community.docker.docker_container_info:
+    name: "{{ pihole_container_name | default('pihole') }}"
+  register: traefik_existing_pihole
+
+- name: Stop running Pi-hole so Traefik can bind host UI ports
+  community.docker.docker_container:
+    name: "{{ pihole_container_name | default('pihole') }}"
+    state: stopped
+  when:
+    - traefik_existing_pihole.exists | default(false) | bool
+    - (traefik_existing_pihole.container.State.Running | default(false) | bool)
+    - not (pihole_use_host_network | default(false) | bool)
+
 - name: Start Traefik service
   vars:
     _traefik_needs_recreate: >-

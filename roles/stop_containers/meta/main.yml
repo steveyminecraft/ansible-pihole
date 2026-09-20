@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  role_name: stop_containers
+  author: your_name
+  description: Stop stack containers on a drained node before updates.
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: ["all"]
+    - name: Ubuntu
+      versions: ["all"]
+  galaxy_tags:
+    - stopcontainers
+    - drain
+    - docker
+
+dependencies: []

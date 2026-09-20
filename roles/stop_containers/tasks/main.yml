@@ -1,0 +1,25 @@
+---
+- name: Check Docker socket
+  ansible.builtin.stat:
+    path: /var/run/docker.sock
+  register: stop_containers_docker_sock
+
+- name: Inspect stack containers
+  community.docker.docker_container_info:
+    name: "{{ item }}"
+  loop: "{{ stop_containers_names }}"
+  register: stop_containers_info
+  when: stop_containers_docker_sock.stat.exists | default(false) | bool
+
+- name: Stop running stack containers on drained node
+  community.docker.docker_container:
+    name: "{{ item.item }}"
+    state: stopped
+  loop: "{{ stop_containers_info.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item | default(item) }}"
+  when:
+    - stop_containers_docker_sock.stat.exists | default(false) | bool
+    - not (item.skipped | default(false) | bool)
+    - item.exists | default(false) | bool
+    - (item.container.State.Running | default(false) | bool)

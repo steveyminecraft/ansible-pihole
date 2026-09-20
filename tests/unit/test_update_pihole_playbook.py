@@ -32,6 +32,21 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
                 doc = load_yaml(path)
                 self.assertEqual(doc[0].get("serial"), 1)
 
+    def test_update_and_bootstrap_stop_containers_after_drain_before_updates(
+        self,
+    ) -> None:
+        for path in (
+            ROOT / "playbooks" / "update-pihole.yaml",
+            ROOT / "playbooks" / "bootstrap-pihole.yaml",
+        ):
+            with self.subTest(playbook=path.name):
+                roles = [role["role"] for role in load_yaml(path)[0]["roles"]]
+                drain = roles.index("steveyminecraft.pihole.stop_keepalived")
+                stop = roles.index("steveyminecraft.pihole.stop_containers")
+                updates = roles.index("steveyminecraft.pihole.updates")
+                self.assertLess(drain, stop)
+                self.assertLess(stop, updates)
+
     def test_update_pihole_playbook_ha_safety_flags(self) -> None:
         first_play = load_yaml(UPDATE_PIHOLE)[0]
         self.assertTrue(first_play.get("any_errors_fatal"))
