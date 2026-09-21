@@ -397,6 +397,24 @@ manage iptables (typical Vagrant/`vagrant_env`), the Pi-hole role falls back to
 Unbound's bridge IPv4 for `FTLCONF_dns_upstreams` because `127.0.0.11` is often
 refused inside the container.
 
+### `playbooks/backup-user.yaml`
+
+Install a dump-only SSH user (`backup`) and `/usr/local/sbin/pihole-backup-dump`
+on both HA nodes without draining keepalived, restarting Traefik, or rewriting
+Pi-hole compose. The user has `nologin`, a locked password, sudo only for the
+dump wrapper, and an exclusive forced-command authorized key.
+
+Pass an **ed25519 public** key via gitignored inventory or extra-vars. Do not
+commit live keys or private keys:
+
+```bash
+ansible-playbook -i inventory/rnet.yml playbooks/backup-user.yaml \
+  -e backup_user_authorized_key_file=/path/to/id_ed25519_network_backup.pub
+```
+
+CI uses a disposable public key in `inventory/ci/group_vars/all.yml`. This
+playbook is **not** part of `update-pihole.yaml`.
+
 ### `playbooks/keepalived.yaml`
 
 Deploy or adjust keepalived HA between Pi-hole instances. Priorities and VIPs are inventory-driven (see comments in [`inventory/vagrant.yml`](inventory/vagrant.yml) for examples).

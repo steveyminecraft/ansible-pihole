@@ -112,7 +112,7 @@ jobs:
 
           installed="${consumer_root}/collections/ansible_collections/steveyminecraft/pihole"
           test -d "${installed}"
-          for playbook in bootstrap-pihole.yaml update-pihole.yaml keepalived.yaml sync.yaml; do
+          for playbook in bootstrap-pihole.yaml update-pihole.yaml keepalived.yaml sync.yaml backup-user.yaml; do
             ANSIBLE_COLLECTIONS_PATH="${consumer_root}/collections" \
               ansible-playbook -i localhost, "${installed}/playbooks/${playbook}" --syntax-check
           done

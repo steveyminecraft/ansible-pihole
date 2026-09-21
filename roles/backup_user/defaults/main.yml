@@ -1,0 +1,13 @@
+---
+# Opt-in. The dedicated playbook sets this true. Rolling HA playbooks do not.
+backup_user_enable: false
+backup_user_name: backup
+backup_user_comment: Pi-hole config dump
+backup_user_home: /home/{{ backup_user_name }}
+backup_user_shell: /usr/sbin/nologin
+backup_user_dump_path: /usr/local/sbin/pihole-backup-dump
+backup_user_sudoers_path: /etc/sudoers.d/{{ backup_user_name }}-pihole-dump
+# Ed25519 public key only. Set in gitignored inventory or extra-vars. Empty by default.
+backup_user_authorized_key: ""
+# Optional controller path to a .pub file (also gitignored). Used when the string var is empty.
+backup_user_authorized_key_file: ""

@@ -42,6 +42,12 @@ inventory/
       vault.yml            # ansible-vault encrypted secrets (gitignored)
 ```
 
+The dump-only backup user playbook (`playbooks/backup-user.yaml`) needs the
+collector **public** key. Put it in gitignored
+`inventory/group_vars/pihole_backup.yml` or pass
+`-e backup_user_authorized_key_file=...`. Do not store private keys in this
+repo.
+
 Run playbooks with vault when secrets live in `group_vars/all/vault.yml`:
 
 ```bash

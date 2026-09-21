@@ -1,0 +1,5 @@
+---
+# Copy to gitignored inventory/group_vars/pihole_backup.yml
+# Use the collector host's network-backup *public* key (ed25519).
+backup_user_authorized_key: "ssh-ed25519 CHANGE_ME comment"
+# Or: backup_user_authorized_key_file: /path/on/controller/id_ed25519_network_backup.pub

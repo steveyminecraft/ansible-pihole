@@ -183,6 +183,8 @@ steveyminecraft-pihole-*.tar.gz
 inventory/inventory.yaml
 inventory/rnet.yml
 inventory/tls/
+inventory/group_vars/pihole_backup.yml
+inventory/**/*.pub
 
 # graphify knowledge vault (local only — see docs/knowledge-vault.md)
 graphify-out/

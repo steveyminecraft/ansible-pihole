@@ -191,6 +191,7 @@ jobs:
           ansible-playbook -i inventory/ci/ci.yml playbooks/update-pihole.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.yml playbooks/keepalived.yaml --syntax-check
           ansible-playbook -i inventory/ci/ci.yml playbooks/sync.yaml --syntax-check
+          ansible-playbook -i inventory/ci/ci.yml playbooks/backup-user.yaml --syntax-check
           ansible-playbook playbooks/ci-validate-traefik.yaml --syntax-check
 
 
@@ -202,6 +203,10 @@ jobs:
       - name: Check-mode update-pihole
         run: |
           ansible-playbook -i inventory/ci/ci.yml playbooks/update-pihole.yaml --check
+
+      - name: Check-mode backup-user
+        run: |
+          ansible-playbook -i inventory/ci/ci.yml playbooks/backup-user.yaml --check
 
       - name: Validate Pi-hole Compose modes
         run: ansible-playbook playbooks/ci-validate-pihole-modes.yaml

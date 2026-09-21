@@ -1,0 +1,12 @@
+---
+- name: Install dump-only Pi-hole backup user
+  hosts: all
+  become: true
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  vars:
+    backup_user_enable: true
+  roles:
+    - role: steveyminecraft.pihole.backup_user
+      tags: [backup_user, pihole_backup_user]

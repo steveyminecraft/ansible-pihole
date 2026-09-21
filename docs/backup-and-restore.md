@@ -11,6 +11,17 @@ This page covers its backup and recovery steps.
   - `/opt/pihole/etc/dnsmasq.d`
 - Inventory and vaulted secrets used for deployment.
 
+## Dump-only SSH user (HA hosts)
+
+Use [`playbooks/backup-user.yaml`](../playbooks/backup-user.yaml) to create
+user `backup` on both nodes. It is repeatable and does not run Traefik,
+keepalived, or Pi-hole roles. The collector SSH identity is an ed25519 **public**
+key (`backup_user_authorized_key` or `backup_user_authorized_key_file`).
+Keep that key out of git (see gitignored `inventory/group_vars/pihole_backup.yml`).
+
+The forced command writes `etc/dnsmasq.d`, `etc/pihole/pihole.toml`, and
+`etc/pihole/gravity.db` from `/opt/pihole`. It does not dump `pihole-FTL.db`.
+
 ## Backup pattern
 
 1. Snapshot/export Pi-hole directories from both nodes.

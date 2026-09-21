@@ -10,3 +10,6 @@ pihole_environment_variables:
   FTLCONF_dns_listeningMode: ALL
   DHCP_ACTIVE: false
   REV_SERVER: false
+
+# Public key only (generated for CI check-mode). Live keys stay gitignored.
+backup_user_authorized_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID2G9bIjdaVLotq/5Ol6BoEt54GhI4VZXCp7pmg7YyyX ci-pihole-backup"

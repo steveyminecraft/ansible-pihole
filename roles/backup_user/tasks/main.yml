@@ -1,0 +1,58 @@
+---
+- name: Install dump-only Pi-hole backup user
+  when: backup_user_enable | bool
+  block:
+    - name: Load backup authorized key from controller file
+      ansible.builtin.set_fact:
+        backup_user_authorized_key: "{{ lookup('file', backup_user_authorized_key_file) | trim }}"
+      when:
+        - backup_user_authorized_key_file | default('') | length > 0
+        - backup_user_authorized_key | default('') | length == 0
+      delegate_to: localhost
+      become: false
+
+    - name: Require an ed25519 authorized key for the dump user
+      ansible.builtin.assert:
+        that:
+          - backup_user_authorized_key | default('') | trim | length > 0
+          - (backup_user_authorized_key | trim).split()[0] == 'ssh-ed25519'
+        fail_msg: >-
+          Set backup_user_authorized_key or backup_user_authorized_key_file to the
+          collector ed25519 public key. Do not commit private keys.
+
+    - name: Install Pi-hole backup dump wrapper
+      ansible.builtin.copy:
+        src: pihole-backup-dump.sh
+        dest: "{{ backup_user_dump_path }}"
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Create dump-only backup user
+      ansible.builtin.user:
+        name: "{{ backup_user_name }}"
+        comment: "{{ backup_user_comment }}"
+        home: "{{ backup_user_home }}"
+        create_home: true
+        system: true
+        shell: "{{ backup_user_shell }}"
+        password_lock: true
+
+    - name: Install sudoers rule for dump wrapper only
+      ansible.builtin.copy:
+        dest: "{{ backup_user_sudoers_path }}"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: visudo -cf %s
+        content: |
+          {{ backup_user_name }} ALL=(root) NOPASSWD: {{ backup_user_dump_path }}
+          Defaults:{{ backup_user_name }} !requiretty
+
+    - name: Install exclusive forced-command authorized key
+      ansible.posix.authorized_key:
+        user: "{{ backup_user_name }}"
+        key: "{{ backup_user_authorized_key | trim }}"
+        exclusive: true
+        key_options: >-
+          command="/usr/bin/sudo {{ backup_user_dump_path }}",no-agent-forwarding,no-port-forwarding,no-X11-forwarding,no-pty,no-user-rc
