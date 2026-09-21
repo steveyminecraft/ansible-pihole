@@ -4,7 +4,8 @@ backup_user_enable: false
 backup_user_name: backup
 backup_user_comment: Pi-hole config dump
 backup_user_home: /home/{{ backup_user_name }}
-backup_user_shell: /usr/sbin/nologin
+# RHEL/Rocky sshd runs the login shell instead of key ForceCommand when the shell is nologin.
+backup_user_shell: /bin/bash
 backup_user_dump_path: /usr/local/sbin/pihole-backup-dump
 backup_user_sudoers_path: /etc/sudoers.d/{{ backup_user_name }}-pihole-dump
 # Ed25519 public key only. Set in gitignored inventory or extra-vars. Empty by default.

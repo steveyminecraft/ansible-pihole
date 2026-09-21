@@ -17,7 +17,10 @@ include this role.
 ## What it changes
 
 - Installs `/usr/local/sbin/pihole-backup-dump` (config + gravity DB tarball to stdout)
-- Creates system user `backup` with `nologin` and a locked password
+- Creates system user `backup` with a locked password. The login shell is
+  `/bin/bash` because Rocky/RHEL sshd does not honour key `command=` when the
+  shell is `nologin`. Access is still dump-only via exclusive forced command,
+  `no-pty`, and no forwarding.
 - Sudoers: NOPASSWD for that dump wrapper only
 - Exclusive `authorized_keys` with a forced command and no forwarding/pty
 

@@ -51,7 +51,7 @@ class BackupUserRoleTests(unittest.TestCase):
         self.assertFalse(defaults["backup_user_enable"])
         self.assertEqual(defaults["backup_user_name"], "backup")
         self.assertEqual(defaults["backup_user_dump_path"], "/usr/local/sbin/pihole-backup-dump")
-        self.assertEqual(defaults["backup_user_shell"], "/usr/sbin/nologin")
+        self.assertEqual(defaults["backup_user_shell"], "/bin/bash")
         self.assertEqual(defaults["backup_user_authorized_key"], "")
 
     def test_tasks_require_ed25519_and_forced_command(self) -> None:
@@ -70,6 +70,7 @@ class BackupUserRoleTests(unittest.TestCase):
         user = tasks["Create dump-only backup user"]["ansible.builtin.user"]
         self.assertTrue(user["password_lock"])
         self.assertTrue(user["system"])
+        self.assertEqual(user["shell"], "{{ backup_user_shell }}")
         self.assertFalse(user.get("groups") or user.get("group") == "sudo")
 
     def test_dump_wrapper_is_config_only(self) -> None:

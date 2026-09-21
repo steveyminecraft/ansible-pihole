@@ -401,8 +401,9 @@ refused inside the container.
 
 Install a dump-only SSH user (`backup`) and `/usr/local/sbin/pihole-backup-dump`
 on both HA nodes without draining keepalived, restarting Traefik, or rewriting
-Pi-hole compose. The user has `nologin`, a locked password, sudo only for the
-dump wrapper, and an exclusive forced-command authorized key.
+Pi-hole compose. The user has a locked password, sudo only for the
+dump wrapper, and an exclusive forced-command authorized key (`/bin/bash`
+shell so Rocky/RHEL sshd honours `command=`; not an interactive login).
 
 Pass an **ed25519 public** key via gitignored inventory or extra-vars. Do not
 commit live keys or private keys:
