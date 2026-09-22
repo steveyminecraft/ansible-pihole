@@ -11,7 +11,7 @@ Visual overview: [Unit tests map](diagrams/ansible-pihole-unit-tests.png) and
 
 | Layer | Where it runs | What it proves | Gap |
 |-------|---------------|----------------|-----|
-| **GitHub CI** | Every PR (code paths) | Lint, syntax, check-mode bootstrap + `update-pihole`, compose validation (Pi-hole modes + Traefik templates), script unit tests, inventory structure, **Molecule `docker-ci` smoke** | No functional HA failover on hosted runners |
+| **GitHub CI** | Every PR (code paths) | Lint, syntax, check-mode bootstrap + `update-pihole`, compose validation (Pi-hole modes + Traefik templates), script unit tests, inventory structure, **Molecule `docker-ci` smoke**, **single-host upgrade** from `molecule/upgrade/from-version` | No functional HA failover on hosted runners |
 | **Molecule** | Local / self-hosted | Full Vagrant HA bootstrap, rolling update, post-update verify | HA scenarios not in default GitHub matrix (needs Vagrant) |
 | **AWS remote** | Scheduled + label + manual | Ephemeral EC2 → production playbooks → teardown | Cost; schedule is Ubuntu amd64. **Phase 2** Pi OS ARM is manual (`phase-two-pi-os-arm`) |
 | **Manual** | Production change windows | VIP failover, per-node DNS, Nebula Sync | Operator-driven |
@@ -32,6 +32,7 @@ Visual overview: [Unit tests map](diagrams/ansible-pihole-unit-tests.png) and
 | Ansible tests (Ubuntu matrix) | Syntax + check-mode for `bootstrap-pihole.yaml`, `update-pihole.yaml`; `ci-validate-pihole-modes.yaml`; `ci-validate-traefik.yaml` |
 | Policy & script validation | Python unit tests, `validate-secure-defaults.py`, `validate-inventory.py`, image pin/upstream checks, legacy variable lint |
 | Molecule docker smoke | `molecule test -s docker-ci` — docker role on docker driver (no Vagrant) |
+| Upgrade existing install | `./scripts/upgrade-existing-install.sh ci` — install `molecule/upgrade/from-version` on the runner, then upgrade that host with Traefik on |
 | Security | CodeQL, Trivy filesystem + pinned container images |
 | Galaxy build | Collection build for advertised ansible-core range |
 
@@ -63,6 +64,22 @@ Molecule scenarios under `molecule/`:
 | `docker-ci` | `molecule/docker-ci/` | Docker role on docker driver (hosted CI smoke) |
 | `pihole-no-unbound` | `molecule/pihole-no-unbound/` | Pi-hole-only DNS bootstrap + update |
 | `nebula-sync-migration` | `molecule/nebula-sync-migration/` | Legacy plaintext → secret-file credential migration |
+| `upgrade` | `molecule/upgrade/` | Previous Galaxy release on both nodes, then this checkout's update with Traefik on |
+
+`upgrade` is a local Vagrant run: bootstrap the previous release on both nodes,
+verify, then `update-pihole` with Traefik on both nodes and verify again.
+Unit tests lock that sequence. The full pair is:
+
+```bash
+molecule test -s upgrade
+```
+
+The starting release is `molecule/upgrade/from-version`. Change that file in a
+pull request to move the baseline. `UPGRADE_FROM_VERSION` overrides it for one run.
+
+GitHub Actions runs the same cutover on one host, the runner itself:
+`./scripts/upgrade-existing-install.sh ci`. That job reads `from-version` and
+skips keepalived. VIP and rolling drain stay on the Vagrant scenario.
 
 **Hosted CI smoke (no Vagrant):**
 
@@ -141,7 +158,7 @@ pattern on Debian 12.
 
 | Layer | HA coverage | Why |
 |-------|-------------|-----|
-| **GitHub CI** | **No** — `molecule test -s docker-ci` smoke only | Hosted runners have no Vagrant; docker-ci exercises the docker role, not keepalived/VIP failover |
+| **GitHub CI** | **No HA failover.** Single-host upgrade from `molecule/upgrade/from-version`, plus `docker-ci` | Hosted runners have no Vagrant. The upgrade job checks DNS, `/admin`, and the Traefik port move on one host. VIP and rolling drain stay on local Molecule |
 | **AWS remote** | **No** — single-node smoke only | Dual-node AWS HA is **declined / out of scope** (see below) |
 | **Local Molecule** | **Yes** — full HA path | Only environment with same-subnet dual nodes and existing HA verify tasks |
 

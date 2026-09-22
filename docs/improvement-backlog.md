@@ -111,7 +111,7 @@ Local graphify setup is valuable; graph quality can be improved.
 
 | Layer | Runs today | Gap |
 |-------|------------|-----|
-| GitHub CI | Lint, syntax, check-mode bootstrap + update-pihole, compose validation, **`docker-ci` Molecule smoke** | No functional HA failover (local Molecule only) |
+| GitHub CI | Lint, syntax, check-mode bootstrap + update-pihole, compose validation, **`docker-ci` Molecule smoke**, **single-host upgrade** from `molecule/upgrade/from-version` | No functional HA failover (local Molecule `upgrade` and `default`) |
 | Molecule | `default` (Ubuntu 24.04) + `debian` HA locally | HA not in GitHub CI — requires local Vagrant |
 | AWS remote | Single-node bootstrap + optional `update-pihole` | Scheduled 1st/15th + PR label; dual-node AWS HA out of scope |
 

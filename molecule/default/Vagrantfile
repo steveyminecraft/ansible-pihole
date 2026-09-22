@@ -54,6 +54,10 @@ Vagrant.configure("2") do |config|
           l.memory = vm_settings[:memory]
           l.cpus   = vm_settings[:cpus]
           l.driver = "kvm"
+          # vagrant-56 already owns 192.168.121.0/24, so the plugin's usual
+          # management network name cannot be created. Use libvirt "default".
+          l.management_network_name = "default"
+          l.management_network_address = "192.168.122.0/24"
           l.management_network_keep = true
           o.vm.network "private_network",
                        ip: machine[:ip_libvirt],

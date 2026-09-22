@@ -1,0 +1,176 @@
+---
+# Same playbook after the old install and after the upgrade.
+# Traefik absent: Pi-hole still owns the web ports.
+# Traefik running: admin works on the node DNS name, and dnsmasq.d stays
+# readable by FTL (mode 0755 / 0644).
+- name: Verify upgrade stage on every node
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    upgrade_dns_qname: >-
+      {{ pihole_verify_qname | default(pihole_unbound_verify_qname | default('cloudflare.com')) }}
+    upgrade_vip: "{{ (pihole_vip_ipv4 | default('192.168.56.10/24')) | split('/') | first }}"
+    upgrade_pihole_dir: "{{ pihole_compose_dir | default('/opt/pihole') }}"
+    upgrade_domain: lab.example.com
+    upgrade_node_host: "{{ inventory_hostname }}.{{ upgrade_domain }}"
+    upgrade_shared_host: pihole.lab.example.com
+  tasks:
+    - name: Inspect Traefik container
+      community.docker.docker_container_info:
+        name: "{{ traefik_container_name | default('traefik') }}"
+      register: molecule_traefik_container
+
+    - name: Record whether this pass is the Traefik cutover
+      ansible.builtin.set_fact:
+        upgrade_cutover: >-
+          {{
+            molecule_traefik_container.exists | default(false)
+            and (
+              molecule_traefik_container.container.State.Running
+              | default(false)
+            )
+          }}
+
+    - name: Resolve via local Pi-hole on each node
+      ansible.builtin.command:
+        argv:
+          - dig
+          - +short
+          - +time=2
+          - +tries=2
+          - "@127.0.0.1"
+          - "{{ upgrade_dns_qname }}"
+      register: dns_local
+      changed_when: false
+      retries: 15
+      delay: 2
+      until: >
+        (dns_local.stdout_lines | default([])
+         | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+$')
+         | list | length) > 0
+
+    - name: Resolve via VIP
+      ansible.builtin.command:
+        argv:
+          - dig
+          - +short
+          - +time=2
+          - "@{{ upgrade_vip }}"
+          - "{{ upgrade_dns_qname }}"
+      register: dns_vip
+      changed_when: false
+      failed_when: dns_vip.stdout == ""
+      run_once: true
+
+    - name: Read published Pi-hole ports
+      ansible.builtin.command:
+        argv:
+          - docker
+          - port
+          - "{{ pihole_container_name | default('pihole') }}"
+      register: molecule_pihole_published_ports
+      changed_when: false
+
+    - name: Assert Pi-hole still publishes the web port before cutover
+      ansible.builtin.assert:
+        that:
+          - >-
+            molecule_pihole_published_ports.stdout_lines
+            | select('match', '^80/tcp')
+            | list
+            | length > 0
+        fail_msg: >-
+          Before Traefik, Pi-hole must publish 80/tcp.
+          Published: {{ molecule_pihole_published_ports.stdout | default('') }}
+      when: not (upgrade_cutover | bool)
+
+    - name: Admin responds on Pi-hole before cutover
+      ansible.builtin.uri:
+        url: "http://127.0.0.1/admin/"
+        status_code: [200, 301, 302, 308]
+      register: upgrade_direct_admin
+      retries: 12
+      delay: 5
+      until: upgrade_direct_admin.status | default(0) in [200, 301, 302, 308]
+      when: not (upgrade_cutover | bool)
+
+    - name: Read published Traefik ports
+      ansible.builtin.command:
+        argv:
+          - docker
+          - port
+          - "{{ traefik_container_name | default('traefik') }}"
+      register: molecule_traefik_published_ports
+      changed_when: false
+      when: upgrade_cutover | bool
+
+    - name: Assert web ports moved to Traefik
+      ansible.builtin.assert:
+        that:
+          - >-
+            molecule_pihole_published_ports.stdout_lines
+            | select('match', '^80/tcp')
+            | list
+            | length == 0
+          - >-
+            molecule_traefik_published_ports.stdout_lines
+            | select('match', '^80/tcp')
+            | list
+            | length > 0
+        fail_msg: >-
+          After cutover, Traefik must publish 80/tcp and Pi-hole must not.
+          Pi-hole: {{ molecule_pihole_published_ports.stdout | default('') }}
+          Traefik: {{ molecule_traefik_published_ports.stdout | default('') }}
+      when: upgrade_cutover | bool
+
+    - name: Admin responds for the node DNS name
+      ansible.builtin.uri:
+        url: "http://127.0.0.1/admin/"
+        headers:
+          Host: "{{ upgrade_node_host }}"
+        status_code: [200, 301, 302, 308]
+      register: upgrade_node_admin
+      retries: 12
+      delay: 5
+      until: upgrade_node_admin.status | default(0) in [200, 301, 302, 308]
+      when: upgrade_cutover | bool
+
+    - name: Admin responds for the shared DNS name
+      ansible.builtin.uri:
+        url: "http://127.0.0.1/admin/"
+        headers:
+          Host: "{{ upgrade_shared_host }}"
+        status_code: [200, 301, 302, 308]
+      register: upgrade_shared_admin
+      retries: 12
+      delay: 5
+      until: upgrade_shared_admin.status | default(0) in [200, 301, 302, 308]
+      when: upgrade_cutover | bool
+
+    - name: Stat Pi-hole dnsmasq.d directory
+      ansible.builtin.stat:
+        path: "{{ upgrade_pihole_dir }}/etc/dnsmasq.d"
+      register: molecule_dnsmasq_d
+      when: upgrade_cutover | bool
+
+    - name: Stat proxy DNS record
+      ansible.builtin.stat:
+        path: "{{ upgrade_pihole_dir }}/etc/dnsmasq.d/99-proxy-dns.conf"
+      register: molecule_proxy_dns
+      when: upgrade_cutover | bool
+
+    - name: Assert dnsmasq.d stays readable by FTL
+      ansible.builtin.assert:
+        that:
+          - molecule_dnsmasq_d.stat.exists | default(false)
+          - molecule_dnsmasq_d.stat.isdir | default(false)
+          - (molecule_dnsmasq_d.stat.mode | default('')) == '0755'
+          - molecule_proxy_dns.stat.exists | default(false)
+          - molecule_proxy_dns.stat.isreg | default(false)
+          - (molecule_proxy_dns.stat.mode | default('')) == '0644'
+        fail_msg: >-
+          dnsmasq.d must be 0755 and 99-proxy-dns.conf 0644 so FTL can read
+          them. Directory {{ molecule_dnsmasq_d.stat.mode | default('missing') }},
+          file {{ molecule_proxy_dns.stat.mode | default('missing') }}.
+      when: upgrade_cutover | bool

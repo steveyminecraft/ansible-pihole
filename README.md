@@ -464,6 +464,7 @@ instances, lab VMs, or Raspberry Pi hardware.
 | `debian-traefik-http` | [`molecule/debian-traefik-http/`](molecule/debian-traefik-http/) | Debian 12 HA with Traefik enabled, TLS off (HTTP UI) |
 | `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
 | `pihole-no-unbound` | [`molecule/pihole-no-unbound/`](molecule/pihole-no-unbound/) | Runs bootstrap and update workflows with Pi-hole-only DNS |
+| `upgrade` | [`molecule/upgrade/`](molecule/upgrade/) | Previous Galaxy release (`molecule/upgrade/from-version`) on both Vagrant nodes, then `update-pihole` with Traefik enabled |
 
 Examples:
 
@@ -474,6 +475,7 @@ molecule test -s debian
 molecule test -s debian-traefik
 molecule test -s debian-traefik-http
 molecule test -s nebula-sync-migration
+molecule test -s upgrade          # both nodes; baseline is molecule/upgrade/from-version
 molecule converge -s default    # iterate without full test sequence
 ```
 

@@ -1,0 +1,12 @@
+---
+- name: Install the previous release on both nodes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Bootstrap both nodes from the previous Galaxy release
+      ansible.builtin.command:
+        argv:
+          - "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/scripts/upgrade-existing-install.sh"
+          - bootstrap
+      changed_when: true
