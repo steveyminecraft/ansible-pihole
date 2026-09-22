@@ -1,6 +1,6 @@
 namespace: steveyminecraft
 name: pihole
-version: 1.9.5
+version: 1.9.6
 readme: README.md
 authors:
   - steveyminecraft
