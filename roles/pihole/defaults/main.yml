@@ -94,6 +94,9 @@ pihole_webport_https: "{{ lookup('ansible.builtin.vars', 'webport_https', defaul
 # Follows traefik_enabled when the Traefik role (or inventory) defines it.
 pihole_proxy_enabled: "{{ lookup('ansible.builtin.vars', 'traefik_enabled', default=false) | bool }}"
 pihole_proxy_hostname: "pihole.{{ lookup('ansible.builtin.vars', 'traefik_domain', default='lab.example.com') }}"
+# Extra Traefik Host() names for this node. Leave unset to also accept
+# <inventory_hostname>.<traefik_domain> (for example pihole-01.example.com).
+# Set a list to replace that default, or [] to accept only the shared hostname and node IP.
 pihole_proxy_router_name: pihole
 pihole_proxy_backend_port: 80
 # Optional LAN DNS for Traefik hostnames. Public DNS is not modified.

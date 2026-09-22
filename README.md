@@ -246,6 +246,9 @@ traefik_acme_environment:
 ```
 
 Pi-hole is then published at `https://pihole.home.example.com` (`pihole_proxy_hostname`).
+Each node also accepts `https://<inventory_hostname>.<traefik_domain>/admin`
+(for example `pihole-01.home.example.com`), which stays on that node. The
+shared name follows the keepalived VIP.
 HTTP on port 80 redirects permanently to HTTPS. Traefik is pinned to
 `traefik_image`/`traefik_version` (currently `docker.io/library/traefik:v3.7.13`).
 

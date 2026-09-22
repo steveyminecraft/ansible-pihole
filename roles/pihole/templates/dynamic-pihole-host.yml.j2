@@ -5,7 +5,7 @@
 http:
   routers:
     {{ pihole_proxy_router_name }}:
-      rule: "Host(`{{ pihole_proxy_hostname }}`){% if (ansible_host | default('') | string | length) > 0 %} || Host(`{{ ansible_host }}`){% endif %}"
+      rule: "{% filter trim %}{% include 'proxy-host-rule.j2' %}{% endfilter %}"
       entryPoints:
 {% if traefik_tls_enabled | default(true) | bool %}
         - websecure
