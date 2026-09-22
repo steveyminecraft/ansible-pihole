@@ -1,0 +1,25 @@
+{# Traefik Host() rule for this node's admin UI.
+   Matches the shared proxy hostname, the node IP, and this node's DNS name
+   (<inventory_hostname>.<traefik_domain>) so /admin is reachable by name.
+   Set pihole_proxy_extra_hostnames to a list to replace the node DNS name. #}
+{%- set primary = pihole_proxy_hostname | default('') | string -%}
+{%- set ip = ansible_host | default('') | string -%}
+{%- set domain = traefik_domain | default('') | string -%}
+{%- set raw_node = inventory_hostname | default('') | string -%}
+{%- set node = raw_node if ('.' in raw_node or domain | length == 0) else (raw_node ~ '.' ~ domain) -%}
+{%- set configured = pihole_proxy_extra_hostnames | default(none) -%}
+{%- set extras = configured if configured is not none else ([node] if '.' in node else []) -%}
+{%- set ns = namespace(hosts=[]) -%}
+{%- if primary | length > 0 -%}
+{%- set ns.hosts = ns.hosts + [primary] -%}
+{%- endif -%}
+{%- if ip | length > 0 and ip not in ns.hosts -%}
+{%- set ns.hosts = ns.hosts + [ip] -%}
+{%- endif -%}
+{%- for extra in extras -%}
+{%- set name = extra | string -%}
+{%- if name | length > 0 and name not in ns.hosts -%}
+{%- set ns.hosts = ns.hosts + [name] -%}
+{%- endif -%}
+{%- endfor -%}
+Host(`{{ ns.hosts | join('`) || Host(`') }}`)

@@ -62,7 +62,7 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: "{{ _proxy_network }}"
-      traefik.http.routers.{{ pihole_proxy_router_name | default('pihole') }}.rule: "Host(`{{ pihole_proxy_hostname }}`){% if (ansible_host | default('') | string | length) > 0 %} || Host(`{{ ansible_host }}`){% endif %}"
+      traefik.http.routers.{{ pihole_proxy_router_name | default('pihole') }}.rule: "{% filter trim %}{% include 'proxy-host-rule.j2' %}{% endfilter %}"
 {% if traefik_tls_enabled | default(true) | bool %}
       traefik.http.routers.{{ pihole_proxy_router_name | default('pihole') }}.entrypoints: "websecure"
       traefik.http.routers.{{ pihole_proxy_router_name | default('pihole') }}.tls: "true"
