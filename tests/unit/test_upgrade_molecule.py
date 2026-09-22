@@ -87,6 +87,17 @@ class UpgradeMoleculeScenarioTests(unittest.TestCase):
         workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
         self.assertIn('"molecule/upgrade/molecule.yml"', workflow)
 
+    def test_github_job_upgrades_one_runner_host(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        inventory = load_yaml(SCENARIO / "ci-inventory.yml")
+        hosts = inventory["all"]["hosts"]
+        self.assertEqual(list(hosts), ["upgrade-ci"])
+        self.assertEqual(hosts["upgrade-ci"]["ansible_connection"], "local")
+        self.assertFalse(inventory["all"]["vars"]["pihole_ha_mode"])
+        self.assertIn("upgrade-existing:", workflow)
+        self.assertIn('UPGRADE_FROM_VERSION: "1.9.4"', workflow)
+        self.assertIn("./scripts/upgrade-existing-install.sh ci", workflow)
+
     def test_print_from_version_strips_v_prefix(self) -> None:
         result = subprocess.run(
             [str(SCRIPT), "--print-from-version"],

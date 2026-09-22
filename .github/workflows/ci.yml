@@ -308,6 +308,37 @@ jobs:
           ANSIBLE_CONFIG: ${{ github.workspace }}/molecule/docker-ci/ansible.cfg
         run: molecule test -s docker-ci
 
+  upgrade-existing:
+    name: Upgrade existing install
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    needs: [changes, ansible-tests-ubuntu]
+    if: >-
+      always() &&
+      needs.ansible-tests-ubuntu.result == 'success' &&
+      (
+        needs.changes.outputs.code == 'true' ||
+        github.event_name == 'workflow_dispatch'
+      )
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7.0.0
+        with:
+          python-version: "3.14"
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade -r requirements.txt
+
+      - name: Install 1.9.4 then upgrade this checkout on one host
+        env:
+          UPGRADE_FROM_VERSION: "1.9.4"
+        run: ./scripts/upgrade-existing-install.sh ci
+
   ci-success:
     name: CI checks complete
     runs-on: ubuntu-24.04
@@ -319,6 +350,7 @@ jobs:
       - ansible-tests-ubuntu
       - ci-safety-checks
       - molecule-docker-smoke
+      - upgrade-existing
     if: always()
     steps:
       - name: Validate CI outcome for change set
@@ -330,6 +362,7 @@ jobs:
           ANSIBLE: ${{ needs.ansible-tests-ubuntu.result }}
           SAFETY: ${{ needs.ci-safety-checks.result }}
           MOLECULE: ${{ needs.molecule-docker-smoke.result }}
+          UPGRADE: ${{ needs.upgrade-existing.result }}
           EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
@@ -348,6 +381,10 @@ jobs:
             fi
             if [ "$MOLECULE" != "success" ] && [ "$MOLECULE" != "skipped" ]; then
               echo "Molecule docker smoke did not succeed (result=${MOLECULE})."
+              exit 1
+            fi
+            if [ "$UPGRADE" != "success" ] && [ "$UPGRADE" != "skipped" ]; then
+              echo "Upgrade existing install did not succeed (result=${UPGRADE})."
               exit 1
             fi
           else

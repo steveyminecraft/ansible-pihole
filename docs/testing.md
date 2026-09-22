@@ -73,6 +73,10 @@ Unit tests lock that sequence. The full pair is:
 UPGRADE_FROM_VERSION=1.9.4 molecule test -s upgrade
 ```
 
+GitHub Actions runs the same cutover on one host, the runner itself:
+`./scripts/upgrade-existing-install.sh ci` with `UPGRADE_FROM_VERSION=1.9.4`.
+That job skips keepalived. VIP and rolling drain stay on the Vagrant scenario.
+
 **Hosted CI smoke (no Vagrant):**
 
 ```bash

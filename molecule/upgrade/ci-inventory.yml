@@ -1,0 +1,36 @@
+---
+# GitHub-hosted runner: one local host, no keepalived. Lab password only.
+all:
+  hosts:
+    upgrade-ci:
+      ansible_connection: local
+      ansible_host: 127.0.0.1
+      ansible_python_interpreter: /usr/bin/python3
+  vars:
+    vagrant_env: true
+    pihole_ha_mode: false
+    pihole_firewall_deploy: false
+    password_lock: false
+    timezone: Etc/UTC
+    github_user_for_ssh_key: steveyminecraft
+    ansible_user: "{{ lookup('env', 'USER') }}"
+    ansible_user_home_dir: "{{ lookup('env', 'HOME') }}"
+    pihole_compose_dir: /opt/pihole
+    pihole_environment_variables:
+      TZ: Etc/UTC
+      FTLCONF_webserver_api_password: "LabOnly-Molecule-Pihole-Password!"
+      FTLCONF_dns_listeningMode: all
+      DHCP_ACTIVE: false
+      FTLCONF_dns_upstreams: "{{ pihole_unbound_upstream }}"
+    unbound_container_name: unbound
+    unbound_port: 5335
+    unbound_network_name: dns_net
+    pihole_unbound_upstream: "unbound#5335"
+    pihole_network_name: dns_net
+    docker_daemon_dns:
+      - "1.1.1.1"
+      - "8.8.8.8"
+    pihole_docker_dns:
+      - "1.1.1.1"
+      - "8.8.8.8"
+    docker_enable_ip_forward: true
