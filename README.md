@@ -475,6 +475,7 @@ molecule test -s debian
 molecule test -s debian-traefik
 molecule test -s debian-traefik-http
 molecule test -s nebula-sync-migration
+molecule test -s upgrade          # both nodes; baseline is molecule/upgrade/from-version
 molecule converge -s default    # iterate without full test sequence
 ```
 
