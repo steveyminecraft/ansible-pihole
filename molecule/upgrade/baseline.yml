@@ -1,0 +1,6 @@
+---
+# Phase 1 extra vars. Inventory still supplies the HA pair.
+# Traefik stays off so Pi-hole owns 80/443 the way a pre-cutover install did.
+traefik_enabled: false
+pihole_proxy_enabled: false
+pihole_proxy_dns_enabled: false

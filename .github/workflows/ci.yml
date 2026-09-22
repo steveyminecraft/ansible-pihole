@@ -253,6 +253,7 @@ jobs:
               "molecule/nebula-sync-migration/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/pihole-no-unbound/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/docker-ci/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/upgrade/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
           }
           for relpath, keys in required.items():
               path = Path(relpath)

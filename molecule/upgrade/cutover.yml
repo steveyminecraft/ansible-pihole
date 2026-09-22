@@ -1,0 +1,8 @@
+---
+# Phase 2 extra vars, applied by update-pihole on both nodes.
+traefik_enabled: true
+traefik_tls_enabled: false
+pihole_proxy_enabled: true
+pihole_proxy_dns_enabled: true
+traefik_domain: lab.example.com
+pihole_proxy_hostname: pihole.lab.example.com

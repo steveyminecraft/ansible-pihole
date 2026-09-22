@@ -84,6 +84,7 @@ class MoleculePlatformTests(unittest.TestCase):
             "docker",
             "nebula-sync-migration",
             "pihole-no-unbound",
+            "upgrade",
         )
         for name in scenarios:
             with self.subTest(scenario=name):

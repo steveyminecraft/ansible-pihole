@@ -63,6 +63,15 @@ Molecule scenarios under `molecule/`:
 | `docker-ci` | `molecule/docker-ci/` | Docker role on docker driver (hosted CI smoke) |
 | `pihole-no-unbound` | `molecule/pihole-no-unbound/` | Pi-hole-only DNS bootstrap + update |
 | `nebula-sync-migration` | `molecule/nebula-sync-migration/` | Legacy plaintext → secret-file credential migration |
+| `upgrade` | `molecule/upgrade/` | Previous Galaxy release on both nodes, then this checkout's update with Traefik on |
+
+`upgrade` is a local Vagrant run: bootstrap the previous release on both nodes,
+verify, then `update-pihole` with Traefik on both nodes and verify again.
+Unit tests lock that sequence. The full pair is:
+
+```bash
+UPGRADE_FROM_VERSION=1.9.4 molecule test -s upgrade
+```
 
 **Hosted CI smoke (no Vagrant):**
 

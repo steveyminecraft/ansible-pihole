@@ -1,0 +1,12 @@
+---
+- name: Upgrade both nodes onto this checkout
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Run update-pihole with Traefik enabled
+      ansible.builtin.command:
+        argv:
+          - "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/scripts/upgrade-existing-install.sh"
+          - upgrade
+      changed_when: true
