@@ -223,6 +223,55 @@ class TraefikJinjaTests(unittest.TestCase):
         ]
         self.assertIn("Host(`pihole.lab.example.com`)", rule)
         self.assertIn("Host(`192.168.121.4`)", rule)
+        self.assertNotIn("Host(`node1`)", rule)
+
+    def test_pihole_proxy_host_rule_includes_node_dns_name(self) -> None:
+        rendered = self.pihole_env.get_template("docker-compose.yml.j2").render(
+            **self._pihole_vars(
+                pihole_proxy_enabled=True,
+                inventory_hostname="pihole-01",
+                traefik_domain="coalhill.zz",
+                ansible_host="172.16.7.25",
+                pihole_proxy_hostname="pihole.coalhill.zz",
+            )
+        )
+        parsed = yaml.safe_load(rendered)
+        self.assertEqual(
+            parsed["services"]["pihole"]["labels"]["traefik.http.routers.pihole.rule"],
+            "Host(`pihole.coalhill.zz`) || Host(`172.16.7.25`) || Host(`pihole-01.coalhill.zz`)",
+        )
+
+    def test_pihole_proxy_extra_hostnames_replace_node_dns_name(self) -> None:
+        rendered = self.pihole_env.get_template("docker-compose.yml.j2").render(
+            **self._pihole_vars(
+                pihole_proxy_enabled=True,
+                inventory_hostname="pihole-01",
+                traefik_domain="coalhill.zz",
+                pihole_proxy_extra_hostnames=[],
+            )
+        )
+        parsed = yaml.safe_load(rendered)
+        rule = parsed["services"]["pihole"]["labels"]["traefik.http.routers.pihole.rule"]
+        self.assertEqual(
+            rule,
+            "Host(`pihole.lab.example.com`) || Host(`192.0.2.10`)",
+        )
+
+    def test_host_network_proxy_file_includes_node_dns_name(self) -> None:
+        rendered = self.pihole_env.get_template("dynamic-pihole-host.yml.j2").render(
+            **self._pihole_vars(
+                pihole_proxy_enabled=True,
+                inventory_hostname="pihole-02",
+                traefik_domain="coalhill.zz",
+                ansible_host="172.16.7.30",
+                pihole_proxy_hostname="pihole.coalhill.zz",
+            )
+        )
+        parsed = yaml.safe_load(rendered)
+        self.assertEqual(
+            parsed["http"]["routers"]["pihole"]["rule"],
+            "Host(`pihole.coalhill.zz`) || Host(`172.16.7.30`) || Host(`pihole-02.coalhill.zz`)",
+        )
 
     def test_static_config_omits_redirect_when_tls_disabled(self) -> None:
         rendered = self.traefik_env.get_template("traefik.yml.j2").render(
