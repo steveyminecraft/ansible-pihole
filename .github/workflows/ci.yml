@@ -334,9 +334,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade -r requirements.txt
 
-      - name: Install 1.9.4 then upgrade this checkout on one host
-        env:
-          UPGRADE_FROM_VERSION: "1.9.4"
+      - name: Install the repo baseline then upgrade this checkout on one host
         run: ./scripts/upgrade-existing-install.sh ci
 
   ci-success:

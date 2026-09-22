@@ -1,7 +1,7 @@
 ---
 # Previous Galaxy release on both Vagrant nodes, then this checkout's
 # update playbook on both nodes. Local only; unit tests lock the sequence.
-# Pin the baseline with UPGRADE_FROM_VERSION (example: 1.9.4).
+# Baseline release: molecule/upgrade/from-version. UPGRADE_FROM_VERSION overrides it.
 dependency:
   name: shell
   command: ${MOLECULE_PROJECT_DIRECTORY}/scripts/install-ansible-collections.sh

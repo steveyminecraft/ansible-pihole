@@ -7,8 +7,8 @@
 # Traefik enabled.
 #
 # --plan and --print-from-version do not contact the hosts.
-# Set UPGRADE_FROM_VERSION=1.9.4 to pin the baseline. Unset uses the latest
-# GitHub release tag.
+# The baseline release is molecule/upgrade/from-version. A pull request edits
+# that file to move it. UPGRADE_FROM_VERSION overrides the file for one run.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,6 +22,10 @@ usage() {
 
 resolve_from_version() {
   local raw="${UPGRADE_FROM_VERSION:-}"
+  local version_file="${ROOT}/molecule/upgrade/from-version"
+  if [[ -z "${raw}" && -f "${version_file}" ]]; then
+    raw="$(tr -d '[:space:]' < "${version_file}")"
+  fi
   if [[ -z "${raw}" ]]; then
     raw="$(gh release view --repo steveyminecraft/ansible-pihole --json tagName --jq .tagName)"
   fi

@@ -70,12 +70,15 @@ verify, then `update-pihole` with Traefik on both nodes and verify again.
 Unit tests lock that sequence. The full pair is:
 
 ```bash
-UPGRADE_FROM_VERSION=1.9.4 molecule test -s upgrade
+molecule test -s upgrade
 ```
 
+The starting release is `molecule/upgrade/from-version`. Change that file in a
+pull request to move the baseline. `UPGRADE_FROM_VERSION` overrides it for one run.
+
 GitHub Actions runs the same cutover on one host, the runner itself:
-`./scripts/upgrade-existing-install.sh ci` with `UPGRADE_FROM_VERSION=1.9.4`.
-That job skips keepalived. VIP and rolling drain stay on the Vagrant scenario.
+`./scripts/upgrade-existing-install.sh ci`. That job reads `from-version` and
+skips keepalived. VIP and rolling drain stay on the Vagrant scenario.
 
 **Hosted CI smoke (no Vagrant):**
 

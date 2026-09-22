@@ -95,8 +95,23 @@ class UpgradeMoleculeScenarioTests(unittest.TestCase):
         self.assertEqual(hosts["upgrade-ci"]["ansible_connection"], "local")
         self.assertFalse(inventory["all"]["vars"]["pihole_ha_mode"])
         self.assertIn("upgrade-existing:", workflow)
-        self.assertIn('UPGRADE_FROM_VERSION: "1.9.4"', workflow)
+        self.assertNotIn('UPGRADE_FROM_VERSION:', workflow)
         self.assertIn("./scripts/upgrade-existing-install.sh ci", workflow)
+        version = (SCENARIO / "from-version").read_text(encoding="utf-8").strip()
+        self.assertRegex(version, r"^[0-9]+\.[0-9]+\.[0-9]+$")
+
+    def test_from_version_file_is_the_default_baseline(self) -> None:
+        expected = (SCENARIO / "from-version").read_text(encoding="utf-8").strip()
+        env = dict(os.environ)
+        env.pop("UPGRADE_FROM_VERSION", None)
+        result = subprocess.run(
+            [str(SCRIPT), "--print-from-version"],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(result.stdout.strip(), expected)
 
     def test_print_from_version_strips_v_prefix(self) -> None:
         result = subprocess.run(
