@@ -11,6 +11,10 @@ exclude_paths:
   - collections/
   - inventory/inventory.yaml
   - playbooks/display.yaml
+  # Extra-vars and the runner inventory are not playbooks.
+  - molecule/upgrade/baseline.yml
+  - molecule/upgrade/cutover.yml
+  - molecule/upgrade/ci-inventory.yml
 
 skip_list:
   # Too noisy for mature roles
