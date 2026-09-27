@@ -13,7 +13,7 @@
       {{ pihole_verify_qname | default(pihole_unbound_verify_qname | default('cloudflare.com')) }}
   pre_tasks:
     - name: Collect peer DNS addresses before drain
-      tags: [drain, ha]
+      tags: [drain, ha, keepalived]
       ansible.builtin.set_fact:
         pihole_update_peer_dns_hosts: >-
           {{
@@ -25,7 +25,7 @@
           }}
 
     - name: Probe peer DNS listeners before drain
-      tags: [drain, ha]
+      tags: [drain, ha, keepalived]
       ansible.builtin.wait_for:
         host: "{{ item }}"
         port: 53
@@ -40,7 +40,7 @@
         - pihole_update_peer_dns_hosts | length > 0
 
     - name: Refuse to drain the last healthy DNS node
-      tags: [drain, ha]
+      tags: [drain, ha, keepalived]
       ansible.builtin.assert:
         that:
           - pihole_update_peer_dns.results | rejectattr('failed') | list | length > 0
@@ -71,7 +71,7 @@
       when: not ansible_check_mode
   post_tasks:
     - name: Validate node DNS before resuming keepalived
-      tags: [pihole, dns, ha]
+      tags: [pihole, dns, ha, keepalived]
       when: not ansible_check_mode
       block:
         - name: Wait for local Pi-hole DNS listener
@@ -121,10 +121,6 @@
              | list | length) == 0
           when: pihole_unbound_present | default(false) | bool
 
-        - name: Resume keepalived after local DNS validation
-          ansible.builtin.include_role:
-            name: steveyminecraft.pihole.start_keepalived
-
       rescue:
         - name: Stop update because node failed DNS validation while drained
           ansible.builtin.fail:
@@ -132,6 +128,34 @@
               {{ inventory_hostname }} failed post-update DNS validation.
               Keepalived has not been resumed on this node. Repair the node
               and verify DNS before returning it to VIP service.
+
+    # Runs in check mode too so --check --diff shows keepalived drift.
+    - name: Render keepalived after local DNS validation
+      tags: [keepalived, ha]
+      when: pihole_ha_mode | default(false) | bool
+      block:
+        - name: Render and validate keepalived configuration
+          ansible.builtin.import_role:
+            name: steveyminecraft.pihole.keepalived
+            tasks_from: render.yml
+
+      rescue:
+        - name: Stop update because keepalived configuration failed to render
+          ansible.builtin.fail:
+            msg: >-
+              {{ inventory_hostname }} could not render or validate
+              keepalived.conf. The previous config is unchanged and
+              keepalived has not been resumed on this node.
+
+    - name: Restart keepalived only if its rendered config changed
+      tags: [keepalived, ha]
+      ansible.builtin.meta: flush_handlers
+
+    - name: Resume keepalived after local DNS validation
+      tags: [keepalived, ha]
+      when: not ansible_check_mode
+      ansible.builtin.import_role:
+        name: steveyminecraft.pihole.start_keepalived
 
 - name: Verify HA DNS after update
   hosts: all
@@ -151,6 +175,7 @@
             }}
       register: pihole_update_vip_dns
       changed_when: false
+      check_mode: false
       retries: 30
       delay: 2
       until: >
@@ -161,4 +186,4 @@
       when:
         - pihole_ha_mode | default(false) | bool
         - pihole_vip_ipv4 is defined
-      tags: [pihole, dns, ha]
+      tags: [pihole, dns, ha, keepalived]
