@@ -1,0 +1,98 @@
+---
+- name: Verify production keepalived variant and VIP failover
+  hosts: all
+  become: true
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    vip4: "{{ pihole_vip_ipv4 | split('/') | first }}"
+    vip6: "{{ pihole_vip_ipv6 | split('/') | first }}"
+    node1: "{{ (groups['all'] | sort)[0] }}"
+    node2: "{{ (groups['all'] | sort)[1] }}"
+    peer_ip: "{{ hostvars[(groups['all'] | difference([inventory_hostname]))[0]]['ansible_host'] }}"
+  tasks:
+    - name: Validate rendered keepalived.conf
+      ansible.builtin.command: keepalived -t -f /etc/keepalived/keepalived.conf
+      changed_when: false
+
+    - name: Read rendered keepalived.conf
+      ansible.builtin.slurp:
+        src: /etc/keepalived/keepalived.conf
+      register: rendered_conf
+
+    - name: Assert production branch with unicast IPv4 VRRP
+      vars:
+        conf: "{{ rendered_conf.content | b64decode }}"
+      ansible.builtin.assert:
+        that:
+          - "'vrrp_sync_group PIHOLE' in conf"
+          - "'vrrp_instance PIHOLE-IPv6' in conf"
+          - "'garp_master_delay' not in conf"
+          - conf is search('unicast_src_ip ' ~ ansible_host ~ '\\n')
+          - conf is search('unicast_peer \\{\\s*' ~ (peer_ip | regex_escape) ~ '\\s*\\}')
+          - conf | regex_findall('track_script') | length == 1
+
+    - name: Healthy pair holds both VIPs on the MASTER
+      ansible.builtin.include_tasks: tasks/vip_holder.yml
+      vars:
+        vip_expected_holder: "{{ node1 }}"
+
+    - name: Confirm VRRP adverts are unicast to the peer
+      ansible.builtin.command: >-
+        timeout 10 tcpdump -ni eth0 -c 3 -Q in 'ip proto 112 and not dst host 224.0.0.18'
+      register: vrrp_unicast
+      changed_when: false
+      when: inventory_hostname == node2
+
+    # --- Failover 1: health check fails on the MASTER ---
+    # Weight -50 drops the MASTER from 110 to 60; the BACKUP (100) must take
+    # the VIPs within a few adverts, not after a preempt_delay.
+    - name: Fail the health check on the MASTER
+      ansible.builtin.file:
+        path: /run/ha-check-fail
+        state: touch
+        mode: "0644"
+      when: inventory_hostname == node1
+
+    - name: VIPs move to the BACKUP when the MASTER check fails
+      ansible.builtin.include_tasks: tasks/vip_holder.yml
+      vars:
+        vip_expected_holder: "{{ node2 }}"
+        vip_holder_retries: 8
+
+    - name: Restore the health check on the MASTER
+      ansible.builtin.file:
+        path: /run/ha-check-fail
+        state: absent
+      when: inventory_hostname == node1
+
+    - name: VIPs return to the MASTER after preempt_delay
+      ansible.builtin.include_tasks: tasks/vip_holder.yml
+      vars:
+        vip_expected_holder: "{{ node1 }}"
+        vip_holder_retries: 45
+
+    # --- Failover 2: keepalived stops on the MASTER ---
+    - name: Stop keepalived on the MASTER
+      ansible.builtin.service:
+        name: keepalived
+        state: stopped
+      when: inventory_hostname == node1
+
+    - name: VIPs move to the BACKUP when MASTER keepalived stops
+      ansible.builtin.include_tasks: tasks/vip_holder.yml
+      vars:
+        vip_expected_holder: "{{ node2 }}"
+        vip_holder_retries: 8
+
+    - name: Start keepalived on the MASTER
+      ansible.builtin.service:
+        name: keepalived
+        state: started
+      when: inventory_hostname == node1
+
+    - name: VIPs return to the MASTER after restart
+      ansible.builtin.include_tasks: tasks/vip_holder.yml
+      vars:
+        vip_expected_holder: "{{ node1 }}"
+        vip_holder_retries: 45

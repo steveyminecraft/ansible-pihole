@@ -76,67 +76,8 @@
     enabled: true
   when: keepalived_defer_service_restart | default(false) | bool
 
-- name: Install check_pihole.sh health probe
-  ansible.builtin.template:
-    dest: /etc/keepalived/check_pihole.sh
-    src: check_pihole.sh.j2
-    mode: "0755"
-
-# Finds the IP_ADDRS of the group and removes the ansible_host ip's from it's peer list
-- name: Find Local IP Addresses
-  ansible.builtin.set_fact:
-    keepalived_local_ips: "{{ ansible_facts['all_ipv4_addresses'] + ansible_facts['all_ipv6_addresses'] }}"
-
-- name: Create a list of peer IPs excluding local IPs
-  ansible.builtin.set_fact:
-    keepalived_peer_list: >-
-      {{ groups['all']
-         | map('extract', hostvars, 'ansible_host')
-         | difference(keepalived_local_ips)
-         | list }}
-
-# Step 3: Debug the keepalived_peer_list
-- name: Debug keepalived_peer_list
-  ansible.builtin.debug:
-    msg: "Peer IPs with /24 for host {{ inventory_hostname }}: {{ keepalived_peer_list }}"
-
-# Vagrant: default route is often the NAT NIC; VRRP must bind to private_network (names vary: eth1, ens6, enp0s8, …).
-- name: Resolve keepalived VRRP interface from ansible_host (Rocky / Ubuntu Vagrant)
-  when:
-    - vagrant_env | default(false) | bool
-    - ansible_facts['os_family'] in ['RedHat', 'Debian']
-  block:
-    - name: Find global-scope interface carrying inventory ansible_host
-      ansible.builtin.shell: |
-        set -euo pipefail
-        TARGET="{{ ansible_host | trim }}"
-        while read -r _num dev fam addr _rest; do
-          [ "${fam:-}" = "inet" ] || continue
-          iponly="${addr%%/*}"
-          [ "$iponly" = "$TARGET" ] || continue
-          printf '%s\n' "$dev"
-          exit 0
-        done < <(ip -o -4 addr show scope global)
-        printf 'keepalived: no IPv4 global scope interface matched ansible_host=%s\n' "$TARGET" >&2
-        exit 1
-      args:
-        executable: /bin/bash
-      register: _keepalived_iface_from_host
-      changed_when: false
-
-    - name: Set keepalived VRRP interface and unicast source (private lab NIC)
-      ansible.builtin.set_fact:
-        keepalived_vrrp_interface: "{{ _keepalived_iface_from_host.stdout | trim }}"
-        keepalived_vrrp_src_address: "{{ ansible_host | trim }}"
-
-- name: Configure keepalived
-  ansible.builtin.template:
-    dest: /etc/keepalived/keepalived.conf
-    src: keepalived.j2
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Restart keepalived service
+- name: Render keepalived configuration and health check
+  ansible.builtin.import_tasks: render.yml
 
 ### Add in firewall rules for vrrp protocol (proto 112; unicast + multicast)
 - name: Add VRRP protocol to firewall

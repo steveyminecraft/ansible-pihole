@@ -254,6 +254,7 @@ jobs:
               "molecule/pihole-no-unbound/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/docker-ci/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/upgrade/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/keepalived-production/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
           }
           for relpath, keys in required.items():
               path = Path(relpath)
@@ -307,6 +308,12 @@ jobs:
           MOLECULE_PROJECT_DIRECTORY: ${{ github.workspace }}
           ANSIBLE_CONFIG: ${{ github.workspace }}/molecule/docker-ci/ansible.cfg
         run: molecule test -s docker-ci
+
+      - name: Run molecule/keepalived-production (production VRRP failover)
+        env:
+          MOLECULE_PROJECT_DIRECTORY: ${{ github.workspace }}
+          ANSIBLE_CONFIG: ${{ github.workspace }}/molecule/docker-ci/ansible.cfg
+        run: molecule test -s keepalived-production
 
   upgrade-existing:
     name: Upgrade existing install

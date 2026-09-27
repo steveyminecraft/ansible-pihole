@@ -1,0 +1,101 @@
+---
+# Renders keepalived.conf and its health check without touching packages,
+# sysctls, SELinux or firewalld. Shared by main.yml and update-pihole.yaml.
+- name: Install dig for the keepalived health check
+  ansible.builtin.package:
+    name: "{{ 'bind-utils' if ansible_facts['os_family'] == 'RedHat' else 'dnsutils' }}"
+    state: present
+
+- name: Ensure docker group exists for the keepalived script user
+  ansible.builtin.group:
+    name: docker
+    state: present
+    system: true
+
+- name: Add keepalived script user to the docker group
+  ansible.builtin.user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: true
+
+- name: Install check_pihole.sh health probe
+  ansible.builtin.template:
+    dest: /etc/keepalived/check_pihole.sh
+    src: check_pihole.sh.j2
+    mode: "0755"
+
+# Finds the IP_ADDRS of the group and removes the ansible_host ip's from it's peer list
+- name: Find Local IP Addresses
+  ansible.builtin.set_fact:
+    keepalived_local_ips: "{{ ansible_facts['all_ipv4_addresses'] + ansible_facts['all_ipv6_addresses'] }}"
+
+- name: Create a list of peer IPs excluding local IPs
+  ansible.builtin.set_fact:
+    keepalived_peer_list: >-
+      {{ groups['all']
+         | map('extract', hostvars, 'ansible_host')
+         | difference(keepalived_local_ips)
+         | list }}
+
+- name: Debug keepalived_peer_list
+  ansible.builtin.debug:
+    msg: "Peer IPs with /24 for host {{ inventory_hostname }}: {{ keepalived_peer_list }}"
+
+# Vagrant: default route is often the NAT NIC; VRRP must bind to private_network (names vary: eth1, ens6, enp0s8, …).
+- name: Resolve keepalived VRRP interface from ansible_host (Rocky / Ubuntu Vagrant)
+  when:
+    - vagrant_env | default(false) | bool
+    - ansible_facts['os_family'] in ['RedHat', 'Debian']
+  block:
+    - name: Find global-scope interface carrying inventory ansible_host
+      ansible.builtin.shell: |
+        set -euo pipefail
+        TARGET="{{ ansible_host | trim }}"
+        while read -r _num dev fam addr _rest; do
+          [ "${fam:-}" = "inet" ] || continue
+          iponly="${addr%%/*}"
+          [ "$iponly" = "$TARGET" ] || continue
+          printf '%s\n' "$dev"
+          exit 0
+        done < <(ip -o -4 addr show scope global)
+        printf 'keepalived: no IPv4 global scope interface matched ansible_host=%s\n' "$TARGET" >&2
+        exit 1
+      args:
+        executable: /bin/bash
+      register: _keepalived_iface_from_host
+      changed_when: false
+
+    - name: Set keepalived VRRP interface and unicast source (private lab NIC)
+      ansible.builtin.set_fact:
+        keepalived_vrrp_interface: "{{ _keepalived_iface_from_host.stdout | trim }}"
+        keepalived_vrrp_src_address: "{{ ansible_host | trim }}"
+
+- name: Assert the track_script weight can move the VIP off a failing MASTER
+  vars:
+    _keepalived_priorities: >-
+      {{ groups['all'] | map('extract', hostvars, 'priority') | select('defined') | map('int') | list }}
+  ansible.builtin.assert:
+    that:
+      - (_keepalived_priorities | max) - (_keepalived_priorities | min)
+        < (keepalived_track_script_weight | int | abs)
+    fail_msg: >-
+      keepalived priorities {{ _keepalived_priorities }} differ by at least
+      {{ keepalived_track_script_weight | int | abs }} (track_script weight
+      {{ keepalived_track_script_weight }}). A MASTER whose health check fails
+      would keep the VIP. Narrow the priority gap or raise the weight.
+    quiet: true
+  when:
+    - (keepalived_track_script_weight | int) < 0
+    - _keepalived_priorities | length > 1
+
+- name: Configure keepalived
+  ansible.builtin.template:
+    dest: /etc/keepalived/keepalived.conf
+    src: keepalived.j2
+    owner: root
+    group: root
+    mode: "0644"
+    # keepalived -t exits 0 when the file is missing; validate always passes a real temp file.
+    validate: keepalived -t -f %s
+  register: keepalived_render_conf
+  notify: Restart keepalived service

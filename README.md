@@ -381,6 +381,23 @@ Container checks use `sg docker`
 so they work under keepalived's script execution context. This prevents another
 local DNS listener from masking a stopped Pi-hole container during HA failover.
 
+In HA mode `update-pihole.yaml` also re-renders keepalived after the local DNS
+and Unbound gates pass: it ensures `dig` and the script user's `docker` group
+membership, installs `check_pihole.sh`, renders `keepalived.conf` through
+`keepalived -t`, and restarts keepalived only when `keepalived.conf` changed.
+It does not touch keepalived packages, sysctls, SELinux or firewalld. To bring
+only keepalived into line, one node at a time:
+
+```bash
+ansible-playbook -i inventory/rnet.yml playbooks/update-pihole.yaml --tags keepalived --check --diff
+ansible-playbook -i inventory/rnet.yml playbooks/update-pihole.yaml --tags keepalived --limit <node>
+```
+
+`--tags keepalived` keeps the peer-DNS guard, local DNS gates and the final VIP
+check, but skips the drain, OS updates and container roles. The render asserts
+that the priority gap between nodes is smaller than the track_script weight
+(default −50), so a MASTER whose check fails drops below its peer.
+
 Pi-hole container recreation is driven by Compose/configuration changes or an
 explicit maintenance override:
 
@@ -465,6 +482,7 @@ instances, lab VMs, or Raspberry Pi hardware.
 | `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
 | `pihole-no-unbound` | [`molecule/pihole-no-unbound/`](molecule/pihole-no-unbound/) | Runs bootstrap and update workflows with Pi-hole-only DNS |
 | `upgrade` | [`molecule/upgrade/`](molecule/upgrade/) | Previous Galaxy release (`molecule/upgrade/from-version`) on both Vagrant nodes, then `update-pihole` with Traefik enabled |
+| `keepalived-production` | [`molecule/keepalived-production/`](molecule/keepalived-production/) | Docker driver, two Rocky 9 containers (runs in GitHub CI). Production keepalived branch (`vagrant_env: false`: sync group, IPv6 instance, unicast IPv4) rendered by the same `render.yml` as `update-pihole`; asserts unicast adverts and VIP failover/failback on a failed health check and on a stopped MASTER |
 
 Examples:
 

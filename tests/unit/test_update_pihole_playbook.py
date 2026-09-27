@@ -147,6 +147,57 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
         roles = [role["role"] for role in first_play["roles"]]
         self.assertEqual(roles[0], "steveyminecraft.pihole.stop_keepalived")
 
+    def test_update_pihole_renders_keepalived_after_dns_gates(self) -> None:
+        post_tasks = load_yaml(UPDATE_PIHOLE)[0]["post_tasks"]
+        names = [task["name"] for task in post_tasks]
+        dns = names.index("Validate node DNS before resuming keepalived")
+        render = names.index("Render keepalived after local DNS validation")
+        flush = names.index("Restart keepalived only if its rendered config changed")
+        resume = names.index("Resume keepalived after local DNS validation")
+        self.assertLess(dns, render)
+        self.assertLess(render, flush)
+        self.assertLess(flush, resume)
+
+        render_task = post_tasks[render]
+        self.assertIn("pihole_ha_mode", str(render_task.get("when")))
+        self.assertIn("rescue", render_task)
+        imported = render_task["block"][0]["ansible.builtin.import_role"]
+        self.assertEqual(imported["name"], "steveyminecraft.pihole.keepalived")
+        self.assertEqual(imported["tasks_from"], "render.yml")
+        self.assertEqual(post_tasks[flush]["ansible.builtin.meta"], "flush_handlers")
+        self.assertEqual(post_tasks[resume].get("when"), "not ansible_check_mode")
+
+        dns_block = yaml.dump(post_tasks[dns]["block"])
+        self.assertNotIn("start_keepalived", dns_block)
+
+    def test_update_pihole_keepalived_tag_keeps_guards(self) -> None:
+        plays = load_yaml(UPDATE_PIHOLE)
+        first_play = plays[0]
+        for task in first_play["pre_tasks"]:
+            with self.subTest(task=task["name"]):
+                self.assertIn("keepalived", task["tags"])
+        for task in first_play["post_tasks"]:
+            with self.subTest(task=task["name"]):
+                self.assertIn("keepalived", task["tags"])
+        vip_task = plays[1]["tasks"][0]
+        self.assertIn("keepalived", vip_task["tags"])
+        self.assertIs(vip_task.get("check_mode"), False)
+
+    def test_keepalived_render_validates_and_handles_prerequisites(self) -> None:
+        render = load_yaml(ROOT / "roles" / "keepalived" / "tasks" / "render.yml")
+        by_name = {task["name"]: task for task in render}
+        conf = by_name["Configure keepalived"]["ansible.builtin.template"]
+        self.assertEqual(conf["validate"], "keepalived -t -f %s")
+        self.assertIn("Install dig for the keepalived health check", by_name)
+        user = by_name["Add keepalived script user to the docker group"]["ansible.builtin.user"]
+        self.assertEqual(user["groups"], "docker")
+        self.assertTrue(user["append"])
+        gap = by_name["Assert the track_script weight can move the VIP off a failing MASTER"]
+        self.assertIn("keepalived_track_script_weight", yaml.dump(gap["ansible.builtin.assert"]))
+        blob = yaml.dump(render)
+        self.assertNotIn("firewalld", blob)
+        self.assertNotIn("sysctl", blob)
+
     def test_bootstrap_does_not_require_peer_dns_before_first_install(self) -> None:
         bootstrap = load_yaml(ROOT / "playbooks" / "bootstrap-pihole.yaml")[0]
         blob = yaml.dump(bootstrap.get("pre_tasks") or [])

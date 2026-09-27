@@ -42,7 +42,13 @@ vrrp_instance PIHOLE-IPv4 {
     virtual_router_id {{ keepalived_virtual_router_id | default(1) }}
     priority {{ priority }}
     advert_int 1
-    preempt_delay {{ 5 if (vagrant_env | default(false) | bool) else 30 }}
+{# keepalived ignores preempt_delay with initial state MASTER and keepalived -t
+   exits non-zero on the warning. In production a BACKUP preempt_delay would
+   only delay taking the VIP from a MASTER whose health check failed (weight
+   drops it below the BACKUP); failback damping comes from the IPv6 instance. #}
+{% if keepalive_role != 'MASTER' and (vagrant_env | default(false) | bool) %}
+    preempt_delay 5
+{% endif %}
     {# Unicast VRRP — required on libvirt/KVM NAT bridges where multicast is unreliable. #}
     unicast_src_ip {{ keepalived_vrrp_src_address | default(ansible_facts['default_ipv4']['address']) }}
     unicast_peer {
@@ -72,11 +78,14 @@ vrrp_instance PIHOLE-IPv6 {
     virtual_router_id {{ keepalived_virtual_router_id | default(1) }}
     priority {{ priority }}
     advert_int 1
+{# No initial state, so this delay holds on the MASTER node and, through the
+   sync group, damps failback of both VIPs after it recovers. #}
+{% if keepalive_role == 'MASTER' %}
     preempt_delay 30
-
-    track_script {
-        check_pihole_dns
-    }
+{% endif %}
+    {#- No instance track_script: the PIHOLE sync group tracks check_pihole_dns
+       for both instances, and keepalived rejects weighted instance tracking
+       inside a sync group (keepalived -t exits non-zero). #}
 
     virtual_ipaddress {
         {{ pihole_vip_ipv6 }}
