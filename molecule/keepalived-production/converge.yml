@@ -1,0 +1,25 @@
+---
+- name: Converge — render production keepalived as update-pihole.yaml does
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Render and validate keepalived configuration
+      ansible.builtin.import_role:
+        name: steveyminecraft.pihole.keepalived
+        tasks_from: render.yml
+
+    - name: Replace the DNS health check with a flag-file stub
+      ansible.builtin.copy:
+        dest: /etc/keepalived/check_pihole.sh
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          # Molecule stub: healthy unless /run/ha-check-fail exists.
+          [ ! -e /run/ha-check-fail ]
+
+    - name: Start keepalived
+      ansible.builtin.service:
+        name: keepalived
+        state: started
+        enabled: true

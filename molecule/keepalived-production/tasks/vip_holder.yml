@@ -1,0 +1,12 @@
+---
+# Every host polls until it holds both VIPs if and only if it is vip_expected_holder,
+# so success means exactly one node owns the IPv4 and IPv6 VIPs.
+- name: Wait for VIPs to settle on {{ vip_expected_holder }}
+  ansible.builtin.command: ip -o addr show
+  register: vip_holder_addrs
+  changed_when: false
+  retries: "{{ vip_holder_retries | default(30) }}"
+  delay: 2
+  until: >-
+    ((' ' ~ vip4 ~ '/') in vip_holder_addrs.stdout) == (inventory_hostname == vip_expected_holder)
+    and ((' ' ~ vip6 ~ '/') in vip_holder_addrs.stdout) == (inventory_hostname == vip_expected_holder)
