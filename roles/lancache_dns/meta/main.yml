@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  namespace: steveyminecraft
+  role_name: lancache_dns
+  author: steveyminecraft
+  description: Isolated Steam LanCache dnsmasq for existing Pi-hole v6 hosts
+  license: MIT
+  min_ansible_version: "2.20"
+  platforms:
+    - name: Ubuntu
+      versions: ["all"]
+    - name: Debian
+      versions: ["all"]
+    - name: EL
+      versions: ["all"]
+  galaxy_tags:
+    - pihole
+    - dns
+    - lancache
+    - steam
+
+dependencies: []

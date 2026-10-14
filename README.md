@@ -284,6 +284,18 @@ That writes `etc/dnsmasq.d/99-proxy-dns.conf` at mode `0644` in a `0755`
 directory. Do not tighten those modes: FTL 2026.09.0+ runs as UID 1000 and will
 not bind port 53 if it cannot read `/etc/dnsmasq.d`.
 
+## LanCache DNS (Steam, optional)
+
+Isolated `etc/dnsmasq.d/lancache.conf` for Steam CDN names only. The content
+cache lives on prod-01 (`172.16.7.51`), not on the Pi-hole root disk. There is
+**no** `lancache-dns` container. Default playbook command is `check` (generate
+and validate). Live apply, rollback, and fail-open need
+`lancache_dns_live_apply=true` and still only reload FTL — they do not
+recreate Pi-hole. Fail-open removes **only** `lancache.conf`.
+
+Steam HTTPS downloads often miss the HTTP cache. See
+[`docs/lancache-dns.md`](docs/lancache-dns.md).
+
 ### Adding another application
 
 1. Attach the container to the shared `proxy` network (default `traefik_network_name`).

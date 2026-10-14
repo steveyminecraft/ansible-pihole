@@ -1,0 +1,14 @@
+---
+- name: Reload Pi-hole FTL DNS after LanCache file change
+  ansible.builtin.command:
+    argv:
+      - docker
+      - exec
+      - "{{ lancache_dns_container_name }}"
+      - pihole
+      - restartdns
+  register: lancache_dns_reload_cmd
+  changed_when: true
+  when:
+    - lancache_dns_reload | bool
+    - not ansible_check_mode

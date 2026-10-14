@@ -1,0 +1,32 @@
+---
+- name: Normalize LanCache DNS command
+  ansible.builtin.set_fact:
+    lancache_dns_command: "{{ lancache_dns_command | string | trim }}"
+
+- name: Accept supported LanCache DNS commands
+  ansible.builtin.assert:
+    that:
+      - lancache_dns_command in ['check', 'generate', 'validate', 'apply', 'rollback', 'fail_open', 'status']
+    fail_msg: >-
+      lancache_dns_command must be check, generate, validate, apply, rollback,
+      fail_open, or status.
+
+- name: Generate and validate isolated lancache.conf
+  ansible.builtin.include_tasks: generate.yml
+  when: lancache_dns_command in ['check', 'generate', 'validate', 'apply']
+
+- name: Apply isolated lancache.conf
+  ansible.builtin.include_tasks: apply.yml
+  when: lancache_dns_command == 'apply'
+
+- name: Rollback isolated lancache.conf
+  ansible.builtin.include_tasks: rollback.yml
+  when: lancache_dns_command == 'rollback'
+
+- name: Fail-open by removing only LanCache overrides
+  ansible.builtin.include_tasks: fail_open.yml
+  when: lancache_dns_command == 'fail_open'
+
+- name: Report LanCache DNS status
+  ansible.builtin.include_tasks: status.yml
+  when: lancache_dns_command in ['check', 'status']

@@ -1,0 +1,16 @@
+---
+# Isolated Steam LanCache DNS for existing Pi-hole hosts.
+# Default command=check generates and validates only. Live apply, rollback,
+# and fail-open require -e lancache_dns_live_apply=true. Never recreates
+# Pi-hole/Traefik/Unbound containers. Does not change OpenWrt DHCP DNS.
+- name: LanCache DNS (isolated lancache.conf)
+  hosts: all
+  become: true
+  serial: 1
+  any_errors_fatal: true
+  vars:
+    lancache_dns_command: check
+    lancache_dns_live_apply: false
+  roles:
+    - role: steveyminecraft.pihole.lancache_dns
+      tags: [lancache, dns]

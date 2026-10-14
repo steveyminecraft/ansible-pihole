@@ -1,0 +1,20 @@
+---
+- name: Refuse live fail-open unless explicitly enabled
+  ansible.builtin.assert:
+    that:
+      - lancache_dns_live_apply | bool
+    fail_msg: Fail-open removes lancache.conf on Pi-hole. Pass -e lancache_dns_live_apply=true.
+
+- name: Skip local connection hosts during fail-open
+  ansible.builtin.meta: end_host
+  when: ansible_connection | default('ssh') == 'local'
+
+- name: Remove only the isolated LanCache override file
+  ansible.builtin.file:
+    path: "{{ lancache_dns_remote_path }}"
+    state: absent
+  register: lancache_dns_fail_open
+
+- name: Reload FTL after fail-open
+  ansible.builtin.include_tasks: reload.yml
+  when: lancache_dns_fail_open.changed | default(false) | bool

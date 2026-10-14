@@ -1,0 +1,21 @@
+---
+# Isolated Steam LanCache DNS. Default is generate/validate only.
+# Live apply requires lancache_dns_live_apply=true and does not recreate
+# Pi-hole containers. Fail-open removes only lancache.conf.
+lancache_dns_command: check
+lancache_dns_live_apply: false
+lancache_dns_cache_ipv4: "172.16.7.51"
+lancache_dns_enabled_services:
+  - steam
+lancache_dns_filename: lancache.conf
+lancache_dns_remote_dir: "{{ pihole_dir_loc | default('/opt/pihole') }}/etc/dnsmasq.d"
+lancache_dns_remote_path: "{{ lancache_dns_remote_dir }}/{{ lancache_dns_filename }}"
+lancache_dns_snapshot_dir: "{{ lancache_dns_remote_dir }}/.lancache-snapshots"
+lancache_dns_container_name: "{{ pihole_container_name | default('pihole') }}"
+lancache_dns_reload: true
+lancache_dns_verify: false
+lancache_dns_verify_qname: lancache.steamcontent.com
+lancache_dns_control_qname: "{{ pihole_verify_qname | default('cloudflare.com') }}"
+lancache_dns_controller_root: "{{ playbook_dir }}/.."
+lancache_dns_generator: "{{ lancache_dns_controller_root }}/scripts/lancache_dns.py"
+lancache_dns_committed_conf: "{{ lancache_dns_controller_root }}/roles/lancache_dns/files/generated/lancache.conf"

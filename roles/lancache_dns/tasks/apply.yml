@@ -1,0 +1,67 @@
+---
+- name: Refuse live DNS apply unless explicitly enabled
+  ansible.builtin.assert:
+    that:
+      - lancache_dns_live_apply | bool
+    fail_msg: >-
+      Apply is disabled. Pass -e lancache_dns_live_apply=true only after the
+      cache host is up on {{ lancache_dns_cache_ipv4 }} and Richard has approved
+      a live DNS change. This role never recreates Pi-hole containers.
+
+- name: Skip local connection hosts during apply
+  ansible.builtin.meta: end_host
+  when: ansible_connection | default('ssh') == 'local'
+
+- name: Ensure Pi-hole dnsmasq.d exists for the isolated file
+  ansible.builtin.file:
+    path: "{{ lancache_dns_remote_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure LanCache snapshot directory exists
+  ansible.builtin.file:
+    path: "{{ lancache_dns_snapshot_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Stat current isolated lancache.conf
+  ansible.builtin.stat:
+    path: "{{ lancache_dns_remote_path }}"
+  register: lancache_dns_current
+
+- name: Snapshot current lancache.conf before replace
+  ansible.builtin.copy:
+    src: "{{ lancache_dns_remote_path }}"
+    dest: "{{ lancache_dns_snapshot_dir }}/{{ now(utc=true, fmt='%Y%m%dT%H%M%S') }}-lancache.conf"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  when: lancache_dns_current.stat.exists | default(false)
+
+- name: Keep last-known-good copy
+  ansible.builtin.copy:
+    src: "{{ lancache_dns_remote_path }}"
+    dest: "{{ lancache_dns_snapshot_dir }}/last-known-good.conf"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  when: lancache_dns_current.stat.exists | default(false)
+
+- name: Install isolated lancache.conf
+  ansible.builtin.copy:
+    dest: "{{ lancache_dns_remote_path }}"
+    content: "{{ lancache_dns_generated_text }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: lancache_dns_install
+
+- name: Reload FTL after installing lancache.conf
+  ansible.builtin.include_tasks: reload.yml
+  when: lancache_dns_install.changed | default(false) | bool

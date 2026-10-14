@@ -1,0 +1,17 @@
+---
+- name: Skip local connection hosts during status
+  ansible.builtin.meta: end_host
+  when: ansible_connection | default('ssh') == 'local'
+
+- name: Stat isolated lancache.conf on the node
+  ansible.builtin.stat:
+    path: "{{ lancache_dns_remote_path }}"
+    checksum_algorithm: sha256
+  register: lancache_dns_status
+
+- name: Show whether isolated lancache.conf is present
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }} lancache.conf
+      exists={{ lancache_dns_status.stat.exists | default(false) }}
+      sha256={{ lancache_dns_status.stat.checksum | default('absent') }}

@@ -1,0 +1,35 @@
+---
+- name: Refuse live DNS rollback unless explicitly enabled
+  ansible.builtin.assert:
+    that:
+      - lancache_dns_live_apply | bool
+    fail_msg: Rollback writes Pi-hole dnsmasq.d. Pass -e lancache_dns_live_apply=true.
+
+- name: Skip local connection hosts during rollback
+  ansible.builtin.meta: end_host
+  when: ansible_connection | default('ssh') == 'local'
+
+- name: Stat last-known-good LanCache snapshot
+  ansible.builtin.stat:
+    path: "{{ lancache_dns_snapshot_dir }}/last-known-good.conf"
+  register: lancache_dns_lkg
+
+- name: Require a last-known-good snapshot
+  ansible.builtin.assert:
+    that:
+      - lancache_dns_lkg.stat.exists | default(false)
+    fail_msg: No last-known-good lancache.conf snapshot on this node.
+
+- name: Restore last-known-good lancache.conf
+  ansible.builtin.copy:
+    src: "{{ lancache_dns_snapshot_dir }}/last-known-good.conf"
+    dest: "{{ lancache_dns_remote_path }}"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0644"
+  register: lancache_dns_rollback_copy
+
+- name: Reload FTL after LanCache rollback
+  ansible.builtin.include_tasks: reload.yml
+  when: lancache_dns_rollback_copy.changed | default(false) | bool

@@ -1,0 +1,95 @@
+---
+- name: Create controller work directory for LanCache DNS
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: lancache-dns-
+  delegate_to: localhost
+  become: false
+  run_once: true
+  check_mode: false
+  register: lancache_dns_work
+
+- name: Remember LanCache DNS work directory
+  ansible.builtin.set_fact:
+    lancache_dns_work_dir: "{{ lancache_dns_work.path }}"
+  run_once: true
+
+- name: Generate isolated Steam lancache.conf
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ lancache_dns_generator }}"
+      - generate
+      - --cache-ip
+      - "{{ lancache_dns_cache_ipv4 }}"
+      - --root
+      - "{{ lancache_dns_controller_root }}"
+      - --output
+      - "{{ lancache_dns_work_dir }}/lancache.conf"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  register: lancache_dns_generate
+  changed_when: false
+  check_mode: false
+
+- name: Validate generated lancache.conf
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ lancache_dns_generator }}"
+      - validate
+      - --cache-ip
+      - "{{ lancache_dns_cache_ipv4 }}"
+      - --root
+      - "{{ lancache_dns_controller_root }}"
+      - --input
+      - "{{ lancache_dns_work_dir }}/lancache.conf"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  changed_when: false
+  check_mode: false
+
+- name: Slurp generated lancache.conf
+  ansible.builtin.slurp:
+    src: "{{ lancache_dns_work_dir }}/lancache.conf"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  check_mode: false
+  register: lancache_dns_generated_slurp
+
+- name: Remember generated lancache.conf text
+  ansible.builtin.set_fact:
+    lancache_dns_generated_text: "{{ lancache_dns_generated_slurp.content | b64decode }}"
+  run_once: true
+
+- name: Refuse empty generated lancache.conf
+  ansible.builtin.assert:
+    that:
+      - lancache_dns_generated_text | trim | length > 0
+      - "'address=/' in lancache_dns_generated_text"
+    fail_msg: Generated lancache.conf is empty or missing address= records.
+
+- name: Compare generated file to the committed Steam pin
+  ansible.builtin.slurp:
+    src: "{{ lancache_dns_committed_conf }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  check_mode: false
+  register: lancache_dns_committed_slurp
+  when: lancache_dns_cache_ipv4 == '172.16.7.51'
+
+- name: Require generated Steam rules to match the committed pin
+  ansible.builtin.assert:
+    that:
+      - lancache_dns_generated_text == (lancache_dns_committed_slurp.content | b64decode)
+    fail_msg: >-
+      Generated lancache.conf does not match the committed Steam pin. Review
+      roles/lancache_dns/files/generated/lancache.conf before apply.
+  when:
+    - lancache_dns_cache_ipv4 == '172.16.7.51'
+    - lancache_dns_committed_slurp is defined
+    - lancache_dns_committed_slurp.content is defined
