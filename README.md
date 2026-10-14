@@ -296,6 +296,25 @@ recreate Pi-hole. Fail-open removes **only** `lancache.conf`.
 Steam HTTPS downloads often miss the HTTP cache. See
 [`docs/lancache-dns.md`](docs/lancache-dns.md).
 
+### Requirements
+
+OpenWrt on router-01 must pin Steam clients to the cache IPv4 **before**
+live DNS apply. Without these, rtech/lan clients hang on `.51`.
+
+| Rule | src | dest | dest_ip | proto / ports |
+| --- | --- | --- | --- | --- |
+| `Rtech-To-LanCache` | `rtech` | `servers` | `172.16.7.51` | tcp **80, 443** |
+| `Lan-To-LanCache` | `lan` | `servers` | `172.16.7.51` | tcp **80, 443** |
+
+Same breadth as `Rtech-To-Pkg-Cache` / `Lan-To-Pkg-Cache` (whole zone, not
+only `.66`). Do **not** open Guest/Hotel. Do **not** change DHCP DNS. Do
+**not** bind cache 80/443 on Traefik/Pi-hole (`.22` / `.25` / `.30` / `.35`).
+443 is SNI passthrough, not TLS MITM.
+
+Overlay: `network-openwrt-build` firewall template next to the pkg-cache
+rules. After role edits, run `./scripts/install-ansible-collections.sh`
+before live apply (playbook uses the installed collection).
+
 ### Adding another application
 
 1. Attach the container to the shared `proxy` network (default `traefik_network_name`).

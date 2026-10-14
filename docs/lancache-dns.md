@@ -3,6 +3,15 @@
 Pi-hole remains the only advertised DNS. This role never starts `lancache-dns`,
 never recreates Pi-hole, and never edits OpenWrt DHCP.
 
+## Requirements
+
+| Rule | src | dest_ip | ports |
+| --- | --- | --- | --- |
+| `Rtech-To-LanCache` | rtech | `172.16.7.51` | tcp 80, 443 |
+| `Lan-To-LanCache` | lan | `172.16.7.51` | tcp 80, 443 |
+
+Do not open Guest/Hotel. Do not change DHCP DNS.
+
 Cache IPv4: **172.16.7.51** on prod-01. Domain pin:
 `roles/lancache_dns/files/cache-domains/PIN`
 (`9061355d60e7643cc70aa3cc395f2777c2d86b5d`). Steam name:

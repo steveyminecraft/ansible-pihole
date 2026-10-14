@@ -16,3 +16,12 @@ not re-read `dnsmasq.d` on `reloaddns`).
 Origin cache IP default: `172.16.7.51`. This LAN is IPv4-only; Steam
 names get `local=/` so they do not grow other address-family answers.
 Upstream domain pin is `roles/lancache_dns/files/cache-domains/PIN`.
+
+## Requirements
+
+Router-01 FORWARD pins (whole rtech/lan, not Guest):
+
+- `Rtech-To-LanCache`: rtech → servers `172.16.7.51` tcp 80,443
+- `Lan-To-LanCache`: lan → servers `172.16.7.51` tcp 80,443
+
+Prove reachability from rtech before `lancache_dns_command=apply`.
