@@ -34,3 +34,25 @@
   delay: 2
   changed_when: false
   when: lancache_dns_command == 'apply'
+
+- name: Prove Steam CDN has no AAAA (LAN is IPv4-only)
+  ansible.builtin.command:
+    argv:
+      - dig
+      - +short
+      - +time=2
+      - +tries=1
+      - "@127.0.0.1"
+      - "{{ lancache_dns_verify_qname }}"
+      - AAAA
+  register: lancache_dns_verify_aaaa
+  until: >-
+    lancache_dns_verify_aaaa.rc == 0
+    and (lancache_dns_verify_aaaa.stdout | default('') | trim) == ''
+  retries: 10
+  delay: 2
+  changed_when: false
+  failed_when: >-
+    lancache_dns_verify_aaaa.rc != 0
+    or (lancache_dns_verify_aaaa.stdout | default('') | trim) != ''
+  when: lancache_dns_command == 'apply'

@@ -6,7 +6,8 @@ never recreates Pi-hole, and never edits OpenWrt DHCP.
 Cache IPv4: **172.16.7.51** on prod-01. Domain pin:
 `roles/lancache_dns/files/cache-domains/PIN`
 (`9061355d60e7643cc70aa3cc395f2777c2d86b5d`). Steam name:
-`lancache.steamcontent.com` plus `local=/` so AAAA does not bypass IPv4 cache.
+`lancache.steamcontent.com` plus `local=/`. This LAN is IPv4-only;
+`local=/` keeps Steam names from growing other address-family answers.
 
 **Steam HTTPS often misses the cache.** Do not call DNS success a cache hit.
 
@@ -36,6 +37,7 @@ new files. Package-cache, QoS, proxy DNS, and `custom.list` stay.
 ```bash
 dig @172.16.7.25 lancache.steamcontent.com A +short   # 172.16.7.51
 dig @172.16.7.30 lancache.steamcontent.com A +short   # 172.16.7.51
+dig @172.16.7.25 lancache.steamcontent.com AAAA +short # empty
 dig @172.16.7.25 cloudflare.com A +short              # public
 dig @172.16.7.25 archive.ubuntu.com A +short          # 172.16.7.50
 dig @172.16.7.25 pihole.coalhill.zz A +short          # 172.16.7.35

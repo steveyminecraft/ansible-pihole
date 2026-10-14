@@ -44,6 +44,7 @@ DEFAULT_RESERVED_SUFFIXES = (
 MANAGED_HEADER = (
     "# Managed by ansible-pihole roles/lancache_dns. Do not edit by hand.\n"
     "# Isolated Steam CDN overrides; fail-open removes only this file.\n"
+    "# IPv4 only. local=/ suppresses other address families for these names.\n"
 )
 
 
@@ -120,8 +121,15 @@ def validate_conf(
         local = LOCAL_RE.fullmatch(line)
         if address:
             domain, ip = address.group(1), address.group(2)
-            if ip != cache_ip:
-                errors.append(f"line {lineno}: address target is not the cache IPv4")
+            try:
+                parsed_ip = ipaddress.ip_address(ip)
+            except ValueError:
+                errors.append(f"line {lineno}: address target is not a valid IP")
+            else:
+                if parsed_ip.version != 4:
+                    errors.append(f"line {lineno}: address target is IPv6; LAN is IPv4-only")
+                elif ip != cache_ip:
+                    errors.append(f"line {lineno}: address target is not the cache IPv4")
             conflict = _suffix_match(domain, reserved_suffixes)
             if conflict:
                 errors.append(f"line {lineno}: domain conflicts with reserved suffix")

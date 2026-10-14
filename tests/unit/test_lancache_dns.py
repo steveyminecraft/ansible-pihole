@@ -36,6 +36,25 @@ class LancacheDnsTests(unittest.TestCase):
         self.assertNotIn("172.16.7.25", conf)
         self.assertNotIn("172.16.7.50", conf)
 
+    def test_generated_conf_is_ipv4_only(self) -> None:
+        conf = self.mod.generate_from_tree(ROOT, self.cache_ip)
+        self.assertNotIn("filter-AAAA", conf)
+        for line in conf.splitlines():
+            if not line.startswith("address=/"):
+                continue
+            ip = line.rsplit("/", 1)[-1]
+            self.mod.ipaddress.IPv4Address(ip)
+
+    def test_validate_rejects_ipv6_address_target(self) -> None:
+        text = (
+            "address=/lancache.steamcontent.com/2001:db8::51\n"
+            "local=/lancache.steamcontent.com/\n"
+        )
+        errors = self.mod.validate_conf(
+            text, self.cache_ip, ["lancache.steamcontent.com"]
+        )
+        self.assertTrue(any("IPv6" in item for item in errors))
+
     def test_committed_generated_file_matches_generator(self) -> None:
         expected = (
             ROOT / "roles" / "lancache_dns" / "files" / "generated" / "lancache.conf"
