@@ -1,14 +1,36 @@
 ---
-- name: Reload Pi-hole FTL DNS after LanCache file change
+# Pi-hole v6 has no restartdns. reloaddns does not re-read /etc/dnsmasq.d.
+# Restart the existing container (same ID) so FTL reloads conf-dir. Do not
+# compose recreate. Do not signal PID 1.
+- name: Restart the existing Pi-hole container to reload dnsmasq.d
   ansible.builtin.command:
     argv:
       - docker
-      - exec
+      - restart
       - "{{ lancache_dns_container_name }}"
-      - pihole
-      - restartdns
   register: lancache_dns_reload_cmd
   changed_when: true
-  when:
-    - lancache_dns_reload | bool
-    - not ansible_check_mode
+
+- name: Wait for Pi-hole DNS after container restart
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 53
+    timeout: 60
+    state: started
+
+- name: Prove Steam CDN now answers with the cache IPv4
+  ansible.builtin.command:
+    argv:
+      - dig
+      - +short
+      - +time=2
+      - +tries=1
+      - "@127.0.0.1"
+      - "{{ lancache_dns_verify_qname }}"
+      - A
+  register: lancache_dns_verify_dig
+  until: lancache_dns_cache_ipv4 in (lancache_dns_verify_dig.stdout | default(''))
+  retries: 10
+  delay: 2
+  changed_when: false
+  when: lancache_dns_command == 'apply'

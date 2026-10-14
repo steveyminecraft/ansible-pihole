@@ -10,7 +10,7 @@ lancache_dns_enabled_services:
 lancache_dns_filename: lancache.conf
 lancache_dns_remote_dir: "{{ pihole_dir_loc | default('/opt/pihole') }}/etc/dnsmasq.d"
 lancache_dns_remote_path: "{{ lancache_dns_remote_dir }}/{{ lancache_dns_filename }}"
-lancache_dns_snapshot_dir: "{{ lancache_dns_remote_dir }}/.lancache-snapshots"
+lancache_dns_snapshot_dir: "{{ pihole_dir_loc | default('/opt/pihole') }}/var/lancache-snapshots"
 lancache_dns_container_name: "{{ pihole_container_name | default('pihole') }}"
 lancache_dns_reload: true
 lancache_dns_verify: false

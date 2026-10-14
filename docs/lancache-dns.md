@@ -27,8 +27,9 @@ ansible-playbook -i inventory/rnet.yml playbooks/lancache-dns.yaml \
 ```
 
 Fail-open deletes **only** `/opt/pihole/etc/dnsmasq.d/lancache.conf` on each
-node and runs `pihole restartdns`. Package-cache, QoS, proxy DNS, and
-`custom.list` stay.
+node and restarts the existing Pi-hole container so FTL re-reads
+`dnsmasq.d`. v6 `pihole restartdns` is gone; `reloaddns` does not pick up
+new files. Package-cache, QoS, proxy DNS, and `custom.list` stay.
 
 ## Checks after a future apply
 

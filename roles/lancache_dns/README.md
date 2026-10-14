@@ -10,7 +10,8 @@ Does not recreate Pi-hole.
 `status`.
 
 Live writes need `-e lancache_dns_live_apply=true`. Fail-open deletes only
-`lancache.conf` and reloads FTL.
+`lancache.conf` and restarts the existing Pi-hole container (v6 FTL does
+not re-read `dnsmasq.d` on `reloaddns`).
 
 Origin cache IP default: `172.16.7.51`. Upstream domain pin is
 `roles/lancache_dns/files/cache-domains/PIN`.
