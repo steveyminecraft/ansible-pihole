@@ -32,6 +32,10 @@ node and restarts the existing Pi-hole container so FTL re-reads
 `dnsmasq.d`. v6 `pihole restartdns` is gone; `reloaddns` does not pick up
 new files. Package-cache, QoS, proxy DNS, and `custom.list` stay.
 
+The playbook loads `steveyminecraft.pihole.lancache_dns` from the installed
+collection, not `./roles` directly. After changing the role, run
+`./scripts/install-ansible-collections.sh` before live apply/fail-open.
+
 ## Checks after a future apply
 
 ```bash

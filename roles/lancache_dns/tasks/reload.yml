@@ -56,3 +56,25 @@
     lancache_dns_verify_aaaa.rc != 0
     or (lancache_dns_verify_aaaa.stdout | default('') | trim) != ''
   when: lancache_dns_command == 'apply'
+
+- name: Prove Steam CDN is no longer the cache IPv4 after fail-open
+  ansible.builtin.command:
+    argv:
+      - dig
+      - +short
+      - +time=2
+      - +tries=1
+      - "@127.0.0.1"
+      - "{{ lancache_dns_verify_qname }}"
+      - A
+  register: lancache_dns_fail_open_dig
+  until: >-
+    lancache_dns_fail_open_dig.rc == 0
+    and lancache_dns_cache_ipv4 not in (lancache_dns_fail_open_dig.stdout | default(''))
+  retries: 10
+  delay: 2
+  changed_when: false
+  failed_when: >-
+    lancache_dns_fail_open_dig.rc != 0
+    or lancache_dns_cache_ipv4 in (lancache_dns_fail_open_dig.stdout | default(''))
+  when: lancache_dns_command == 'fail_open'
