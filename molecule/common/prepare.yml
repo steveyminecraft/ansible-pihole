@@ -17,6 +17,7 @@
     - name: Pin public Ubuntu mirrors when lab DNS hijacks them
       ansible.builtin.blockinfile:
         path: /etc/hosts
+        unsafe_writes: true
         marker: "# {mark} MOLECULE UBUNTU ARCHIVE"
         block: |
           91.189.91.81 us.archive.ubuntu.com archive.ubuntu.com
@@ -35,6 +36,7 @@
     - name: Pin public Debian mirrors when lab DNS hijacks them
       ansible.builtin.blockinfile:
         path: /etc/hosts
+        unsafe_writes: true
         marker: "# {mark} MOLECULE DEBIAN ARCHIVE"
         block: |
           151.101.2.132 deb.debian.org security.debian.org
