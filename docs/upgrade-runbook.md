@@ -69,12 +69,12 @@ touched.
 
 | Gate | When it runs | Failure behavior |
 |------|--------------|------------------|
-| Peer DNS before drain | Before keepalived/Pi-hole/Traefik stop, when another inventory host exists | TCP/53 must answer on at least one other `ansible_host`; otherwise the node is not drained |
+| Peer DNS and keepalived before drain | Before keepalived/Pi-hole/Traefik stop, when another inventory host exists | At least one other inventory host must answer TCP/53 and have `keepalived` active; otherwise the node is not drained |
 | Drain current node | Before package and Pi-hole changes | keepalived is stopped when present; the VIP should move to the other node |
 | Local DNS listener | After updates, before keepalived resumes | waits up to 180 seconds for `127.0.0.1:53`; failure leaves the node drained |
 | Local Pi-hole DNS | After listener is open | `dig +short @127.0.0.1 <health-qname>` must return an IPv4 line; failure leaves the node drained |
 | Local Unbound DNS | Only when `pihole_unbound_present` is true | `dig` from inside the Pi-hole container to Unbound must return an IPv4 line; failure leaves the node drained |
-| Keepalived resume | After local DNS gates pass | keepalived starts only for a locally healthy node |
+| Keepalived resume | After local DNS gates pass | keepalived starts only for a locally healthy node, then the play fails unless `systemctl is-active` reports `active` |
 | VIP DNS verify | After all nodes update, when HA and `pihole_vip_ipv4` are set | retries for up to about 60 seconds (`30` retries, `2` seconds delay) and fails the run if the VIP does not answer |
 
 ## Retry guidance

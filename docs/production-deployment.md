@@ -99,7 +99,7 @@ all:
 
 Do not reuse lab-only fixture credentials from
 [`inventory/vagrant.yml`](../inventory/vagrant.yml) (`LabOnly-Molecule-Pihole-Password!`,
-`:latest` image tags, `vagrant_env: true`, etc.).
+`vagrant_env: true`, etc.).
 
 ## Variable mapping — production → examples
 
@@ -117,7 +117,7 @@ Do not reuse lab-only fixture credentials from
 | Nebula replica list | Yes (if syncing) | `nebula_sync_replicas[]` | same | One entry per replica node |
 | Nebula passwords | Yes (if syncing) | `nebula_sync_primary_password`, replica passwords | vault placeholders | Often same as Pi-hole API password |
 | Unbound enabled | Typical | via `pihole_unbound_upstream`, network vars | `pihole_enable_unbound: true` | See Unbound rows below |
-| Pi-hole image pin | Yes | `:latest` in lab only | *(not set — uses role default)* | Pin `pihole_image` in production |
+| Pi-hole image pin | Yes | *(not set — uses role default)* | *(not set — uses role default)* | Pin `pihole_image` in production |
 | Lab-only toggles | No | `vagrant_env`, `pihole_rocky_network_debug`, `docker_enable_ip_forward` | — | Do not copy to production |
 
 ### Unbound and Docker networking (when `pihole_enable_unbound: true`)

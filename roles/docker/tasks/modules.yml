@@ -15,15 +15,13 @@
   failed_when: false
   when: ansible_facts['os_family'] == 'RedHat'
 
-- name: Enable IPv4 forwarding (RedHat family)
+- name: Enable IPv4 forwarding
   ansible.posix.sysctl:
     name: net.ipv4.ip_forward
     value: "1"
     sysctl_set: true
     reload: true
-  when:
-    - ansible_facts['os_family'] == 'RedHat'
-    - docker_enable_ip_forward | default(false) | bool
+  when: docker_enable_ip_forward | default(false) | bool
 
 - name: Configure Docker daemon to not manage iptables (VirtualBox/vagrant workaround)
   ansible.builtin.copy:

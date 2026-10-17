@@ -24,6 +24,12 @@ The role is **not** listed in the main `roles:` section. Playbooks call it with
 If validation fails, the rescue block stops the play and this role does not run,
 leaving the node drained until you repair it and re-run the playbook.
 
+When the role does run, `state: started` is not treated as proof that keepalived
+stayed up. The role then runs `systemctl is-active` and fails the host unless
+the selected unit reports `active`. In HA mode (`pihole_ha_mode`) a missing
+`keepalived` or `keepalive` unit also fails the host. Non-HA runs still skip
+the start when neither unit is installed.
+
 ## Drain/resume pattern
 
 Pair with `stop_keepalived` at the start of the same playbook run:
@@ -31,7 +37,7 @@ Pair with `stop_keepalived` at the start of the same playbook run:
 1. `stop_keepalived` — release the VIP from this node
 2. Package/Pi-hole changes
 3. Local DNS gates
-4. **`start_keepalived`** — return the node to VIP candidacy
+4. **`start_keepalived`** — return the node to VIP candidacy and fail unless the unit is active
 
 See [Upgrade runbook](../../docs/upgrade-runbook.md#health-gates) for timing and
 retry details.

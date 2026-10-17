@@ -351,6 +351,16 @@ unbound_publish_host_ip: "127.0.0.1"
 unbound_publish_host_port: 5335
 ```
 
+Host-side probes still `dig` Unbound at its Docker IPv4 (Molecule verify,
+`check_pihole.sh`). Default `unbound_access_control` therefore allows loopback
+and RFC1918, not only `172.18.0.0/16`, so Vagrant hosts are not REFUSED when
+Docker does not manage iptables. Unbound recurses from root hints (no mvance
+Cloudflare DNS-over-TLS forward), and container chroot is disabled so TLS and
+trust-anchor paths stay valid. Vagrant guests set `docker_manage_iptables: false`;
+Debian/Ubuntu now write that into `daemon.json` and apply nftables masquerade
+plus FORWARD accept for Docker bridges (including `172.16.0.0/12`) so Unbound can
+reach root servers. Unbound verify uses `nsenter` inside the container netns.
+
 Container resolver override is now explicit. By default Pi-hole does not override the
 container resolver list. Enable only when needed for lab troubleshooting:
 
@@ -385,16 +395,21 @@ In HA mode `update-pihole.yaml` also re-renders keepalived after the local DNS
 and Unbound gates pass: it ensures `dig` and the script user's `docker` group
 membership, installs `check_pihole.sh`, renders `keepalived.conf` through
 `keepalived -t`, and restarts keepalived only when `keepalived.conf` changed.
-It does not touch keepalived packages, sysctls, SELinux or firewalld. To bring
-only keepalived into line, one node at a time:
+It does not touch keepalived packages, sysctls, SELinux or firewalld. Resume
+then starts keepalived and fails that host unless `systemctl is-active` reports
+`active`, so a green node means the service is running before the next host is
+drained. Before the drain, at least one other inventory host must answer
+TCP/53 and have `keepalived` active. To bring only keepalived into line, one
+node at a time:
 
 ```bash
 ansible-playbook -i inventory/rnet.yml playbooks/update-pihole.yaml --tags keepalived --check --diff
 ansible-playbook -i inventory/rnet.yml playbooks/update-pihole.yaml --tags keepalived --limit <node>
 ```
 
-`--tags keepalived` keeps the peer-DNS guard, local DNS gates and the final VIP
-check, but skips the drain, OS updates and container roles. The render asserts
+`--tags keepalived` keeps the peer DNS and keepalived guard, local DNS gates and
+the final VIP check, but skips the drain, OS updates and container roles. The
+render asserts
 that the priority gap between nodes is smaller than the track_script weight
 (default −50), so a MASTER whose check fails drops below its peer.
 
@@ -458,7 +473,9 @@ services during each converge.
 - Molecule, Ansible, Vagrant, and **VirtualBox** or **libvirt** (`vagrant-libvirt`) as appropriate.
 - Run Molecule from the **repository root** so paths and inventory links resolve.
 - Vagrant inventories set `IdentitiesOnly=yes` in `ansible_ssh_common_args` so a busy
-  `ssh-agent` does not exhaust MaxAuthTries before the Vagrant key (or password) is tried.
+  `ssh-agent` does not exhaust MaxAuthTries before the Vagrant key or password is tried.
+  Guest SSH is user **`vagrant`** / password **`vagrant`** (`ansible_password` in
+  inventory and Molecule `connection_options`).
 - **Lint:** CI runs [ansible-lint](https://ansible-lint.readthedocs.io/) on
   roles, playbooks, Molecule, and remote verification playbooks;
   [yamllint](https://yamllint.readthedocs.io/) covers their YAML inventories and

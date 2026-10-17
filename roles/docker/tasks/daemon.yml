@@ -37,7 +37,12 @@
     mode: "0600"
     content: >-
       {{
-        {'ipv6': true, 'fixed-cidr-v6': docker_ipv6_fixed_cidr}
+        {
+          'ipv6': true,
+          'fixed-cidr-v6': docker_ipv6_fixed_cidr,
+          'iptables': (docker_manage_iptables | bool),
+          'ip6tables': (docker_manage_iptables | bool)
+        }
         | combine(
           {'dns': docker_daemon_dns}
           if (docker_daemon_dns | default([]) | length > 0)
@@ -56,7 +61,11 @@
     mode: "0600"
     content: >-
       {{
-        {'ipv6': false}
+        {
+          'ipv6': false,
+          'iptables': (docker_manage_iptables | bool),
+          'ip6tables': false
+        }
         | combine(
           {'dns': docker_daemon_dns}
           if (docker_daemon_dns | default([]) | length > 0)
