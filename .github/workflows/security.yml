@@ -60,7 +60,7 @@ jobs:
 
   docs-only:
     name: Docs-only change (skip security matrix)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.code != 'true'
     steps:
@@ -69,7 +69,7 @@ jobs:
 
   codeql:
     name: CodeQL - GitHub Actions
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.code == 'true'
 
@@ -93,7 +93,7 @@ jobs:
 
   trivy:
     name: Trivy filesystem scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.code == 'true'
 
@@ -125,7 +125,7 @@ jobs:
 
   default-images:
     name: Resolve default container images
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.code == 'true'
     outputs:
@@ -151,7 +151,7 @@ jobs:
 
   trivy-images:
     name: Trivy image scan - ${{ matrix.key }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: default-images
     strategy:
       fail-fast: false
