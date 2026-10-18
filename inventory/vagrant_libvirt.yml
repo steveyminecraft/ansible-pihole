@@ -26,7 +26,12 @@ all:
     ansible_ssh_private_key_file: "{{ lookup('env', 'MOLECULE_SCENARIO_DIRECTORY') }}/.vagrant/machines/{{ inventory_hostname }}/libvirt/private_key"
     password_lock: false  # Change to false if you still wish to login via passwd auth
     # IdentitiesOnly: avoid "Too many authentication failures" when ssh-agent holds many keys.
-    ansible_ssh_common_args: "-F /dev/null -o PreferredAuthentications=password,publickey -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    ansible_ssh_common_args: >-
+      -F /dev/null
+      -o PreferredAuthentications=password,publickey
+      -o IdentitiesOnly=yes
+      -o StrictHostKeyChecking=no
+      -o UserKnownHostsFile=/dev/null
     ansible_user_home_dir: /home/{{ ansible_user }}
     ansible_python_interpreter: /usr/bin/python3
     github_user_for_ssh_key: steveyminecraft  # Change me to required value
