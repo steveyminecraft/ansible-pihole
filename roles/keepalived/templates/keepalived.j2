@@ -1,7 +1,7 @@
 global_defs {
     script_user {{ ansible_user }} docker
     enable_script_security
-    max_auto_priority
+    max_auto_priority 99
     vrrp_no_swap
     checker_no_swap
 }
@@ -49,13 +49,16 @@ vrrp_instance PIHOLE-IPv4 {
 {% if keepalive_role != 'MASTER' and (vagrant_env | default(false) | bool) %}
     preempt_delay 5
 {% endif %}
-    {# Unicast VRRP — required on libvirt/KVM NAT bridges where multicast is unreliable. #}
+    {# Unicast VRRP — required on libvirt/KVM NAT bridges where multicast is unreliable.
+       keepalived -t fails if unicast_src_ip is set with an empty peer list (single-node). #}
+{% if keepalived_peer_list | default([]) %}
     unicast_src_ip {{ keepalived_vrrp_src_address | default(ansible_facts['default_ipv4']['address']) }}
     unicast_peer {
 {% for peer in keepalived_peer_list %}
         {{ peer }}
 {% endfor %}
     }
+{% endif %}
 {% if vagrant_env | default(false) | bool %}
     # Faster VIP visibility on bridged/NAT lab networks (VirtualBox + libvirt).
     garp_master_delay 1

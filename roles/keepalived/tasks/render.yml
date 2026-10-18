@@ -96,6 +96,9 @@
     group: root
     mode: "0644"
     # keepalived -t exits 0 when the file is missing; validate always passes a real temp file.
-    validate: keepalived -t -f %s
+    # Debian 12 keepalived 2.2.7 SIGTERMs itself (rc 143) after a successful parse when a
+    # VRRP instance has track_script. Isolate with setsid so Ansible is not killed; treat
+    # 0 and 143 as OK. Syntax errors still exit 1–5.
+    validate: /bin/bash -c 'setsid /usr/sbin/keepalived -t -f "$1"; rc=$?; [ "$rc" -eq 0 ] || [ "$rc" -eq 143 ]' ansible-keepalived-validate %s
   register: keepalived_render_conf
   notify: Restart keepalived service

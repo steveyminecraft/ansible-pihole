@@ -54,6 +54,10 @@ class KeepalivedConfigTemplateTests(unittest.TestCase):
         variables.update(overrides)
         return self.env.get_template(TEMPLATE.name).render(**variables)
 
+    def test_global_defs_set_numeric_max_auto_priority(self) -> None:
+        rendered = self._render()
+        self.assertIn("max_auto_priority 99", rendered)
+
     def test_production_tracks_script_only_on_sync_group(self) -> None:
         rendered = self._render()
         self.assertIn("vrrp_sync_group PIHOLE", rendered)
@@ -75,6 +79,11 @@ class KeepalivedConfigTemplateTests(unittest.TestCase):
     def test_production_backup_has_no_preempt_delay(self) -> None:
         rendered = self._render(keepalive_role="BACKUP", priority=100)
         self.assertNotIn("preempt_delay", rendered)
+
+    def test_single_node_omits_empty_unicast_peer_block(self) -> None:
+        ipv4 = instance_block(self._render(keepalived_peer_list=[]), "PIHOLE-IPv4")
+        self.assertNotIn("unicast_src_ip", ipv4)
+        self.assertNotIn("unicast_peer", ipv4)
 
     def test_vagrant_tracks_script_on_ipv4_instance(self) -> None:
         rendered = self._render(vagrant_env=True, keepalive_role="BACKUP", priority=100)

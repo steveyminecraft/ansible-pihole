@@ -24,7 +24,10 @@ in the keepalived service environment if needed.
 
 `tasks/render.yml` holds the config-only part of the role (dig, `docker` group
 membership, `check_pihole.sh`, peer list, priority-gap assert, and
-`keepalived.conf` validated with `keepalived -t`). `update-pihole.yaml` imports
+`keepalived.conf` validated with `keepalived -t`). Debian 12 keepalived 2.2.7
+exits 143 after a successful parse when a VRRP instance has `track_script`; the
+role treats 0 and 143 as success. Single-node inventories omit `unicast_peer`
+when the peer list is empty. `update-pihole.yaml` imports
 it on every run; `tasks/main.yml` imports it after package, sysctl and SELinux
 setup and before the firewalld rules.
 

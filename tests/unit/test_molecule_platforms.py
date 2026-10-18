@@ -93,6 +93,8 @@ class MoleculePlatformTests(unittest.TestCase):
                 self.assertIn('vm.provider "libvirt"', text)
                 self.assertIn("192.168.56.", text)
                 self.assertIn("192.168.121.", text)
+                self.assertIn('management_network_name = "default"', text)
+                self.assertIn("192.168.122.0/24", text)
 
     def test_molecule_vagrant_maps_provider_inventory(self) -> None:
         vagrant = (ROOT / "scripts" / "molecule-vagrant").read_text(encoding="utf-8")
