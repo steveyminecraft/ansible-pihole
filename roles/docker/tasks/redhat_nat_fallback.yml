@@ -188,4 +188,3 @@
   when:
     - (_docker_firewalld_state.stdout | default('')) == 'running'
     - (_docker_firewalld_source is changed) or (_docker_firewalld_masq is changed)
-

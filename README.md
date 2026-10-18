@@ -547,30 +547,16 @@ networking behavior are part of the test surface.
 ### Helper: `scripts/molecule-vagrant`
 
 - **Interactive:** `./scripts/molecule-vagrant` — choose VirtualBox or libvirt, copy the printed exports/commands, or confirm to run `molecule test -s default`.
-- **Non-interactive:** forwards to `molecule` and sets `MOLECULE_VAGRANT_INVENTORY` from `VAGRANT_DEFAULT_PROVIDER` when unset:
+- **Non-interactive:** forwards to `molecule` and sets `MOLECULE_VAGRANT_INVENTORY` from `VAGRANT_DEFAULT_PROVIDER` when unset (`vagrant.yml` for VirtualBox, `vagrant_libvirt.yml` for libvirt/kvm). If the provider env is also unset, it uses **libvirt** when KVM is loaded (`/dev/kvm` plus `kvm`/`kvm_amd`/`kvm_intel`). VirtualBox and KVM cannot share AMD-V (`VERR_SVM_IN_USE`); the helper refuses `virtualbox` in that case. It also selects the one-host inventory for `pihole-no-unbound`.
 
 ```bash
+./scripts/molecule-vagrant test -s default
+./scripts/molecule-vagrant test -s debian
+./scripts/molecule-vagrant test -s debian-traefik
+./scripts/molecule-vagrant test -s pihole-no-unbound
 VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s default
+molecule list
 ```
-
-### Helper: `scripts/molecule-test-all`
-
-Run all discovered Molecule scenarios in `molecule/*` (or pass a subset):
-
-```bash
-./scripts/molecule-test-all
-./scripts/molecule-test-all default debian
-./scripts/molecule-test-all pihole-no-unbound
-./scripts/molecule-test-all --debian-only
-VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-test-all
-./scripts/molecule-test-all --list
-```
-
-Like `scripts/molecule-vagrant`, this helper auto-selects
-`MOLECULE_VAGRANT_INVENTORY` from `VAGRANT_DEFAULT_PROVIDER` when unset
-(`vagrant.yml` for VirtualBox, `vagrant_libvirt.yml` for libvirt/kvm).
-It also selects the corresponding one-host inventory for the
-`pihole-no-unbound` scenario.
 
 For Vagrant/Molecule inventories (`vagrant_env: true`), roles skip disruptive
 reboots after hostname and package-update changes to avoid long guest-network
