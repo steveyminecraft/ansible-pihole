@@ -519,7 +519,7 @@ molecule converge -s default    # iterate without full test sequence
 Private guest IPs depend on the provider (see scenario `Vagrantfile`s such as [`molecule/default/Vagrantfile`](molecule/default/Vagrantfile) and [`molecule/debian/Vagrantfile`](molecule/debian/Vagrantfile)):
 
 - **VirtualBox** — typically `192.168.56.0/24` → [`inventory/vagrant.yml`](inventory/vagrant.yml)
-- **libvirt** — typically `192.168.121.0/24` → [`inventory/vagrant_libvirt.yml`](inventory/vagrant_libvirt.yml)
+- **libvirt** — typically `192.168.121.0/24` → [`inventory/vagrant_libvirt.yml`](inventory/vagrant_libvirt.yml). Guests use libvirt network `vagrant-56` for that subnet and management network `default` (`192.168.122.0/24`), because the plugin cannot create a second network named `vagrant-libvirt` on the same prefix.
 
 Molecule links inventory via `inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}` (basename only). Match **Vagrant’s provider** to the inventory file:
 

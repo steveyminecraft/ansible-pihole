@@ -219,7 +219,11 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
         render = load_yaml(ROOT / "roles" / "keepalived" / "tasks" / "render.yml")
         by_name = {task["name"]: task for task in render}
         conf = by_name["Configure keepalived"]["ansible.builtin.template"]
-        self.assertEqual(conf["validate"], "keepalived -t -f %s")
+        self.assertIn("/usr/sbin/keepalived", conf["validate"])
+        self.assertIn("-t -f", conf["validate"])
+        self.assertIn("setsid", conf["validate"])
+        self.assertIn("143", conf["validate"])
+        self.assertIn("%s", conf["validate"])
         self.assertIn("Install dig for the keepalived health check", by_name)
         user = by_name["Add keepalived script user to the docker group"]["ansible.builtin.user"]
         self.assertEqual(user["groups"], "docker")

@@ -24,6 +24,8 @@ Vagrant.configure("2") do |config|
         l.memory = 2048
         l.cpus   = 2
         l.driver = "kvm"
+        l.management_network_name = "default"
+        l.management_network_address = "192.168.122.0/24"
         l.management_network_keep = true
         override.vm.network "private_network",
                             ip: "192.168.121.6",
