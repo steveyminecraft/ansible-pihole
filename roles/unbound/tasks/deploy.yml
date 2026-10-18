@@ -34,3 +34,15 @@
       - "{{ unbound_compose_file }}"
     state: present
     pull: missing
+
+# dns_net is created here; Docker-role NAT ran too early to masquerade it.
+- name: Refresh container egress NAT after Unbound network exists
+  ansible.builtin.include_role:
+    name: steveyminecraft.pihole.docker
+    tasks_from: redhat_nat_fallback.yml
+  when:
+    - not (docker_manage_iptables | default(true) | bool)
+    - docker_el_nat_fallback | default(true) | bool
+
+- name: Apply Unbound config restarts before verify
+  ansible.builtin.meta: flush_handlers

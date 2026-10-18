@@ -15,42 +15,74 @@
     - name: Collect peer DNS addresses before drain
       tags: [drain, ha, keepalived]
       ansible.builtin.set_fact:
-        pihole_update_peer_dns_hosts: >-
+        pihole_update_peer_hosts: >-
           {{
             groups['all']
             | reject('equalto', inventory_hostname)
-            | map('extract', hostvars, 'ansible_host')
-            | select('defined')
             | list
           }}
 
     - name: Probe peer DNS listeners before drain
       tags: [drain, ha, keepalived]
       ansible.builtin.wait_for:
-        host: "{{ item }}"
+        host: "{{ hostvars[item].ansible_host }}"
         port: 53
         timeout: 5
         state: started
-      loop: "{{ pihole_update_peer_dns_hosts }}"
+      loop: "{{ pihole_update_peer_hosts }}"
       register: pihole_update_peer_dns
       ignore_errors: true
       changed_when: false
       when:
         - not ansible_check_mode
-        - pihole_update_peer_dns_hosts | length > 0
+        - pihole_update_peer_hosts | length > 0
+        - hostvars[item].ansible_host is defined
+
+    - name: Probe peer keepalived before drain
+      tags: [drain, ha, keepalived]
+      ansible.builtin.command:
+        argv:
+          - systemctl
+          - is-active
+          - keepalived
+      delegate_to: "{{ item }}"
+      loop: "{{ pihole_update_peer_hosts }}"
+      register: pihole_update_peer_keepalived
+      changed_when: false
+      failed_when: false
+      when:
+        - not ansible_check_mode
+        - pihole_update_peer_hosts | length > 0
+
+    - name: Record peers that answer DNS with keepalived active
+      tags: [drain, ha, keepalived]
+      ansible.builtin.set_fact:
+        pihole_update_healthy_peers: "{{ pihole_update_healthy_peers | default([]) + [item.0.item] }}"
+      loop: >-
+        {{
+          (pihole_update_peer_dns.results | default([]))
+          | zip(pihole_update_peer_keepalived.results | default([]))
+          | list
+        }}
+      when:
+        - not ansible_check_mode
+        - pihole_update_peer_hosts | length > 0
+        - not (item.0.skipped | default(false) | bool)
+        - not (item.0.failed | default(false) | bool)
+        - (item.1.stdout | default('') | trim) == 'active'
 
     - name: Refuse to drain the last healthy DNS node
       tags: [drain, ha, keepalived]
       ansible.builtin.assert:
         that:
-          - pihole_update_peer_dns.results | rejectattr('failed') | list | length > 0
+          - pihole_update_healthy_peers | default([]) | length > 0
         fail_msg: >-
           Refusing to drain {{ inventory_hostname }}: no other inventory
-          ansible_host answered TCP/53. Repair the peer before draining
-          the last healthy DNS node.
+          host answered TCP/53 with keepalived active. Repair the peer
+          before draining the last healthy DNS node.
       when:
         - not ansible_check_mode
-        - pihole_update_peer_dns_hosts | length > 0
+        - pihole_update_peer_hosts | length > 0
   roles:
     - role: steveyminecraft.pihole.stop_keepalived
       tags: [stopkeepalived, drain, ha]

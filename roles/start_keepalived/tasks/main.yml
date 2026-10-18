@@ -20,3 +20,23 @@
     name: "{{ start_keepalived_service_unit | regex_replace('\\.service$', '') }}"
     state: started
   when: start_keepalived_service_unit != ''
+
+- name: Fail when HA resume finds no keepalived unit
+  ansible.builtin.fail:
+    msg: >-
+      {{ inventory_hostname }} has no keepalived or keepalive service unit.
+      Refusing to leave this node out of VIP service.
+  when:
+    - pihole_ha_mode | default(false) | bool
+    - start_keepalived_service_unit == ''
+
+- name: Confirm keepalived is active
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - is-active
+      - "{{ start_keepalived_service_unit }}"
+  register: start_keepalived_active
+  changed_when: false
+  failed_when: start_keepalived_active.stdout | trim != 'active'
+  when: start_keepalived_service_unit != ''

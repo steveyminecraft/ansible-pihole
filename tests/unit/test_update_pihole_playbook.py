@@ -110,6 +110,8 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
         names = [task["name"] for task in tasks]
         self.assertIn("Collect peer DNS addresses before drain", names)
         self.assertIn("Probe peer DNS listeners before drain", names)
+        self.assertIn("Probe peer keepalived before drain", names)
+        self.assertIn("Record peers that answer DNS with keepalived active", names)
         self.assertIn("Refuse to drain the last healthy DNS node", names)
         self.assertLess(
             names.index("Collect peer DNS addresses before drain"),
@@ -117,6 +119,14 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
         )
         self.assertLess(
             names.index("Probe peer DNS listeners before drain"),
+            names.index("Probe peer keepalived before drain"),
+        )
+        self.assertLess(
+            names.index("Probe peer keepalived before drain"),
+            names.index("Record peers that answer DNS with keepalived active"),
+        )
+        self.assertLess(
+            names.index("Record peers that answer DNS with keepalived active"),
             names.index("Refuse to drain the last healthy DNS node"),
         )
 
@@ -126,22 +136,44 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
         fact = yaml.dump(collect["ansible.builtin.set_fact"])
         self.assertIn("groups['all']", fact)
         self.assertIn("inventory_hostname", fact)
-        self.assertIn("ansible_host", fact)
+        self.assertIn("pihole_update_peer_hosts", fact)
 
         probe = next(
             task for task in tasks if task["name"] == "Probe peer DNS listeners before drain"
         )
         wait_for = probe["ansible.builtin.wait_for"]
         self.assertEqual(wait_for["port"], 53)
+        self.assertIn("ansible_host", wait_for["host"])
         self.assertTrue(probe.get("ignore_errors"))
         probe_when = yaml.dump(probe.get("when"))
         self.assertIn("ansible_check_mode", probe_when)
+
+        keepalived_probe = next(
+            task for task in tasks if task["name"] == "Probe peer keepalived before drain"
+        )
+        self.assertEqual(keepalived_probe["delegate_to"], "{{ item }}")
+        self.assertEqual(
+            keepalived_probe["ansible.builtin.command"]["argv"],
+            ["systemctl", "is-active", "keepalived"],
+        )
+        self.assertFalse(keepalived_probe.get("failed_when"))
+        self.assertIn("pihole_update_peer_hosts", keepalived_probe["loop"])
+
+        record = next(
+            task
+            for task in tasks
+            if task["name"] == "Record peers that answer DNS with keepalived active"
+        )
+        record_when = yaml.dump(record.get("when"))
+        self.assertIn("item.0.failed", record_when)
+        self.assertIn("active", record_when)
 
         refuse = next(
             task for task in tasks if task["name"] == "Refuse to drain the last healthy DNS node"
         )
         that = yaml.dump(refuse["ansible.builtin.assert"]["that"])
-        self.assertIn("rejectattr('failed')", that)
+        self.assertIn("pihole_update_healthy_peers", that)
+        self.assertIn("keepalived active", refuse["ansible.builtin.assert"]["fail_msg"].lower())
         self.assertIn("last healthy", refuse["ansible.builtin.assert"]["fail_msg"].lower())
 
         roles = [role["role"] for role in first_play["roles"]]
@@ -197,6 +229,20 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
         blob = yaml.dump(render)
         self.assertNotIn("firewalld", blob)
         self.assertNotIn("sysctl", blob)
+
+    def test_start_keepalived_confirms_unit_is_active(self) -> None:
+        tasks = load_yaml(ROOT / "roles" / "start_keepalived" / "tasks" / "main.yml")
+        by_name = {task["name"]: task for task in tasks}
+        missing = by_name["Fail when HA resume finds no keepalived unit"]
+        self.assertIn("pihole_ha_mode", yaml.dump(missing.get("when")))
+        self.assertIn("start_keepalived_service_unit == ''", yaml.dump(missing.get("when")))
+        confirm = by_name["Confirm keepalived is active"]
+        self.assertEqual(
+            confirm["ansible.builtin.command"]["argv"][:2],
+            ["systemctl", "is-active"],
+        )
+        self.assertIn("active", confirm["failed_when"])
+        self.assertEqual(confirm.get("when"), "start_keepalived_service_unit != ''")
 
     def test_bootstrap_does_not_require_peer_dns_before_first_install(self) -> None:
         bootstrap = load_yaml(ROOT / "playbooks" / "bootstrap-pihole.yaml")[0]

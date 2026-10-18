@@ -7,10 +7,45 @@
 #
 # Examples:
 #   ./scripts/molecule-vagrant
+#   ./scripts/molecule-vagrant test -s default
+#   ./scripts/molecule-vagrant test -s debian
 #   VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s default
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+
+kvm_hypervisor_loaded() {
+  [[ -e /dev/kvm ]] || return 1
+  grep -qE '^kvm(_amd|_intel)? ' /proc/modules 2>/dev/null
+}
+
+pick_vagrant_provider() {
+  if [[ -n "${VAGRANT_DEFAULT_PROVIDER:-}" ]]; then
+    return 0
+  fi
+  if kvm_hypervisor_loaded; then
+    export VAGRANT_DEFAULT_PROVIDER=libvirt
+    echo "Using libvirt: KVM is loaded, so VirtualBox cannot enable AMD-V/SVM (VERR_SVM_IN_USE)." >&2
+  else
+    export VAGRANT_DEFAULT_PROVIDER=virtualbox
+  fi
+}
+
+refuse_virtualbox_when_kvm_busy() {
+  case "${VAGRANT_DEFAULT_PROVIDER:-}" in
+    virtualbox)
+      if kvm_hypervisor_loaded; then
+        echo "ERROR: VAGRANT_DEFAULT_PROVIDER=virtualbox but KVM is loaded." >&2
+        echo "VirtualBox fails with VERR_SVM_IN_USE (AMD-V/SVM already in use)." >&2
+        echo "Use libvirt instead:" >&2
+        echo "  VAGRANT_DEFAULT_PROVIDER=libvirt $0" >&2
+        echo "To force VirtualBox, stop libvirt guests and unload kvm_amd/kvm_intel first." >&2
+        return 1
+      fi
+      ;;
+  esac
+  return 0
+}
 
 sync_inventory_from_provider() {
   case "${VAGRANT_DEFAULT_PROVIDER:-virtualbox}" in
@@ -26,6 +61,8 @@ sync_inventory_from_provider() {
 }
 
 if [[ $# -gt 0 ]]; then
+  pick_vagrant_provider
+  refuse_virtualbox_when_kvm_busy
   sync_inventory_from_provider
   exec molecule "$@"
 fi
@@ -33,12 +70,17 @@ fi
 echo "Molecule + Vagrant — pick a provider (inventory + VM network must match):"
 echo "  1) VirtualBox  (inventory/vagrant.yml, 192.168.56.x)"
 echo "  2) libvirt / KVM (inventory/vagrant_libvirt.yml, 192.168.121.x)"
+if kvm_hypervisor_loaded; then
+  echo "KVM is loaded; VirtualBox will fail with VERR_SVM_IN_USE. Prefer 2 (libvirt)."
+fi
 read -r -p "Choice [1-2]: " choice
 
 case "$choice" in
   1)
     provider="virtualbox"
     inventory="vagrant.yml"
+    export VAGRANT_DEFAULT_PROVIDER=virtualbox
+    refuse_virtualbox_when_kvm_busy
     ;;
   2)
     provider="libvirt"

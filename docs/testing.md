@@ -113,10 +113,12 @@ real Let's Encrypt certificates.
 
 ```bash
 ./scripts/molecule-vagrant test -s default
-./scripts/molecule-test-all --debian-only
+./scripts/molecule-vagrant test -s debian
+./scripts/molecule-vagrant test -s debian-traefik
+./scripts/molecule-vagrant test -s debian-traefik-http
 ```
 
-See [README — Molecule integration tests](../README.md#molecule-integration-tests) for provider notes (VirtualBox vs libvirt, ARM64, box selection).
+See [README — Molecule integration tests](../README.md#molecule-integration-tests) for provider notes (VirtualBox vs libvirt, ARM64, box selection). `./scripts/molecule-vagrant` uses libvirt when KVM is loaded so VirtualBox is not started into `VERR_SVM_IN_USE`.
 
 ---
 

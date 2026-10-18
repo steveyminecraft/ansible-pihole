@@ -24,16 +24,15 @@ all:
     # Required by roles/pihole (docker-pihole): compose dir is not defaulted; align with role pihole_dir_loc
     pihole_compose_dir: "/opt/pihole"
     ansible_user: vagrant
-    ansible_password: vagrant  # only used on first run
+    ansible_password: vagrant  # Vagrant default; Molecule SSH uses this password
     ansible_ssh_private_key_file: "{{ lookup('env', 'HOME') }}/.vagrant.d/insecure_private_key"
     # Avoid failing on local /etc/ssh/ssh_config* permission issues; also suppress hostkey prompts.
     # IdentitiesOnly: avoid "Too many authentication failures" when ssh-agent holds many keys.
-    ansible_ssh_common_args: "-F /dev/null -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    ansible_ssh_common_args: "-F /dev/null -o PreferredAuthentications=password,publickey -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     password_lock: false  # Change to false if you still wish to login via passwd auth
     ansible_user_home_dir: /home/{{ ansible_user }}
     ansible_python_interpreter: /usr/bin/python3
     github_user_for_ssh_key: steveyminecraft  # Change me to required value
-    pihole_image: "pihole/pihole:latest"  # lab-only floating tag for disposable Vagrant/Molecule runs
     timezone: "Europe/London"
     pihole_webport_http: '80'  # Port for HTTP-Requests to Webinterface.
     pihole_webport_https: '443'  # Port for HTTPS-DoH Requests.
@@ -85,6 +84,10 @@ all:
     unbound_container_name: unbound
     unbound_port: 5335
     unbound_network_name: dns_net
+    # Lab DNS intercepts root NS (rd ra, not aa); Unbound cannot prime.
+    unbound_forward_addrs:
+      - "1.1.1.1@53"
+      - "8.8.8.8@53"
     pihole_unbound_upstream: "{{ unbound_container_name | default('unbound') }}#{{ unbound_port | default(5335) }}"
     pihole_network_name: "{{ unbound_network_name | default('dns_net') }}"
     pihole_network_external: true

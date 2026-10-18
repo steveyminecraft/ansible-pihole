@@ -1,50 +1,46 @@
 ---
-# Basic sanity check: query Unbound over its Docker-network address. Some
-# compatible Unbound images do not include client tools such as dig/drill.
-- name: Set docker inspect format for Unbound networks
-  ansible.builtin.set_fact:
-    unbound_docker_networks_fmt: "{{ '{{json .NetworkSettings.Networks}}' }}"
-
-- name: Inspect Unbound container networks
+# Probe from the container netns at 127.0.0.1. Host dig @bridge-ip times out when
+# Docker does not manage iptables (Vagrant): FORWARD/NAT is not Docker's job.
+- name: Inspect Unbound container PID
   ansible.builtin.command:
     argv:
       - docker
       - inspect
       - --format
-      - "{{ unbound_docker_networks_fmt }}"
+      - "{{ '{{.State.Running}} {{.State.Pid}}' }}"
       - "{{ unbound_container_name }}"
-  register: unbound_networks_json
+  register: unbound_state
+  retries: 15
+  delay: 2
+  until: >
+    (unbound_state.stdout | default('', true) | trim).split() | first == 'true'
+    and ((unbound_state.stdout | default('', true) | trim).split() | last | int) > 0
   changed_when: false
 
-- name: Set Unbound container IPv4
-  ansible.builtin.set_fact:
-    unbound_container_ipv4: >-
-      {{
-        (
-          unbound_networks_json.stdout | from_json
-          | dict2items
-          | map(attribute='value.IPAddress')
-          | reject('equalto', '')
-          | list
-          | first
-          | default('', true)
-        )
-      }}
-
 - name: Sanity check Unbound is answering on the Docker network
+  vars:
+    unbound_ns_pid: "{{ (unbound_state.stdout | default('', true) | trim).split() | last }}"
   ansible.builtin.command:
     argv:
+      - nsenter
+      - --target
+      - "{{ unbound_ns_pid }}"
+      - --net
       - dig
-      - "@{{ unbound_container_ipv4 }}"
+      - "@127.0.0.1"
       - -p
       - "{{ unbound_port | string }}"
       - cloudflare.com
-      - +short
+      - A
       - +time=3
       - +tries=2
   register: unbound_dig_test
   retries: 12
   delay: 5
-  until: unbound_dig_test.stdout | trim != ""
+  until: >
+    'status: NOERROR' in unbound_dig_test.stdout
+    and 'ANSWER SECTION:' in unbound_dig_test.stdout
   changed_when: false
-  failed_when: unbound_dig_test.stdout | trim == ""
+  failed_when: >
+    'status: NOERROR' not in unbound_dig_test.stdout
+    or 'ANSWER SECTION:' not in unbound_dig_test.stdout

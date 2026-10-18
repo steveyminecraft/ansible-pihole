@@ -4,12 +4,10 @@
 #
 # On EL9+ with iptables-nf_tables, `iptables -j MASQUERADE` often fails (xt_MASQUERADE absent);
 # use a dedicated nftables table instead. No firewall-cmd --reload.
-- name: Ensure nftables is installed for NAT fallback (RedHat)
-  ansible.builtin.dnf:
+- name: Ensure nftables is installed for NAT fallback
+  ansible.builtin.package:
     name: nftables
     state: present
-    lock_timeout: 300
-  when: ansible_facts['os_family'] == 'RedHat'
 
 # One-line python avoids Docker Go `{{...}}` (Jinja conflict).
 - name: Discover Docker IPv4 subnets (dynamic)
@@ -59,16 +57,9 @@
           | map('trim')
           | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$')
           | list
-          | unique
+          + ['172.16.0.0/12']
         )
-        if (
-          (_docker_nat_subnets.stdout_lines | default([]))
-          | map('trim')
-          | select('match', '^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+$')
-          | list
-          | length
-        ) > 0
-        else ['172.16.0.0/12']
+        | unique
       }}
 
 - name: Apply Docker bridge egress NAT (nftables masquerade)
@@ -85,6 +76,10 @@
       timeout 20s nft delete table ip ansible_docker_nat 2>/dev/null || true
       timeout 20s nft add table ip ansible_docker_nat
       timeout 20s nft add chain ip ansible_docker_nat postrouting '{ type nat hook postrouting priority 100; policy accept; }'
+      timeout 20s nft delete table ip ansible_docker_filter 2>/dev/null || true
+      timeout 20s nft add table ip ansible_docker_filter
+      timeout 20s nft add chain ip ansible_docker_filter forward '{ type filter hook forward priority -150; policy accept; }'
+      iptables -P FORWARD ACCEPT 2>/dev/null || true
       echo CHANGED
     executable: /bin/bash
   register: _docker_nat_nft
@@ -112,3 +107,84 @@
   register: _docker_nat_rules
   changed_when: true
   loop: "{{ docker_nat_fallback_subnets }}"
+
+- name: Allow forwarded traffic from Docker subnets
+  ansible.builtin.command:
+    argv:
+      - timeout
+      - "20s"
+      - nft
+      - add
+      - rule
+      - ip
+      - ansible_docker_filter
+      - forward
+      - ip
+      - saddr
+      - "{{ item }}"
+      - accept
+  changed_when: true
+  loop: "{{ docker_nat_fallback_subnets }}"
+
+- name: Allow forwarded traffic to Docker subnets
+  ansible.builtin.command:
+    argv:
+      - timeout
+      - "20s"
+      - nft
+      - add
+      - rule
+      - ip
+      - ansible_docker_filter
+      - forward
+      - ip
+      - daddr
+      - "{{ item }}"
+      - accept
+  changed_when: true
+  loop: "{{ docker_nat_fallback_subnets }}"
+
+- name: Check whether firewalld is running
+  ansible.builtin.command:
+    argv:
+      - firewall-cmd
+      - --state
+  register: _docker_firewalld_state
+  changed_when: false
+  failed_when: false
+
+- name: Trust Docker subnets in firewalld
+  ansible.builtin.command:
+    argv:
+      - firewall-cmd
+      - --permanent
+      - --zone=trusted
+      - --add-source={{ item }}
+  loop: "{{ docker_nat_fallback_subnets }}"
+  register: _docker_firewalld_source
+  changed_when: "'success' in (_docker_firewalld_source.stdout | default(''))"
+  failed_when: false
+  when: (_docker_firewalld_state.stdout | default('')) == 'running'
+
+- name: Enable firewalld masquerade on public zone
+  ansible.builtin.command:
+    argv:
+      - firewall-cmd
+      - --permanent
+      - --zone=public
+      - --add-masquerade
+  register: _docker_firewalld_masq
+  changed_when: "'success' in (_docker_firewalld_masq.stdout | default(''))"
+  failed_when: false
+  when: (_docker_firewalld_state.stdout | default('')) == 'running'
+
+- name: Reload firewalld after Docker trust
+  ansible.builtin.command:
+    argv:
+      - firewall-cmd
+      - --reload
+  changed_when: true
+  failed_when: false
+  when:
+    - (_docker_firewalld_state.stdout | default('')) == 'running'
+    - (_docker_firewalld_source is changed) or (_docker_firewalld_masq is changed)

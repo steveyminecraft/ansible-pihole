@@ -94,11 +94,14 @@ class MoleculePlatformTests(unittest.TestCase):
                 self.assertIn("192.168.56.", text)
                 self.assertIn("192.168.121.", text)
 
-    def test_molecule_test_all_maps_provider_inventory(self) -> None:
-        script = (ROOT / "scripts" / "molecule-test-all").read_text(encoding="utf-8")
-        self.assertIn("libvirt|kvm", script)
-        self.assertIn("vagrant_libvirt.yml", script)
-        self.assertIn("vagrant.yml", script)
+    def test_molecule_vagrant_maps_provider_inventory(self) -> None:
+        vagrant = (ROOT / "scripts" / "molecule-vagrant").read_text(encoding="utf-8")
+        self.assertFalse((ROOT / "scripts" / "molecule-test-all").exists())
+        self.assertIn("pick_vagrant_provider", vagrant)
+        self.assertIn("libvirt|kvm", vagrant)
+        self.assertIn("VERR_SVM_IN_USE", vagrant)
+        self.assertIn("vagrant_libvirt.yml", vagrant)
+        self.assertIn("vagrant.yml", vagrant)
         self.assertTrue((ROOT / "inventory" / "vagrant.yml").is_file())
         self.assertTrue((ROOT / "inventory" / "vagrant_libvirt.yml").is_file())
 

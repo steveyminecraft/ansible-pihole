@@ -54,8 +54,14 @@ server:
     access-control: {{ acl }}
     {% endfor %}
 
+{% if unbound_forward_addrs | default([]) | length > 0 %}
+    module-config: "iterator"
+{% else %}
     auto-trust-anchor-file: "{{ unbound_auto_trust_anchor_file | default('var/root.key') }}"
-    chroot: "{{ unbound_chroot | default('/opt/unbound/etc/unbound') }}"
+{% endif %}
+{% if unbound_chroot | default('') | length > 0 %}
+    chroot: "{{ unbound_chroot }}"
+{% endif %}
 
     deny-any: {{ (unbound_deny_any | default(true)) | ternary('yes','no') }}
     harden-algo-downgrade: {{ (unbound_harden_algo_downgrade | default(true)) | ternary('yes','no') }}
@@ -153,7 +159,16 @@ server:
     ###########################################################################
     # FORWARD ZONE
     ###########################################################################
-    include: /opt/unbound/etc/unbound/forward-records.conf
+    # Do not include the image forward-records.conf (Cloudflare DoT on 853).
+    # Recurse from root hints unless unbound_forward_addrs is set (Vagrant labs
+    # that intercept root NS replies as recursive THROWAWAY).
+{% if unbound_forward_addrs | default([]) | length > 0 %}
+forward-zone:
+    name: "."
+{% for addr in unbound_forward_addrs %}
+    forward-addr: {{ addr }}
+{% endfor %}
+{% endif %}
 
 remote-control:
     control-enable: no
