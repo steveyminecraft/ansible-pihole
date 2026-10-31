@@ -19,11 +19,10 @@ vrrp_script check_pihole_dns {
     weight {{ keepalived_track_script_weight | default(-50) }}
 }
 
-{# Vagrant is IPv4-only. A one-member vrrp_sync_group makes keepalived (Rocky 10 /
-   keepalived 2.2+) ignore weighted instance track_scripts ("ignoring tracked
-   script … with weights due to SYNC group"), so container-stop VIP failover never
-   fires. Skip the sync group in lab; keep it for production IPv4+IPv6. #}
-{% if not (vagrant_env | default(false) | bool) %}
+{# IPv6 VIP is optional. Without one, skip the sync group: a one-member group
+   makes keepalived ignore weighted track_scripts, so container-stop failover
+   never fires. Vagrant is always IPv4-only. #}
+{% if (pihole_vip_ipv6 | default('') | string | length) > 0 and not (vagrant_env | default(false) | bool) %}
 vrrp_sync_group PIHOLE {
     group {
         PIHOLE-IPv4
@@ -64,7 +63,9 @@ vrrp_instance PIHOLE-IPv4 {
     garp_master_delay 1
     garp_master_repeat 5
     garp_master_refresh 10
-    {# Weighted track_script on the instance (no sync_group in vagrant_env). #}
+{% endif %}
+{% if (vagrant_env | default(false) | bool) or ((pihole_vip_ipv6 | default('') | string | length) == 0) %}
+    {# Weighted track_script on the instance when there is no IPv6 sync group. #}
     track_script {
         check_pihole_dns
     }
@@ -75,7 +76,7 @@ vrrp_instance PIHOLE-IPv4 {
     }
 }
 
-{% if not (vagrant_env | default(false) | bool) %}
+{% if (pihole_vip_ipv6 | default('') | string | length) > 0 and not (vagrant_env | default(false) | bool) %}
 vrrp_instance PIHOLE-IPv6 {
     interface {{ keepalived_vrrp_interface | default((ansible_facts['default_ipv6'] | default({}))['interface'] | default(ansible_facts['default_ipv4']['interface'])) }}
     virtual_router_id {{ keepalived_virtual_router_id | default(1) }}

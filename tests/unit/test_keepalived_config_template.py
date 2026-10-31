@@ -85,6 +85,14 @@ class KeepalivedConfigTemplateTests(unittest.TestCase):
         self.assertNotIn("unicast_src_ip", ipv4)
         self.assertNotIn("unicast_peer", ipv4)
 
+    def test_omitted_ipv6_vip_is_ipv4_only(self) -> None:
+        rendered = self._render(pihole_vip_ipv6="")
+        self.assertNotIn("PIHOLE-IPv6", rendered)
+        self.assertNotIn("vrrp_sync_group", rendered)
+        ipv4 = instance_block(rendered, "PIHOLE-IPv4")
+        self.assertIn("track_script", ipv4)
+        self.assertIn("172.16.7.35/24", ipv4)
+
     def test_vagrant_tracks_script_on_ipv4_instance(self) -> None:
         rendered = self._render(vagrant_env=True, keepalive_role="BACKUP", priority=100)
         self.assertNotIn("vrrp_sync_group", rendered)
