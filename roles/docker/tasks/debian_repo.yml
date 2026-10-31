@@ -6,7 +6,6 @@
       - ca-certificates
       - curl
       - gnupg2
-      - software-properties-common
   when: ansible_facts['os_family'] == 'Debian'
 
 # Use deb822 + keyring (Docker / Ubuntu 24+). ansible.builtin.apt_repository has mangled
@@ -18,7 +17,7 @@
         'ubuntu' if ansible_facts['distribution'] == 'Ubuntu'
         else (
           'raspbian'
-          if ansible_facts['distribution'] == 'Debian' and ansible_facts['architecture'] == 'aarch64'
+          if ansible_facts['distribution'] == 'Debian' and ansible_facts['architecture'] in ['armv6l', 'armv7l', 'armhf']
           else 'debian'
         )
       }}

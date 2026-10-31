@@ -98,9 +98,13 @@
 - name: Set custom DNS servers
   blockinfile:
     path: /etc/dhcpcd.conf
-    block: static domain_name_servers={{ static_dns }}
+    block: static domain_name_servers={{ static_dns | default('') }}
   notify: Restart dhcpcd
-  when: ansible_facts['os_family'] == 'Debian' and ansible_facts['architecture'] == 'aarch64'
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['architecture'] == 'aarch64'
+    - static_dns is defined
+    - (static_dns | default('')) | length > 0
 
 - name: Install requirements Debian
   ansible.builtin.apt:
