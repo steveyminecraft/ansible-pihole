@@ -31,12 +31,9 @@ when the peer list is empty. `update-pihole.yaml` imports
 it on every run; `tasks/main.yml` imports it after package, sysctl and SELinux
 setup and before the firewalld rules.
 
-In the production branch (`vagrant_env: false`) the `PIHOLE` sync group tracks
-`check_pihole_dns` for both instances, and its weight applies to both: a failed
-check drops the MASTER from 110 to 60 and the BACKUP (100) takes the VIPs within
-a few seconds. `preempt_delay` is rendered only on the MASTER node's IPv6
-instance, which damps failback by about 30 seconds; on the BACKUP it would only
-delay failover.
+`check_pihole_dns` is tracked on the IPv4 instance. A failed check drops the
+MASTER from 110 to 60 and the BACKUP (100) takes the VIP within a few seconds.
+There is no IPv6 VRRP instance. `pihole_vip_ipv6` is ignored.
 
 The role leaves IPv4 forwarding disabled by default because a local service VIP
 does not normally require routing. Set `keepalived_enable_ip_forward: true`

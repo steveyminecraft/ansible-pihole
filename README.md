@@ -141,7 +141,7 @@ docker_ipv6_fixed_cidr: "fd12:3456:789a::/64"
 When `docker_ipv6_enabled` is true, `docker_ipv6_fixed_cidr` must be set to a real
 environment subnet (documentation ranges such as `2001:db8::/32` are rejected).
 
-Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`, `pihole_vip_ipv4` / `pihole_vip_ipv6`) are typically set in inventory; see the [docker-pi-hole environment docs](https://github.com/pi-hole/docker-pi-hole#environment-variables) for image variables.
+Pi-hole-related variables (e.g. `pihole_environment_variables`, `pihole_ha_mode`, `pihole_vip_ipv4`) are typically set in inventory; see the [docker-pi-hole environment docs](https://github.com/pi-hole/docker-pi-hole#environment-variables) for image variables. IPv6 VIPs are not configured.
 
 Role-local variable naming now consistently uses the `pihole_` prefix to satisfy ansible-lint role scoping rules (for example `pihole_dir_loc`, `pihole_webport_http`, `pihole_docker_manage_iptables`). Existing inventories that still define legacy unprefixed names continue to work via compatibility lookups in `roles/pihole/defaults/main.yml`, but new configs should use the prefixed names.
 
@@ -499,7 +499,7 @@ instances, lab VMs, or Raspberry Pi hardware.
 | `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
 | `pihole-no-unbound` | [`molecule/pihole-no-unbound/`](molecule/pihole-no-unbound/) | Runs bootstrap and update workflows with Pi-hole-only DNS |
 | `upgrade` | [`molecule/upgrade/`](molecule/upgrade/) | Previous Galaxy release (`molecule/upgrade/from-version`) on both Vagrant nodes, then `update-pihole` with Traefik enabled |
-| `keepalived-production` | [`molecule/keepalived-production/`](molecule/keepalived-production/) | Docker driver, two Rocky 9 containers (runs in GitHub CI). Production keepalived branch (`vagrant_env: false`: sync group, IPv6 instance, unicast IPv4) rendered by the same `render.yml` as `update-pihole`; asserts unicast adverts and VIP failover/failback on a failed health check and on a stopped MASTER |
+| `keepalived-production` | [`molecule/keepalived-production/`](molecule/keepalived-production/) | Docker driver, two Rocky 9 containers (runs in GitHub CI). Production keepalived branch (`vagrant_env: false`: IPv4-only instance, unicast IPv4) rendered by the same `render.yml` as `update-pihole`; asserts unicast adverts and VIP failover/failback on a failed health check and on a stopped MASTER |
 
 Examples:
 
