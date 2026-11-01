@@ -120,9 +120,20 @@
   register: traefik_dynamic_tls_removed
   when: not ((traefik_tls_enabled | bool) and (traefik_tls_mode == 'supplied'))
 
-- name: Pull Traefik image
-  community.docker.docker_image_pull:
-    name: "{{ traefik_image }}:{{ traefik_version }}"
+- name: Check whether the Traefik image is already local
+  ansible.builtin.command:
+    argv:
+      - docker
+      - image
+      - inspect
+      - "{{ traefik_image }}:{{ traefik_version }}"
+  register: traefik_local_image
+  changed_when: false
+  failed_when: false
+
+- name: Pull Traefik image when it is not already local
+  ansible.builtin.include_tasks: pull_image.yml
+  when: (traefik_local_image.rc | default(1) | int) != 0
 
 - name: Render Traefik Docker Compose file
   ansible.builtin.template:

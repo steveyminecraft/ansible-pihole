@@ -1,0 +1,4 @@
+---
+- name: Pull Traefik image
+  community.docker.docker_image_pull:
+    name: "{{ traefik_image }}:{{ traefik_version }}"

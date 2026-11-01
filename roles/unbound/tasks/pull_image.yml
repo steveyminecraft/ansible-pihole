@@ -1,0 +1,16 @@
+---
+- name: Select Unbound image for host architecture
+  ansible.builtin.set_fact:
+    unbound_effective_image: >-
+      {{
+        unbound_image
+        if (unbound_image | default('') | string | length > 0)
+        else unbound_image_arch_map.get(
+          ansible_facts['architecture'] | default(''),
+          unbound_image_arch_default
+        )
+      }}
+
+- name: Pull Unbound image
+  community.docker.docker_image_pull:
+    name: "{{ unbound_effective_image }}"

@@ -129,6 +129,22 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
             names.index("Record peers that answer DNS with keepalived active"),
             names.index("Refuse to drain the last healthy DNS node"),
         )
+        self.assertIn("Pull container images before draining DNS", names)
+        self.assertLess(
+            names.index("Refuse to drain the last healthy DNS node"),
+            names.index("Pull container images before draining DNS"),
+        )
+        pull = next(
+            task for task in tasks if task["name"] == "Pull container images before draining DNS"
+        )
+        self.assertEqual(pull.get("when"), "not ansible_check_mode")
+        pull_blob = yaml.dump(pull["block"])
+        self.assertIn("tasks_from: pull_image.yml", pull_blob)
+        self.assertIn("steveyminecraft.pihole.pihole", pull_blob)
+        self.assertIn("steveyminecraft.pihole.unbound", pull_blob)
+        self.assertIn("steveyminecraft.pihole.traefik", pull_blob)
+        self.assertIn("pihole_enable_unbound", pull_blob)
+        self.assertIn("traefik_enabled", pull_blob)
 
         collect = next(
             task for task in tasks if task["name"] == "Collect peer DNS addresses before drain"
@@ -178,6 +194,25 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
 
         roles = [role["role"] for role in first_play["roles"]]
         self.assertEqual(roles[0], "steveyminecraft.pihole.stop_keepalived")
+
+    def test_image_pulls_after_drain_skip_when_the_tag_is_local(self) -> None:
+        pihole = load_yaml(ROOT / "roles" / "pihole" / "tasks" / "deploypi.yml")
+        by_name = {task["name"]: task for task in pihole if "name" in task}
+        inspect = by_name["Check whether the Pi-hole image is already local"]
+        self.assertEqual(
+            inspect["ansible.builtin.command"]["argv"][:3],
+            ["docker", "image", "inspect"],
+        )
+        self.assertFalse(inspect.get("failed_when"))
+        pull = by_name["Pull docker image when it is not already local"]
+        self.assertIn("pihole_local_image.rc", pull["when"])
+        self.assertEqual(pull["ansible.builtin.include_tasks"], "pull_image.yml")
+
+        traefik = load_yaml(ROOT / "roles" / "traefik" / "tasks" / "deploy.yml")
+        traefik_by_name = {task["name"]: task for task in traefik if "name" in task}
+        traefik_pull = traefik_by_name["Pull Traefik image when it is not already local"]
+        self.assertIn("traefik_local_image.rc", traefik_pull["when"])
+        self.assertEqual(traefik_pull["ansible.builtin.include_tasks"], "pull_image.yml")
 
     def test_update_pihole_renders_keepalived_after_dns_gates(self) -> None:
         post_tasks = load_yaml(UPDATE_PIHOLE)[0]["post_tasks"]
