@@ -24,10 +24,10 @@ platforms:
     docker_networks:
       - name: ka-prod-net
         ipam_config:
-          - subnet: 172.30.7.0/24
+          - subnet: 10.230.7.0/24
     networks:
       - name: ka-prod-net
-        ipv4_address: 172.30.7.25
+        ipv4_address: 10.230.7.25
   - name: ka-prod-02
     image: geerlingguy/docker-rockylinux9-ansible:latest
     pre_build_image: true
@@ -41,7 +41,7 @@ platforms:
       - /tmp
     networks:
       - name: ka-prod-net
-        ipv4_address: 172.30.7.30
+        ipv4_address: 10.230.7.30
 provisioner:
   name: ansible
   inventory:
@@ -50,16 +50,16 @@ provisioner:
         ansible_user: root
         pihole_ha_mode: true
         vagrant_env: false
-        pihole_vip_ipv4: 172.30.7.35/24
+        pihole_vip_ipv4: 10.230.7.35/24
     host_vars:
       ka-prod-01:
         ansible_docker_host: ka-prod-01
-        ansible_host: 172.30.7.25
+        ansible_host: 10.230.7.25
         priority: 110
         keepalive_role: MASTER
       ka-prod-02:
         ansible_docker_host: ka-prod-02
-        ansible_host: 172.30.7.30
+        ansible_host: 10.230.7.30
         priority: 100
         keepalive_role: BACKUP
   env:
