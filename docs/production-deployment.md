@@ -87,7 +87,6 @@ all:
     pihole_compose_dir: /opt/pihole
     pihole_ha_mode: true
     pihole_vip_ipv4: 192.0.2.53/24
-    # pihole_vip_ipv6: fd00::53/64   # optional
     pihole_environment_variables:
       FTLCONF_webserver_api_password: "{{ vault_pihole_api_password }}"
       # ... see mapping table below
@@ -109,8 +108,7 @@ Do not reuse lab-only fixture credentials from
 | Compose path | Yes | `pihole_compose_dir` | *(inherit defaults)* | Not role-defaulted; set explicitly |
 | Pi-hole API password | Yes | `pihole_environment_variables.FTLCONF_webserver_api_password` | same key, vault placeholder | Min 16 chars; see [secrets-management.md](secrets-management.md) |
 | HA enabled | Yes | `pihole_ha_mode: true` | `pihole_ha_mode: true` | Drives keepalived roles in bootstrap/update |
-| IPv4 VIP | Yes | `pihole_vip_ipv4` | `pihole_vip_ipv4` | CIDR form, e.g. `192.0.2.53/24` |
-| IPv6 VIP | No | `pihole_vip_ipv6` | — | Omit if not using IPv6 VIP |
+| IPv4 VIP | Yes | `pihole_vip_ipv4` | `pihole_vip_ipv4` | CIDR form, e.g. `192.0.2.53/24`. IPv6 VIP is not configured |
 | keepalived per host | Yes | `priority`, `keepalive_role` | same | On each host, not in `vars` only |
 | Nebula controller group | Yes | `nebula_sync_controller` child group | same | **Required** for `playbooks/sync.yaml` |
 | Nebula primary URL | Yes (if syncing) | `nebula_sync_primary_url` | same | HTTP(S) to primary Pi-hole API |
@@ -147,7 +145,7 @@ Do not reuse lab-only fixture credentials from
 - [ ] Two (or more) hosts with `ansible_host`, `priority`, `keepalive_role`
 - [ ] `pihole_compose_dir`
 - [ ] `pihole_ha_mode: true`
-- [ ] `pihole_vip_ipv4` (and `pihole_vip_ipv6` if used)
+- [ ] `pihole_vip_ipv4`
 - [ ] `pihole_environment_variables.FTLCONF_webserver_api_password` (vault)
 - [ ] `nebula_sync_controller` with exactly one host (if using Nebula Sync)
 - [ ] `nebula_sync_primary_url`, `nebula_sync_primary_password`, `nebula_sync_replicas` (if syncing)
@@ -156,7 +154,7 @@ Do not reuse lab-only fixture credentials from
 **Commonly optional:**
 
 - `pihole_firewall_deploy`, `pihole_webport_*`, REV_SERVER fields
-- `pihole_vip_ipv6`, custom `unbound_access_control`
+- custom `unbound_access_control`
 - `github_user_for_ssh_key` (only when deploying SSH keys via `sshd` role)
 
 Role tasks reject known placeholders (`CHANGE_ME`, `Intranet`, `Testing 101`, empty

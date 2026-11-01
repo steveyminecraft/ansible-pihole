@@ -58,11 +58,14 @@ class KeepalivedConfigTemplateTests(unittest.TestCase):
         rendered = self._render()
         self.assertIn("max_auto_priority 99", rendered)
 
-    def test_production_tracks_script_only_on_sync_group(self) -> None:
+    def test_ipv6_vip_is_not_rendered(self) -> None:
         rendered = self._render()
-        self.assertIn("vrrp_sync_group PIHOLE", rendered)
-        self.assertEqual(rendered.count("track_script"), 1)
-        self.assertNotIn("track_script", instance_block(rendered, "PIHOLE-IPv6"))
+        self.assertNotIn("vrrp_sync_group", rendered)
+        self.assertNotIn("PIHOLE-IPv6", rendered)
+        self.assertNotIn("fd00::10/64", rendered)
+        ipv4 = instance_block(rendered, "PIHOLE-IPv4")
+        self.assertIn("track_script", ipv4)
+        self.assertIn("172.16.7.35/24", ipv4)
         self.assertIn("weight -50", rendered)
 
     def test_production_unicast_peers_are_plain_addresses(self) -> None:
@@ -71,10 +74,9 @@ class KeepalivedConfigTemplateTests(unittest.TestCase):
         self.assertRegex(ipv4, r"unicast_peer \{\s*172\.16\.7\.30\s*\}")
         self.assertNotIn("[", ipv4)
 
-    def test_production_master_damps_failback_on_ipv6_only(self) -> None:
+    def test_production_has_no_preempt_delay(self) -> None:
         rendered = self._render()
-        self.assertNotIn("preempt_delay", instance_block(rendered, "PIHOLE-IPv4"))
-        self.assertIn("preempt_delay 30", instance_block(rendered, "PIHOLE-IPv6"))
+        self.assertNotIn("preempt_delay", rendered)
 
     def test_production_backup_has_no_preempt_delay(self) -> None:
         rendered = self._render(keepalive_role="BACKUP", priority=100)
