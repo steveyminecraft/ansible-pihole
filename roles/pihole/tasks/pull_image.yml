@@ -1,0 +1,9 @@
+---
+- name: Pull docker image
+  community.docker.docker_image_pull:
+    name: "{{ pihole_image }}"
+    platform: >-
+      {{
+        pihole_docker_platform_arch_map[ansible_facts['architecture'] | default('')]
+        | default(omit)
+      }}

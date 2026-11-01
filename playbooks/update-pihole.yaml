@@ -83,6 +83,29 @@
       when:
         - not ansible_check_mode
         - pihole_update_peer_hosts | length > 0
+
+    # Dockerd uses the host resolver. This node stops its own DNS before
+    # the roles below run, so registry pulls have to happen while it is up.
+    - name: Pull container images before draining DNS
+      tags: [drain, keepalived, container]
+      when: not ansible_check_mode
+      block:
+        - name: Pull the Pi-hole image before draining DNS
+          ansible.builtin.include_role:
+            name: steveyminecraft.pihole.pihole
+            tasks_from: pull_image.yml
+
+        - name: Pull the Unbound image before draining DNS
+          when: pihole_enable_unbound | default(true) | bool
+          ansible.builtin.include_role:
+            name: steveyminecraft.pihole.unbound
+            tasks_from: pull_image.yml
+
+        - name: Pull the Traefik image before draining DNS
+          when: traefik_enabled | default(false) | bool
+          ansible.builtin.include_role:
+            name: steveyminecraft.pihole.traefik
+            tasks_from: pull_image.yml
   roles:
     - role: steveyminecraft.pihole.stop_keepalived
       tags: [stopkeepalived, drain, ha]

@@ -41,14 +41,23 @@
     mode: '0600'
   register: pihole_compose_template
 
-- name: Pull docker image
-  community.docker.docker_image_pull:
-    name: "{{ pihole_image }}"
-    platform: >-
-      {{
-        pihole_docker_platform_arch_map[ansible_facts['architecture'] | default('')]
-        | default(omit)
-      }}
+# Update drains this node's DNS before the Pi-hole role runs. A registry
+# pull then fails when dockerd resolves through that DNS. Pull beforehand;
+# this task only hits the registry when the tag is not already local.
+- name: Check whether the Pi-hole image is already local
+  ansible.builtin.command:
+    argv:
+      - docker
+      - image
+      - inspect
+      - "{{ pihole_image }}"
+  register: pihole_local_image
+  changed_when: false
+  failed_when: false
+
+- name: Pull docker image when it is not already local
+  ansible.builtin.include_tasks: pull_image.yml
+  when: (pihole_local_image.rc | default(1) | int) != 0
 
 # Free 127.0.0.1:53 / avoid stub on 127.0.0.53 fighting Docker-published Pi-hole DNS.
 # Not gated on pihole_firewall_deploy — firewalld and resolved are separate concerns.
