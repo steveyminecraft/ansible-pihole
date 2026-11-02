@@ -8,6 +8,13 @@ Playbooks live under [`playbooks/`](playbooks/). Example inventories for CI and
 Molecule are under [`inventory/`](inventory/); for real hardware you maintain
 your own inventory (YAML or INI) with your hosts and variables.
 
+This repository is the Pi-hole server deployment (the Galaxy collection,
+playbooks, and host configuration). LAN support data stays in
+`~/Documents/Projects/ansible-provision`: local DNS records, the apt
+package-cache and LanCache overrides, and
+`scripts/pihole-cache-maintenance.sh`. Do not add those site records here.
+See [Production deployment](docs/production-deployment.md#site-support-data).
+
 For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker-pi-hole
 
 > **Notice:** Going forward, supported targets are Ubuntu, Debian, and Raspberry

@@ -22,6 +22,21 @@
 | `tests/remote/inventories/example-traefik.yml` | Yes | Single-node Traefik opt-in template (no live ACME secrets) |
 | `tests/remote/inventories/example-aws.yml` | Yes | Single-node AWS-style template (HA off) |
 
+## Site support data
+
+Server deployment stays in this repository. Records and switches that only
+apply to this LAN stay in `~/Documents/Projects/ansible-provision`:
+
+| Support data | Where |
+|---|---|
+| Pi-hole local DNS records, including Steam LanCache | `roles/pihole_records/` and `pihole-records.yaml` |
+| Apt package-cache and LanCache maintenance (`off` / `on`) | `scripts/pihole-cache-maintenance.sh` |
+| Live Pi-hole host addresses | `inventroy.yaml` group `pihole` |
+
+Do not add site hostnames, cache address lists, or that maintenance switch
+to this collection. Traefik remains the proxy here; the old nginx proxy
+checkpoint is not part of the deployment.
+
 Production inventory is **never** checked in. Start from
 [`tests/remote/inventories/example-lab-ha.yml`](../tests/remote/inventories/example-lab-ha.yml)
 for a dual-node HA layout, or from [`inventory/vagrant.yml`](../inventory/vagrant.yml)
