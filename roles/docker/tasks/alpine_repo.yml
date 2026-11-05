@@ -1,0 +1,34 @@
+---
+# Alpine publishes Docker in the v3.24 community repo (docker-engine), not docker-ce.
+- name: Ensure Alpine community repository is present
+  ansible.builtin.lineinfile:
+    path: /etc/apk/repositories
+    line: >-
+      https://dl-cdn.alpinelinux.org/alpine/v{{
+        ansible_facts['distribution_version'].split('.')[:2] | join('.')
+      }}/community
+    state: present
+    mode: "0644"
+  when: ansible_facts['os_family'] == 'Alpine'
+
+- name: Install Docker Engine (Alpine)
+  community.general.apk:
+    name:
+      - docker-engine
+      - docker-cli
+      - docker-cli-compose
+      - py3-docker-py
+      - bash
+    state: present
+    update_cache: true
+  when: ansible_facts['os_family'] == 'Alpine'
+
+- name: Ensure Docker service is started and enabled (Alpine)
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+  when:
+    - ansible_facts['os_family'] == 'Alpine'
+    - docker_manage_service | default(true) | bool
+    - not ansible_check_mode

@@ -40,11 +40,18 @@
 
     - name: Probe peer keepalived before drain
       tags: [drain, ha, keepalived]
-      ansible.builtin.command:
-        argv:
-          - systemctl
-          - is-active
-          - keepalived
+      ansible.builtin.shell:
+        cmd: |
+          set -euo pipefail
+          # serial: 1 has not gathered the peer's facts yet, so detect OpenRC
+          # on the delegated host instead of trusting hostvars.
+          if command -v rc-service >/dev/null 2>&1 && [ ! -d /run/systemd/system ]; then
+            rc-service keepalived status >/dev/null
+            printf '%s\n' active
+          else
+            systemctl is-active keepalived
+          fi
+        executable: /bin/bash
       delegate_to: "{{ item }}"
       loop: "{{ pihole_update_peer_hosts }}"
       register: pihole_update_peer_keepalived

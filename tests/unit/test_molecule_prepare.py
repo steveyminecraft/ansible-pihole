@@ -57,6 +57,50 @@ class MoleculePrepareTests(unittest.TestCase):
         )
         self.assertIn("curl", apt["ansible.builtin.apt"]["name"])
 
+    def test_alpine_prepare_installs_apk_tools_and_pins_release(self) -> None:
+        plays = yaml.safe_load(PREPARE.read_text(encoding="utf-8"))
+        tasks = plays[0]["tasks"]
+        apk = next(
+            task
+            for task in tasks
+            if task["name"] == "Install Python and DNS tools (Alpine)"
+        )
+        self.assertEqual(apk["when"], "ansible_facts['os_family'] == 'Alpine'")
+        names = apk["community.general.apk"]["name"]
+        for package in (
+            "python3",
+            "py3-requests",
+            "py3-packaging",
+            "bind-tools",
+            "iproute2",
+            "sqlite",
+            "curl",
+            "openssl",
+            "bash",
+        ):
+            self.assertIn(package, names)
+        upgrade = next(
+            task
+            for task in tasks
+            if task["name"] == "Upgrade Alpine to the 3.24.3 patch release"
+        )
+        self.assertTrue(upgrade["community.general.apk"]["upgrade"])
+        task_names = [task["name"] for task in tasks]
+        self.assertLess(
+            task_names.index(upgrade["name"]),
+            task_names.index("Reboot Alpine onto the upgraded kernel"),
+        )
+        self.assertLess(
+            task_names.index("Reboot Alpine onto the upgraded kernel"),
+            task_names.index("Assert Alpine release is 3.24.3"),
+        )
+        release = next(
+            task for task in tasks if task["name"] == "Assert Alpine release is 3.24.3"
+        )
+        that = " ".join(str(item) for item in release["ansible.builtin.assert"]["that"])
+        self.assertIn("3.24.3", that)
+        self.assertIn("alpine-release", release["ansible.builtin.assert"]["fail_msg"])
+
     def test_prepare_mints_supplied_traefik_certs_when_enabled(self) -> None:
         plays = yaml.safe_load(PREPARE.read_text(encoding="utf-8"))
         names = [task["name"] for task in plays[0]["tasks"]]

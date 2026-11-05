@@ -51,6 +51,24 @@ class MoleculePlatformTests(unittest.TestCase):
         boxes = {platform["box"] for platform in cfg["platforms"]}
         self.assertEqual(boxes, {"bento/debian-12"})
 
+    def test_alpine_scenario_pins_3_24_3_box(self) -> None:
+        cfg = load_yaml(MOLECULE / "alpine" / "molecule.yml")
+        self.assertEqual(cfg["scenario"]["name"], "alpine")
+        boxes = {platform["box"] for platform in cfg["platforms"]}
+        self.assertEqual(boxes, {"boxomatic/alpine-3.24"})
+        sequence = cfg["scenario"]["test_sequence"]
+        self.assertIn("side_effect", sequence)
+        side_effect_index = sequence.index("side_effect")
+        verify_indices = [index for index, step in enumerate(sequence) if step == "verify"]
+        self.assertGreater(side_effect_index, verify_indices[0])
+        self.assertLess(side_effect_index, verify_indices[-1])
+        vagrantfile = (MOLECULE / "alpine" / "Vagrantfile").read_text(encoding="utf-8")
+        self.assertIn('box: "boxomatic/alpine-3.24"', vagrantfile)
+        self.assertIn('box_libvirt: "boxomatic/alpine-3.24"', vagrantfile)
+        self.assertIn('box_version: "20260930.0.1"', vagrantfile)
+        self.assertIn("apk add --no-cache python3", vagrantfile)
+        self.assertNotIn("apk upgrade", vagrantfile)
+
     def test_debian_libvirt_box_is_bookworm64(self) -> None:
         vagrantfile = (MOLECULE / "debian" / "Vagrantfile").read_text(encoding="utf-8")
         self.assertIn('box_libvirt: "debian/bookworm64"', vagrantfile)
@@ -79,6 +97,7 @@ class MoleculePlatformTests(unittest.TestCase):
         scenarios = (
             "default",
             "debian",
+            "alpine",
             "debian-traefik",
             "debian-traefik-http",
             "docker",

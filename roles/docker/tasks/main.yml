@@ -1,4 +1,7 @@
 ---
+- name: Configure Docker apk repository
+  ansible.builtin.import_tasks: alpine_repo.yml
+
 - name: Configure Docker apt repository
   ansible.builtin.import_tasks: debian_repo.yml
 

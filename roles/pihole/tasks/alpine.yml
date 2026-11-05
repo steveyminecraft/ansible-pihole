@@ -1,0 +1,11 @@
+---
+- name: Install Python3-pip
+  community.general.apk:
+    name: py3-pip
+    state: present
+
+- name: Ensure firewalld is installed
+  community.general.apk:
+    name: firewalld
+    state: present
+  when: pihole_firewall_deploy | bool

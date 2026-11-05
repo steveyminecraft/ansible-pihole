@@ -74,11 +74,42 @@
     - ansible_facts['os_family'] == 'Debian'
     - not ansible_check_mode
 
+- name: Install requirements Alpine
+  community.general.apk:
+    name:
+      - firewalld
+      - py3-pip
+      - bind-tools
+      - iproute2
+      - bash
+      - curl
+      - tzdata
+    state: present
+    update_cache: true
+  when: ansible_facts['os_family'] == 'Alpine'
+
+- name: Set Alpine timezone
+  community.general.timezone:
+    name: "{{ timezone }}"
+  when:
+    - ansible_facts['os_family'] == 'Alpine'
+    - not ansible_check_mode
+
 - name: Set a hostname
   ansible.builtin.hostname:
     name: "{{ inventory_hostname }}"
     use: systemd
-  when: not ansible_check_mode
+  when:
+    - not ansible_check_mode
+    - ansible_facts['os_family'] != 'Alpine'
+
+- name: Set a hostname (Alpine)
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+    use: alpine
+  when:
+    - not ansible_check_mode
+    - ansible_facts['os_family'] == 'Alpine'
 
 - name: Set hostname
   lineinfile:
@@ -123,6 +154,23 @@
     state: present
   when: ansible_facts['os_family'] == 'RedHat'
 
+- name: Enable and start dbus (Alpine)
+  ansible.builtin.service:
+    name: dbus
+    state: started
+    enabled: true
+  when:
+    - ansible_facts['os_family'] == 'Alpine'
+    - not ansible_check_mode
+
+- name: Enable and start firewalld (Alpine)
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when:
+    - ansible_facts['os_family'] == 'Alpine'
+    - not ansible_check_mode
 
 - name: Flush handlers
   meta: flush_handlers

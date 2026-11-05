@@ -1,8 +1,8 @@
 # pihole
 
-Supported targets are Ubuntu, Debian, and Raspberry Pi OS. Rocky Linux and
-Red Hat Enterprise Linux are deprecated; existing RedHat-family tasks remain
-in this release.
+Supported targets are Ubuntu, Debian, Raspberry Pi OS, and Alpine Linux 3.24.3.
+Rocky Linux and Red Hat Enterprise Linux are deprecated; existing RedHat-family
+tasks remain in this release.
 
 Set `pihole_enable_unbound: false` for a Pi-hole-only deployment and provide
 explicit upstreams:

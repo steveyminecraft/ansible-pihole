@@ -36,6 +36,26 @@
     state: present
   when: ansible_facts['os_family'] == 'RedHat'
 
+- name: Ensure Alpine community repository is present
+  ansible.builtin.lineinfile:
+    path: /etc/apk/repositories
+    line: >-
+      https://dl-cdn.alpinelinux.org/alpine/v{{
+        ansible_facts['distribution_version'].split('.')[:2] | join('.')
+      }}/community
+    state: present
+    mode: "0644"
+  when: ansible_facts['os_family'] == 'Alpine'
+
+- name: Install keepalived Alpine
+  community.general.apk:
+    name:
+      - keepalived
+      - shadow-login
+    state: present
+    update_cache: true
+  when: ansible_facts['os_family'] == 'Alpine'
+
 - name: Configure keepalived_t permissive compatibility mode
   community.general.selinux_permissive:
     name: keepalived_t
@@ -80,9 +100,33 @@
   ansible.builtin.import_tasks: render.yml
 
 ### Add in firewall rules for vrrp protocol (proto 112; unicast + multicast)
+# firewalld 2.4 on Alpine rejects the name "vrrp" (INVALID_PROTOCOL) and accepts 112.
+- name: Ensure firewalld is answering (Alpine)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if firewall-cmd --state 2>/dev/null | grep -qx running; then
+      printf '%s\n' already-running
+      exit 0
+    fi
+    rc-service dbus start
+    rc-service firewalld zap || true
+    rc-service firewalld start
+    firewall-cmd --state
+    printf '%s\n' started
+  args:
+    executable: /bin/bash
+  register: alpine_firewalld_ready
+  changed_when: alpine_firewalld_ready.stdout_lines[-1] == 'started'
+  when: ansible_facts['os_family'] == 'Alpine'
+
 - name: Add VRRP protocol to firewall
   ansible.posix.firewalld:
-    rich_rule: rule protocol value="vrrp" accept
+    rich_rule: >-
+      {{
+        'rule protocol value="112" accept'
+        if ansible_facts['os_family'] == 'Alpine'
+        else 'rule protocol value="vrrp" accept'
+      }}
     permanent: true
     state: enabled
     immediate: true
@@ -90,7 +134,12 @@
 
 - name: Allow VRRP unicast from keepalived peers
   ansible.posix.firewalld:
-    rich_rule: "rule family=ipv4 source address={{ item }} protocol value=vrrp accept"
+    rich_rule: >-
+      {{
+        'rule family=ipv4 source address=' ~ item ~ ' protocol value="112" accept'
+        if ansible_facts['os_family'] == 'Alpine'
+        else 'rule family=ipv4 source address=' ~ item ~ ' protocol value=vrrp accept'
+      }}
     permanent: true
     state: enabled
     immediate: true

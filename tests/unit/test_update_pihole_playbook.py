@@ -168,9 +168,14 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
             task for task in tasks if task["name"] == "Probe peer keepalived before drain"
         )
         self.assertEqual(keepalived_probe["delegate_to"], "{{ item }}")
+        probe_cmd = keepalived_probe["ansible.builtin.shell"]["cmd"]
+        self.assertIn("systemctl is-active keepalived", probe_cmd)
+        self.assertIn("rc-service keepalived status", probe_cmd)
+        self.assertIn("printf '%s\\n' active", probe_cmd)
+        self.assertNotIn("service_mgr", probe_cmd)
         self.assertEqual(
-            keepalived_probe["ansible.builtin.command"]["argv"],
-            ["systemctl", "is-active", "keepalived"],
+            keepalived_probe["ansible.builtin.shell"]["executable"],
+            "/bin/bash",
         )
         self.assertFalse(keepalived_probe.get("failed_when"))
         self.assertIn("pihole_update_peer_hosts", keepalived_probe["loop"])
@@ -281,7 +286,17 @@ class RollingHaPlaybookContractTests(unittest.TestCase):
             ["systemctl", "is-active"],
         )
         self.assertIn("active", confirm["failed_when"])
-        self.assertEqual(confirm.get("when"), "start_keepalived_service_unit != ''")
+        confirm_when = yaml.dump(confirm.get("when"))
+        self.assertIn("start_keepalived_service_unit != ''", confirm_when)
+        self.assertIn("openrc", confirm_when)
+        openrc = by_name["Confirm keepalived is active (OpenRC)"]
+        self.assertEqual(openrc["ansible.builtin.command"]["argv"][0], "rc-service")
+        self.assertEqual(openrc["ansible.builtin.command"]["argv"][2], "status")
+        openrc_when = yaml.dump(openrc.get("when"))
+        self.assertIn("start_keepalived_service_unit != ''", openrc_when)
+        self.assertIn("openrc", openrc_when)
+        selector = yaml.dump(by_name["Select keepalived/keepalive service unit if present"])
+        self.assertIn("keepalived", selector)
 
     def test_bootstrap_does_not_require_peer_dns_before_first_install(self) -> None:
         bootstrap = load_yaml(ROOT / "playbooks" / "bootstrap-pihole.yaml")[0]

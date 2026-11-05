@@ -1,4 +1,19 @@
 ---
+- name: Ensure /usr/local/sbin exists (Alpine)
+  ansible.builtin.file:
+    path: /usr/local/sbin
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ansible_facts['os_family'] == 'Alpine'
+
+- name: Install cron for root.hints refresh (Alpine)
+  community.general.apk:
+    name: cronie
+    state: present
+  when: ansible_facts['os_family'] == 'Alpine'
+
 - name: Install root.hints update script
   ansible.builtin.copy:
     dest: /usr/local/sbin/update-root-hints.sh

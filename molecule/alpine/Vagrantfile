@@ -1,0 +1,93 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # Molecule converges over SSH; disable default share (libvirt NFS needs host sudo).
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  # --- Network (two subnets) ------------------------------------------------
+  # VirtualBox host-only defaults: 192.168.56.0/24
+  # libvirt private LAN: 192.168.121.0/24 (inventory/vagrant_libvirt.yml).
+  # This host already has that prefix on the vagrant-libvirt network.
+  # The plugin will not create a second network named vagrant-56 on the
+  # same prefix, then the domain start fails looking for vagrant-56.
+  vm_settings = {
+    # generic/alpine324 is not on Vagrant Cloud. This box publishes VirtualBox
+    # and libvirt and uses SSH user vagrant. Pin the Cloud version; prepare
+    # still requires /etc/alpine-release to be 3.24.3.
+    box: "boxomatic/alpine-3.24",
+    box_libvirt: "boxomatic/alpine-3.24",
+    box_version: "20260930.0.1",
+    memory: 4096,
+    cpus: 4,
+    machines: [
+      { name: "vagrant-pihole-01", mac: "52:54:00:56:00:04",
+        ip_virtualbox: "192.168.56.4", ip_libvirt: "192.168.121.4" },
+      { name: "vagrant-pihole-02", mac: "52:54:00:56:00:05",
+        ip_virtualbox: "192.168.56.5", ip_libvirt: "192.168.121.5" }
+    ]
+  }
+
+  # --- PLUGINS ---------------------------------------------------------------
+
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    config.vbguest.auto_update = false
+  end
+
+  # --- MACHINES --------------------------------------------------------------
+
+  vm_settings[:machines].each do |machine|
+    config.vm.define machine[:name] do |node|
+      node.vm.hostname         = machine[:name]
+      node.vm.box              = vm_settings[:box]
+      node.vm.box_version      = vm_settings[:box_version]
+      node.vm.box_check_update = false
+
+      node.vm.provider "virtualbox" do |v, o|
+        v.memory = vm_settings[:memory]
+        v.cpus   = vm_settings[:cpus]
+        o.vm.network "private_network",
+                     ip: machine[:ip_virtualbox],
+                     netmask: "255.255.255.0",
+                     auto_config: true
+        v.customize ["modifyvm", :id, "--macaddress2", machine[:mac].delete(":")]
+        v.customize ["modifyvm", :id, "--graphicscontroller", "vboxsvga"]
+        v.customize ["modifyvm", :id, "--accelerate-3d", "off"]
+        v.customize ["modifyvm", :id, "--vram", "32"]
+      end
+
+      if Vagrant.has_plugin?("vagrant-libvirt")
+        node.vm.provider "libvirt" do |l, o|
+          o.vm.box = vm_settings[:box_libvirt]
+          o.vm.box_version = vm_settings[:box_version]
+          l.memory = vm_settings[:memory]
+          l.cpus   = vm_settings[:cpus]
+          l.driver = "kvm"
+          # vagrant-56 already owns 192.168.121.0/24, so the plugin's usual
+          # management network name cannot be created. Use libvirt "default".
+          l.management_network_name = "default"
+          l.management_network_address = "192.168.122.0/24"
+          l.management_network_keep = true
+          o.vm.network "private_network",
+                       ip: machine[:ip_libvirt],
+                       netmask: "255.255.255.0",
+                       auto_config: true,
+                       libvirt__network_name: "vagrant-libvirt",
+                       libvirt__mac: machine[:mac],
+                       libvirt__always_destroy: false
+        end
+      end
+
+      # python3 only. Do not upgrade the base system; prepare asserts Alpine 3.24.3.
+      node.vm.provision "shell",
+                        inline: "apk add --no-cache python3 && date | tee /etc/vagrant_provisioned_at && ip -4 addr show || true",
+                        privileged: true
+
+      node.trigger.after :destroy do |trigger|
+        trigger.info = "Removing known_hosts entry for #{machine[:name]}"
+        trigger.on_error = :continue
+        trigger.run = { inline: "ssh-keygen -R #{machine[:name]}" }
+      end
+    end
+  end
+end

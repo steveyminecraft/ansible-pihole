@@ -21,6 +21,12 @@
     lock_timeout: 300
   when: ansible_facts['os_family'] == 'RedHat'
 
+- name: Upgrade apk packages (Alpine)
+  community.general.apk:
+    upgrade: true
+    update_cache: true
+  when: ansible_facts['os_family'] == 'Alpine'
+
 - name: Updates Reboot
   ansible.builtin.stat:
     path: /var/run/reboot-required

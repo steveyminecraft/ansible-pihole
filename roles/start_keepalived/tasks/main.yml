@@ -6,13 +6,12 @@
   ansible.builtin.set_fact:
     start_keepalived_service_unit: >-
       {{
-        'keepalived.service'
-        if 'keepalived.service' in ansible_facts.services
-        else (
-          'keepalive.service'
-          if 'keepalive.service' in ansible_facts.services
-          else ''
-        )
+        (
+          ['keepalived.service', 'keepalive.service', 'keepalived']
+          | select('in', ansible_facts.services)
+          | list
+          | first
+        ) | default('')
       }}
 
 - name: Ensure keepalived/keepalive service is started (if present)
@@ -39,4 +38,19 @@
   register: start_keepalived_active
   changed_when: false
   failed_when: start_keepalived_active.stdout | trim != 'active'
-  when: start_keepalived_service_unit != ''
+  when:
+    - start_keepalived_service_unit != ''
+    - ansible_facts['service_mgr'] | default('systemd') != 'openrc'
+
+- name: Confirm keepalived is active (OpenRC)
+  ansible.builtin.command:
+    argv:
+      - rc-service
+      - "{{ start_keepalived_service_unit | regex_replace('\\.service$', '') }}"
+      - status
+  register: start_keepalived_openrc
+  changed_when: false
+  failed_when: start_keepalived_openrc.rc != 0
+  when:
+    - start_keepalived_service_unit != ''
+    - ansible_facts['service_mgr'] | default('systemd') == 'openrc'

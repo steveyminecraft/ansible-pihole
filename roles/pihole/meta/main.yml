@@ -22,6 +22,9 @@ galaxy_info:
       versions:
         - "9"
         - "10"
+    - name: Alpine
+      versions:
+        - all
 
   galaxy_tags:
     - pihole

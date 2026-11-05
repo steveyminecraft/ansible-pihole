@@ -83,6 +83,10 @@
   ansible.builtin.include_tasks: debian.yml
   when: ansible_facts['distribution'] in ['Debian', 'Ubuntu']
 
+- name: Alpine setup tasks
+  ansible.builtin.include_tasks: alpine.yml
+  when: ansible_facts['distribution'] == 'Alpine'
+
 - name: Redhat setup tasks
   ansible.builtin.include_tasks: redhat.yml
   when: ansible_facts['distribution'] in ['Rocky', 'Red Hat Enterprise Linux']
