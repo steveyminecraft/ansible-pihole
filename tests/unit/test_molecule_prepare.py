@@ -82,7 +82,7 @@ class MoleculePrepareTests(unittest.TestCase):
         upgrade = next(
             task
             for task in tasks
-            if task["name"] == "Upgrade Alpine to the 3.24.3 patch release"
+            if task["name"] == "Upgrade Alpine to the 3.24.4 patch release"
         )
         self.assertTrue(upgrade["community.general.apk"]["upgrade"])
         task_names = [task["name"] for task in tasks]
@@ -92,13 +92,13 @@ class MoleculePrepareTests(unittest.TestCase):
         )
         self.assertLess(
             task_names.index("Reboot Alpine onto the upgraded kernel"),
-            task_names.index("Assert Alpine release is 3.24.3"),
+            task_names.index("Assert Alpine release is 3.24.4 or newer"),
         )
         release = next(
-            task for task in tasks if task["name"] == "Assert Alpine release is 3.24.3"
+            task for task in tasks if task["name"] == "Assert Alpine release is 3.24.4 or newer"
         )
         that = " ".join(str(item) for item in release["ansible.builtin.assert"]["that"])
-        self.assertIn("3.24.3", that)
+        self.assertIn("version('3.24.4', '>=')", that)
         self.assertIn("alpine-release", release["ansible.builtin.assert"]["fail_msg"])
 
     def test_prepare_mints_supplied_traefik_certs_when_enabled(self) -> None:

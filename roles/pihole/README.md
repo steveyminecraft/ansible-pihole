@@ -1,6 +1,6 @@
 # pihole
 
-Supported targets are Ubuntu, Debian, Raspberry Pi OS, and Alpine Linux 3.24.3.
+Supported targets are Ubuntu, Debian, Raspberry Pi OS, and Alpine Linux 3.24.4.
 Rocky Linux and Red Hat Enterprise Linux are deprecated; existing RedHat-family
 tasks remain in this release.
 

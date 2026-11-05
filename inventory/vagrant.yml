@@ -41,7 +41,10 @@ all:
     timezone: "Europe/London"
     pihole_webport_http: '80'  # Port for HTTP-Requests to Webinterface.
     pihole_webport_https: '443'  # Port for HTTPS-DoH Requests.
-    pihole_firewall_deploy: false  # will ensure firewalld is install and configured
+    # Bootstrap installs firewalld, which rejects unpublished ports with
+    # "no route to host". Nebula Sync on the primary dials the replica
+    # API on :80, so the lab has to open the same ports as the libvirt inventory.
+    pihole_firewall_deploy: true
     pihole_use_host_network: false
     DHCP_ACTIVE: false
     pihole_environment_variables:

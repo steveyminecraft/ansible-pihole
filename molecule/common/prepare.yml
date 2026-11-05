@@ -103,9 +103,9 @@
       when: ansible_facts['os_family'] == 'Alpine'
 
     # boxomatic/alpine-3.24 20260930.0.1 ships 3.24.2. No Vagrant Cloud box
-    # publishes 3.24.3, so move the guest to that patch on the v3.24 repos
+    # publishes 3.24.4, so move the guest to that patch on the v3.24 repos
     # before the release assert. The Vagrant shell provisioner stays python3-only.
-    - name: Upgrade Alpine to the 3.24.3 patch release
+    - name: Upgrade Alpine to the 3.24.4 patch release
       community.general.apk:
         upgrade: true
         update_cache: true
@@ -125,12 +125,12 @@
       register: alpine_release_file
       when: ansible_facts['os_family'] == 'Alpine'
 
-    - name: Assert Alpine release is 3.24.3
+    - name: Assert Alpine release is 3.24.4 or newer
       ansible.builtin.assert:
         that:
-          - (alpine_release_file.content | b64decode | trim) == '3.24.3'
+          - (alpine_release_file.content | b64decode | trim) is version('3.24.4', '>=')
         fail_msg: >-
-          Alpine Molecule guests must be 3.24.3 (/etc/alpine-release).
+          Alpine Molecule guests must be 3.24.4 or newer (/etc/alpine-release).
           Found {{ alpine_release_file.content | default('') | b64decode | trim }}.
       when: ansible_facts['os_family'] == 'Alpine'
 

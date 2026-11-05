@@ -1,5 +1,5 @@
 ---
-# Molecule scenario: Alpine 3.24.3 HA.
+# Molecule scenario: Alpine 3.24.4 HA.
 # generic/alpine324 is not published. boxomatic/alpine-3.24 has VirtualBox and
 # libvirt and the vagrant user. box_version is pinned in the Vagrantfile.
 dependency:

@@ -51,7 +51,7 @@ class MoleculePlatformTests(unittest.TestCase):
         boxes = {platform["box"] for platform in cfg["platforms"]}
         self.assertEqual(boxes, {"bento/debian-12"})
 
-    def test_alpine_scenario_pins_3_24_3_box(self) -> None:
+    def test_alpine_scenario_pins_published_box(self) -> None:
         cfg = load_yaml(MOLECULE / "alpine" / "molecule.yml")
         self.assertEqual(cfg["scenario"]["name"], "alpine")
         boxes = {platform["box"] for platform in cfg["platforms"]}
@@ -125,6 +125,9 @@ class MoleculePlatformTests(unittest.TestCase):
         self.assertIn("vagrant.yml", vagrant)
         self.assertTrue((ROOT / "inventory" / "vagrant.yml").is_file())
         self.assertTrue((ROOT / "inventory" / "vagrant_libvirt.yml").is_file())
+        for name in ("vagrant.yml", "vagrant_libvirt.yml"):
+            inventory = (ROOT / "inventory" / name).read_text(encoding="utf-8")
+            self.assertIn("pihole_firewall_deploy: true", inventory)
 
     def test_libvirt_inventory_uses_vagrant_machine_key(self) -> None:
         inventory = (ROOT / "inventory" / "vagrant_libvirt.yml").read_text(

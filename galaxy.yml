@@ -7,7 +7,7 @@ authors:
 description: >-
   Deploy Pi-hole with Docker, optional Unbound, optional Traefik, keepalived HA,
   and Nebula Sync. Supported on Ubuntu, Debian, Raspberry Pi OS, and Alpine
-  Linux 3.24.3. Rocky Linux and Red Hat Enterprise Linux are deprecated
+  Linux 3.24.4. Rocky Linux and Red Hat Enterprise Linux are deprecated
   (existing EL task paths remain).
   Includes playbooks for bootstrap, updates, and configuration sync.
 license:

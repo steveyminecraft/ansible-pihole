@@ -14,7 +14,7 @@ Vagrant.configure("2") do |config|
   vm_settings = {
     # generic/alpine324 is not on Vagrant Cloud. This box publishes VirtualBox
     # and libvirt and uses SSH user vagrant. Pin the Cloud version; prepare
-    # still requires /etc/alpine-release to be 3.24.3.
+    # still requires /etc/alpine-release to be 3.24.4 or newer.
     box: "boxomatic/alpine-3.24",
     box_libvirt: "boxomatic/alpine-3.24",
     box_version: "20260930.0.1",
@@ -78,7 +78,7 @@ Vagrant.configure("2") do |config|
         end
       end
 
-      # python3 only. Do not upgrade the base system; prepare asserts Alpine 3.24.3.
+      # python3 only. Do not upgrade the base system; prepare asserts Alpine 3.24.4 or newer.
       node.vm.provision "shell",
                         inline: "apk add --no-cache python3 && date | tee /etc/vagrant_provisioned_at && ip -4 addr show || true",
                         privileged: true
