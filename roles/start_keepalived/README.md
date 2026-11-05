@@ -25,8 +25,9 @@ If validation fails, the rescue block stops the play and this role does not run,
 leaving the node drained until you repair it and re-run the playbook.
 
 When the role does run, `state: started` is not treated as proof that keepalived
-stayed up. The role then runs `systemctl is-active` and fails the host unless
-the selected unit reports `active`. In HA mode (`pihole_ha_mode`) a missing
+stayed up. The role then confirms the service is active (`systemctl is-active`
+on systemd, `rc-service keepalived status` on OpenRC) and fails the host unless
+that check succeeds. In HA mode (`pihole_ha_mode`) a missing
 `keepalived` or `keepalive` unit also fails the host. Non-HA runs still skip
 the start when neither unit is installed.
 

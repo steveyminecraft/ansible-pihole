@@ -16,7 +16,7 @@ Run:
 molecule test -s default
 ```
 
-The `default` (Ubuntu 24.04) and `debian` (Debian 12) scenarios run a full test sequence:
+The `default` (Ubuntu 24.04), `debian` (Debian 12), and `alpine` (Alpine 3.24.4 or newer) scenarios run the same full test sequence:
 
 1. **Converge** — bootstrap the HA stack
 2. **Verify** — baseline HA / DNS checks (`verify_ha.yml`)

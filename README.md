@@ -404,8 +404,8 @@ and Unbound gates pass: it ensures `dig` and the script user's `docker` group
 membership, installs `check_pihole.sh`, renders `keepalived.conf` through
 `keepalived -t`, and restarts keepalived only when `keepalived.conf` changed.
 It does not touch keepalived packages, sysctls, SELinux or firewalld. Resume
-then starts keepalived and fails that host unless `systemctl is-active` reports
-`active`, so a green node means the service is running before the next host is
+then starts keepalived and fails that host unless it is active
+(`systemctl is-active` on systemd, `rc-service keepalived status` on OpenRC), so a green node means the service is running before the next host is
 drained. Before the drain, at least one other inventory host must answer
 TCP/53 and have `keepalived` active. To bring only keepalived into line, one
 node at a time:
