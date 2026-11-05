@@ -10,6 +10,8 @@ galaxy_info:
       versions: ["all"]
     - name: Ubuntu
       versions: ["all"]
+    - name: Alpine
+      versions: ["all"]
   galaxy_tags:
     - bootstrap
     - system

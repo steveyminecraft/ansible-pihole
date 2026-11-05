@@ -86,6 +86,54 @@
       failed_when: false
       when: ansible_facts['os_family'] == 'RedHat'
 
+    - name: Install Python and DNS tools (Alpine)
+      community.general.apk:
+        name:
+          - python3
+          - py3-requests
+          - py3-packaging
+          - bind-tools
+          - iproute2
+          - sqlite
+          - curl
+          - openssl
+          - bash
+        update_cache: true
+        state: present
+      when: ansible_facts['os_family'] == 'Alpine'
+
+    # boxomatic/alpine-3.24 20260930.0.1 ships 3.24.2. No Vagrant Cloud box
+    # publishes 3.24.4, so move the guest to that patch on the v3.24 repos
+    # before the release assert. The Vagrant shell provisioner stays python3-only.
+    - name: Upgrade Alpine to the 3.24.4 patch release
+      community.general.apk:
+        upgrade: true
+        update_cache: true
+      when: ansible_facts['os_family'] == 'Alpine'
+
+    # apk upgrade installs linux-virt but the box keeps the previous kernel
+    # until reboot. firewalld 2.4's nftables then fails with
+    # "Protocol not supported" and the daemon exits.
+    - name: Reboot Alpine onto the upgraded kernel
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+      when: ansible_facts['os_family'] == 'Alpine'
+
+    - name: Read Alpine release
+      ansible.builtin.slurp:
+        src: /etc/alpine-release
+      register: alpine_release_file
+      when: ansible_facts['os_family'] == 'Alpine'
+
+    - name: Assert Alpine release is 3.24.4 or newer
+      ansible.builtin.assert:
+        that:
+          - (alpine_release_file.content | b64decode | trim) is version('3.24.4', '>=')
+        fail_msg: >-
+          Alpine Molecule guests must be 3.24.4 or newer (/etc/alpine-release).
+          Found {{ alpine_release_file.content | default('') | b64decode | trim }}.
+      when: ansible_facts['os_family'] == 'Alpine'
+
     - name: Create lab Traefik certificate directory
       ansible.builtin.file:
         path: "{{ traefik_tls_cert_src | dirname }}"

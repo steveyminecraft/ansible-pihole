@@ -17,10 +17,11 @@ See [Production deployment](docs/production-deployment.md#site-support-data).
 
 For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker-pi-hole
 
-> **Notice:** Going forward, supported targets are Ubuntu, Debian, and Raspberry
-> Pi OS (Debian ARM). Rocky Linux and Red Hat Enterprise Linux are
-> **deprecated**. The existing RedHat-family tasks still run in this release;
-> they are not being rewritten. Plan to move those hosts to Debian or Ubuntu.
+> **Notice:** Going forward, supported targets are Ubuntu, Debian, Raspberry
+> Pi OS (Debian ARM), and Alpine Linux 3.24.4. Rocky Linux and Red Hat
+> Enterprise Linux are **deprecated**. The existing RedHat-family tasks still
+> run in this release; they are not being rewritten. Plan to move those hosts
+> to Debian, Ubuntu, or Alpine.
 
 ## Controller setup (your laptop or CI)
 
@@ -81,7 +82,7 @@ package, networking, diagnostics, user, daemon, and NAT task files under
 
 ## Base setup (targets)
 
-- Targets can be **Raspberry Pi OS** (Debian ARM) or Ubuntu/Debian. Molecule `default` is Ubuntu 24.04; `debian` is Debian 12 (closer to Pi OS). Raspberry Pi OS ARM is **phase two** (AWS remote / hardware). Rocky/RHEL task paths still exist but are deprecated (see the notice above).
+- Targets can be **Raspberry Pi OS** (Debian ARM), Ubuntu/Debian, or **Alpine Linux 3.24.4**. Molecule `default` is Ubuntu 24.04; `debian` is Debian 12 (closer to Pi OS); `alpine` is Alpine 3.24.4 (OpenRC). Raspberry Pi OS ARM is **phase two** (AWS remote / hardware). Rocky/RHEL task paths still exist but are deprecated (see the notice above).
 - The [openssh_keypair](https://docs.ansible.com/ansible/latest/collections/community/crypto/openssh_keypair_module.html) collection module is pulled in via `collections/requirements.yml`.
 - **Headless Pi** (if applicable): enable SSH, configure user and networking, set static IPs (DHCP reservation is enough).
 - **Inventory:** define hosts and group vars (see examples in [`inventory/vagrant.yml`](inventory/vagrant.yml) for lab-style vars such as `pihole_*`, `nebula_sync_*`, VIPs). There is no single checked-in “production” inventory filename; use `-i` pointing at your file.
@@ -403,8 +404,8 @@ and Unbound gates pass: it ensures `dig` and the script user's `docker` group
 membership, installs `check_pihole.sh`, renders `keepalived.conf` through
 `keepalived -t`, and restarts keepalived only when `keepalived.conf` changed.
 It does not touch keepalived packages, sysctls, SELinux or firewalld. Resume
-then starts keepalived and fails that host unless `systemctl is-active` reports
-`active`, so a green node means the service is running before the next host is
+then starts keepalived and fails that host unless it is active
+(`systemctl is-active` on systemd, `rc-service keepalived status` on OpenRC), so a green node means the service is running before the next host is
 drained. Before the drain, at least one other inventory host must answer
 TCP/53 and have `keepalived` active. To bring only keepalived into line, one
 node at a time:
@@ -501,6 +502,7 @@ instances, lab VMs, or Raspberry Pi hardware.
 |----------|------|-----------|
 | `default` | [`molecule/default/`](molecule/default/) | **Ubuntu 24.04** (`bento/ubuntu-24.04`); HA bootstrap, verify, rolling `update-pihole`, post-update verify (Traefik off, HTTP+HTTPS on Pi-hole) |
 | `debian` | [`molecule/debian/`](molecule/debian/) | Debian 12 — closer to Raspberry Pi OS; same HA + update sequence. VirtualBox: `bento/debian-12`. libvirt: `debian/bookworm64` (`bento/debian-12` has no libvirt provider) |
+| `alpine` | [`molecule/alpine/`](molecule/alpine/) | Alpine 3.24.4 HA — same bootstrap, verify, and rolling update sequence (OpenRC). Box `boxomatic/alpine-3.24` version `20260930.0.1` (VirtualBox and libvirt). Libvirt private LAN uses the existing `vagrant-libvirt` network (`192.168.121.0/24`), because a second network named `vagrant-56` cannot share that prefix. `generic/alpine324` is not published. Prepare requires `/etc/alpine-release` `3.24.4` or newer |
 | `debian-traefik` | [`molecule/debian-traefik/`](molecule/debian-traefik/) | Debian 12 HA with Traefik enabled (supplied lab TLS; HTTP redirect + HTTPS UI) |
 | `debian-traefik-http` | [`molecule/debian-traefik-http/`](molecule/debian-traefik-http/) | Debian 12 HA with Traefik enabled, TLS off (HTTP UI) |
 | `nebula-sync-migration` | [`molecule/nebula-sync-migration/`](molecule/nebula-sync-migration/) | Seeds legacy plaintext credentials, then verifies migration to secret-file mode |
@@ -514,6 +516,7 @@ Examples:
 molecule test                 # default = Ubuntu 24.04 HA
 molecule test -s default
 molecule test -s debian
+molecule test -s alpine
 molecule test -s debian-traefik
 molecule test -s debian-traefik-http
 molecule test -s nebula-sync-migration
@@ -526,7 +529,7 @@ molecule converge -s default    # iterate without full test sequence
 Private guest IPs depend on the provider (see scenario `Vagrantfile`s such as [`molecule/default/Vagrantfile`](molecule/default/Vagrantfile) and [`molecule/debian/Vagrantfile`](molecule/debian/Vagrantfile)):
 
 - **VirtualBox** — typically `192.168.56.0/24` → [`inventory/vagrant.yml`](inventory/vagrant.yml)
-- **libvirt** — typically `192.168.121.0/24` → [`inventory/vagrant_libvirt.yml`](inventory/vagrant_libvirt.yml). Guests use libvirt network `vagrant-56` for that subnet and management network `default` (`192.168.122.0/24`), because the plugin cannot create a second network named `vagrant-libvirt` on the same prefix.
+- **libvirt** — typically `192.168.121.0/24` → [`inventory/vagrant_libvirt.yml`](inventory/vagrant_libvirt.yml). The default scenario attaches the private LAN to whichever of `vagrant-56` or `vagrant-libvirt` already owns that prefix, and uses management network `default` (`192.168.122.0/24`). The plugin will not create a second network on the same prefix.
 
 Molecule links inventory via `inventory/${MOLECULE_VAGRANT_INVENTORY:-vagrant.yml}` (basename only). Match **Vagrant’s provider** to the inventory file:
 
@@ -559,6 +562,7 @@ networking behavior are part of the test surface.
 ```bash
 ./scripts/molecule-vagrant test -s default
 ./scripts/molecule-vagrant test -s debian
+./scripts/molecule-vagrant test -s alpine
 ./scripts/molecule-vagrant test -s debian-traefik
 ./scripts/molecule-vagrant test -s pihole-no-unbound
 VAGRANT_DEFAULT_PROVIDER=libvirt ./scripts/molecule-vagrant test -s default

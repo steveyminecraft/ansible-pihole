@@ -74,7 +74,7 @@ touched.
 | Local DNS listener | After updates, before keepalived resumes | waits up to 180 seconds for `127.0.0.1:53`; failure leaves the node drained |
 | Local Pi-hole DNS | After listener is open | `dig +short @127.0.0.1 <health-qname>` must return an IPv4 line; failure leaves the node drained |
 | Local Unbound DNS | Only when `pihole_unbound_present` is true | `dig` from inside the Pi-hole container to Unbound must return an IPv4 line; failure leaves the node drained |
-| Keepalived resume | After local DNS gates pass | keepalived starts only for a locally healthy node, then the play fails unless `systemctl is-active` reports `active` |
+| Keepalived resume | After local DNS gates pass | keepalived starts only for a locally healthy node, then the play fails unless it is active (`systemctl is-active` on systemd, `rc-service keepalived status` on OpenRC) |
 | VIP DNS verify | After all nodes update, when HA and `pihole_vip_ipv4` are set | retries for up to about 60 seconds (`30` retries, `2` seconds delay) and fails the run if the VIP does not answer |
 
 ## Retry guidance

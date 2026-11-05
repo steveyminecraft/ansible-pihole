@@ -6,13 +6,12 @@
   ansible.builtin.set_fact:
     stop_keepalived_service_unit: >-
       {{
-        'keepalived.service'
-        if 'keepalived.service' in ansible_facts.services
-        else (
-          'keepalive.service'
-          if 'keepalive.service' in ansible_facts.services
-          else ''
-        )
+        (
+          ['keepalived.service', 'keepalive.service', 'keepalived']
+          | select('in', ansible_facts.services)
+          | list
+          | first
+        ) | default('')
       }}
 
 - name: Ensure keepalived/keepalive service is stopped (if present)

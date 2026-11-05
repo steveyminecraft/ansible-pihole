@@ -1,4 +1,13 @@
 ---
+- name: Ensure Docker config directory exists (Alpine)
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ansible_facts['os_family'] == 'Alpine'
+
 - name: Configure Docker daemon (RedHat family)
   ansible.builtin.copy:
     dest: /etc/docker/daemon.json
@@ -28,7 +37,7 @@
       Set docker_ipv6_fixed_cidr to a real, environment-specific IPv6 subnet when docker_ipv6_enabled=true.
       Documentation ranges (2001:db8::/32) are not allowed.
   when:
-    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['os_family'] in ['Debian', 'Alpine']
     - docker_ipv6_enabled | default(false) | bool
 
 - name: Configure Docker IPv6 (Debian family)
@@ -52,7 +61,7 @@
       }}
   notify: Restart Docker
   when:
-    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['os_family'] in ['Debian', 'Alpine']
     - docker_ipv6_enabled | default(false) | bool
 
 - name: Configure Docker without explicit IPv6 (Debian family)
@@ -75,5 +84,5 @@
       }}
   notify: Restart Docker
   when:
-    - ansible_facts['os_family'] == 'Debian'
+    - ansible_facts['os_family'] in ['Debian', 'Alpine']
     - not (docker_ipv6_enabled | default(false) | bool)

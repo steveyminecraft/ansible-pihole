@@ -9,6 +9,11 @@
     sshd_target_handler: Restart_SSH
   when: ansible_facts['os_family'] == 'Debian'
 
+- name: Set correct handler for Alpine
+  ansible.builtin.set_fact:
+    sshd_target_handler: Restart_SSHD
+  when: ansible_facts['os_family'] == 'Alpine'
+
 # Required for Ubuntu to stop freaking out
 - name: Ensure sshd runtime directory exists
   become: true

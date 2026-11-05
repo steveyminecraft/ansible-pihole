@@ -109,6 +109,7 @@ echo ""
 echo "  cd \"$repo_root\" && VAGRANT_DEFAULT_PROVIDER=$provider ./scripts/molecule-vagrant test -s default"
 echo ""
 echo "Debian (closer to Raspberry Pi OS): replace -s default with -s debian"
+echo "Alpine 3.24.4: replace -s default with -s alpine"
 echo "Traefik on Debian: -s debian-traefik or -s debian-traefik-http"
 echo ""
 

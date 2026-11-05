@@ -248,6 +248,7 @@ jobs:
           required = {
               "molecule/default/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/debian/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
+              "molecule/alpine/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/debian-traefik/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/debian-traefik-http/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],
               "molecule/nebula-sync-migration/molecule.yml": ["dependency", "driver", "platforms", "provisioner", "scenario"],

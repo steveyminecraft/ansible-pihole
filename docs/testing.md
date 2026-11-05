@@ -58,6 +58,7 @@ Molecule scenarios under `molecule/`:
 |----------|------|-------|
 | `default` | `molecule/default/` | Ubuntu 24.04 HA — bootstrap, verify, rolling `update-pihole`, re-verify |
 | `debian` | `molecule/debian/` | Debian 12 HA — closer to Raspberry Pi OS |
+| `alpine` | `molecule/alpine/` | Alpine 3.24.4 HA — OpenRC, same bootstrap and rolling update |
 | `debian-traefik` | `molecule/debian-traefik/` | Debian 12 HA with Traefik — supplied TLS, HTTP→HTTPS, whoami discovery |
 | `debian-traefik-http` | `molecule/debian-traefik-http/` | Debian 12 HA with Traefik — TLS off, HTTP UI |
 | `docker` | `molecule/docker/` | Docker role focus (Vagrant — local) |
@@ -114,6 +115,7 @@ real Let's Encrypt certificates.
 ```bash
 ./scripts/molecule-vagrant test -s default
 ./scripts/molecule-vagrant test -s debian
+./scripts/molecule-vagrant test -s alpine
 ./scripts/molecule-vagrant test -s debian-traefik
 ./scripts/molecule-vagrant test -s debian-traefik-http
 ```
@@ -126,11 +128,12 @@ See [README — Molecule integration tests](../README.md#molecule-integration-te
 
 | Phase | What | Where it runs |
 |-------|------|----------------|
-| **1 (now)** | Ubuntu 24.04 HA (`default`) plus Debian 12 HA (`debian`, `debian-traefik`, `debian-traefik-http`) | Local Molecule / libvirt |
+| **1 (now)** | Ubuntu 24.04 HA (`default`), Debian 12 HA (`debian`, `debian-traefik`, `debian-traefik-http`), and Alpine 3.24.4 HA (`alpine`) | Local Molecule / libvirt |
 | **2** | **Raspberry Pi OS on ARM** | AWS remote `phase-two-pi-os-arm` (manual), then real Pi hardware |
 
 Phase 1 is the default local gate. Debian 12 is the closest Vagrant stand-in for
-Raspberry Pi OS (Debian ARM). Rocky/RHEL is deprecated; Molecule no longer
+Raspberry Pi OS (Debian ARM). Alpine 3.24.4 is the OpenRC guest (`molecule test -s alpine`).
+Rocky/RHEL is deprecated; Molecule no longer
 covers EL, but the RedHat-family role tasks remain in this release.
 
 **Phase 2 — Raspberry Pi OS ARM:** AWS has no public Raspberry Pi OS AMI. Manual
@@ -156,7 +159,7 @@ molecule test -s default
 
 Shared verify logic (`molecule/common/verify_ha.yml`) exercises VIP DNS, keepalived
 state, and post-update HA checks. The `debian` scenario follows the same
-pattern on Debian 12.
+pattern on Debian 12, and `alpine` follows it on Alpine 3.24.4.
 
 | Layer | HA coverage | Why |
 |-------|-------------|-----|

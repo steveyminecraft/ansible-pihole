@@ -7,9 +7,9 @@ Vagrant.configure("2") do |config|
 
   # --- Network (two subnets) ------------------------------------------------
   # VirtualBox host-only defaults: 192.168.56.0/24
-  # libvirt (vagrant-libvirt + network "vagrant-56"): typically 192.168.121.0/24
-  # If your libvirt network uses another range, change ip_libvirt and use
-  # inventory/vagrant_libvirt.yml (or edit subnet there to match).
+  # libvirt private LAN: 192.168.121.0/24 (inventory/vagrant_libvirt.yml).
+  # Use whichever of vagrant-56 or vagrant-libvirt already owns that prefix.
+  # The plugin will not create a second network on the same prefix.
   vm_settings = {
     box: "bento/ubuntu-24.04",
     memory: 4096,
@@ -21,6 +21,23 @@ Vagrant.configure("2") do |config|
         ip_virtualbox: "192.168.56.5", ip_libvirt: "192.168.121.5" }
     ]
   }
+
+  # Prefer an existing LAN. vagrant-56 is the historical name; this host
+  # already has 192.168.121.0/24 on vagrant-libvirt.
+  # Vagrant's AppImage sets LD_LIBRARY_PATH, which makes host virsh abort.
+  libvirt_lan = "vagrant-56"
+  virsh = "/usr/bin/virsh"
+  if File.executable?(virsh)
+    require "open3"
+    stdout, _stderr, _status = Open3.capture3(
+      {"LD_LIBRARY_PATH" => nil},
+      virsh, "-c", "qemu:///system", "-q", "net-list", "--all", "--name"
+    )
+    nets = stdout.split
+    if nets.include?("vagrant-libvirt") && !nets.include?("vagrant-56")
+      libvirt_lan = "vagrant-libvirt"
+    end
+  end
 
   # --- PLUGINS ---------------------------------------------------------------
 
@@ -63,7 +80,7 @@ Vagrant.configure("2") do |config|
                        ip: machine[:ip_libvirt],
                        netmask: "255.255.255.0",
                        auto_config: true,
-                       libvirt__network_name: "vagrant-56",
+                       libvirt__network_name: libvirt_lan,
                        libvirt__mac: machine[:mac],
                        libvirt__always_destroy: false
         end

@@ -5,6 +5,7 @@
       - docker
     extra_args: "--user --timeout 120"
     break_system_packages: true
+  when: ansible_facts['os_family'] != 'Alpine'
 
 - name: Add configured users to Docker group
   ansible.builtin.user:
