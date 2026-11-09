@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MINIMUM = ">=2.20.5,<2.21"
-LATEST = ">=2.21.5,<2.22"
+LATEST = ">=2.22.0,<2.23"
 
 
 def require(path: str, text: str) -> None:
@@ -17,8 +17,8 @@ def require(path: str, text: str) -> None:
 
 require("requirements.txt", f"ansible-core{LATEST}")
 require("meta/runtime.yml", 'requires_ansible: ">=2.20.0"')
-require("README.md", "ansible-core 2.20 or 2.21")
-require("docs/production-deployment.md", "ansible-core 2.20 or 2.21")
+require("README.md", "ansible-core 2.20 or 2.22")
+require("docs/production-deployment.md", "ansible-core 2.20 or 2.22")
 
 for workflow in (".github/workflows/ci.yml", ".github/workflows/galaxy-publish.yml"):
     require(workflow, MINIMUM)
