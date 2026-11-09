@@ -25,7 +25,7 @@ For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker
 
 ## Controller setup (your laptop or CI)
 
-- **ansible-core 2.20 or 2.21**. The normal developer environment uses 2.21
+- **ansible-core 2.20 or 2.22**. The normal developer environment uses 2.22
   (see [`requirements.txt`](requirements.txt)); CI also tests the 2.20 runtime floor.
 - **Python 3.13 or 3.14** for the controller
   (CI tests both; Ubuntu 26.04 ships 3.14—see
@@ -35,7 +35,7 @@ For the upstream Pi-hole container image, see: https://github.com/pi-hole/docker
 ./scripts/setup-env.sh
 source env/bin/activate
 ./scripts/install-ansible-collections.sh
-ansible --version   # ansible-core 2.21.x from env/bin/ansible
+ansible --version   # ansible-core 2.22.x from env/bin/ansible
 ```
 
 Manual venv (if you prefer): `python3.13 -m venv env` or
@@ -598,7 +598,7 @@ Hosted CI also runs lightweight safety checks for Molecule configuration files (
 sanity) that do not require Vagrant or a VM provider. Full Molecule Vagrant scenarios remain
 local/self-hosted validation steps.
 
-CI tests the advertised ansible-core 2.20 and 2.21 support range. It also builds
+CI tests the advertised ansible-core 2.20 and 2.22 support range. It also builds
 and installs the collection artifact into an empty temporary collections path,
 resolves its Galaxy dependencies, and syntax-checks playbooks from the installed
 artifact rather than the source checkout.
